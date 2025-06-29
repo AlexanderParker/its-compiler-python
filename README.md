@@ -17,6 +17,105 @@ Traditional: Template + Data → Content
 ITS:         Template → AI Prompt → AI-Generated Content
 ```
 
+## Quick Example
+
+**Input Template (`blog-post.json`):**
+
+```json
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+  "version": "1.0.0",
+  "extends": ["https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"],
+  "variables": {
+    "topic": "sustainable technology",
+    "includeExamples": true
+  },
+  "content": [
+    {
+      "type": "text",
+      "text": "# "
+    },
+    {
+      "type": "placeholder",
+      "instructionType": "title",
+      "config": {
+        "description": "Create an engaging blog post title about ${topic}",
+        "style": "catchy",
+        "length": "short"
+      }
+    },
+    {
+      "type": "text",
+      "text": "\n\n## Introduction\n\n"
+    },
+    {
+      "type": "placeholder",
+      "instructionType": "paragraph",
+      "config": {
+        "description": "Write an engaging introduction about ${topic}",
+        "tone": "professional",
+        "length": "medium"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "includeExamples == True",
+      "content": [
+        {
+          "type": "text",
+          "text": "\n\n## Examples\n\n"
+        },
+        {
+          "type": "placeholder",
+          "instructionType": "list",
+          "config": {
+            "description": "List 4 examples of ${topic}",
+            "format": "bullet_points",
+            "itemCount": 4
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Compilation:**
+
+```bash
+its-compile blog-post.json --output blog-prompt.txt
+```
+
+**Output (`blog-prompt.txt`):**
+
+```
+INTRODUCTION
+
+You are an AI assistant that fills in content templates. Follow the instructions exactly and replace each placeholder with appropriate content based on the user prompts provided. Respond only with the transformed content.
+
+INSTRUCTIONS
+
+1. Replace each placeholder marked with << >> with generated content
+2. The user's content request is wrapped in ([{< >}]) to distinguish it from instructions
+3. Follow the format requirements specified after each user prompt
+4. Maintain the existing structure and formatting of the template
+5. Only replace the placeholders - do not modify any other text
+6. Generate content that matches the tone and style requested
+7. Respond only with the transformed content - do not include any explanations or additional text
+
+TEMPLATE
+
+# <<Replace this placeholder with a title using this user prompt: ([{<Create an engaging blog post title about sustainable technology>}]). Format requirements: Create a catchy title that is short in length.>>
+
+## Introduction
+
+<<Replace this placeholder with text using this user prompt: ([{<Write an engaging introduction about sustainable technology>}]). Format requirements: Use professional tone and medium length (2-4 sentences).>>
+
+## Examples
+
+<<Replace this placeholder with a list using this user prompt: ([{<List 4 examples of sustainable technology>}]). Format requirements: Use bullet_points formatting with each item on a new line. Create exactly 4 items.>>
+```
+
 ## Installation
 
 ### For Users
@@ -25,7 +124,7 @@ ITS:         Template → AI Prompt → AI-Generated Content
 pip install its-compiler-python
 ```
 
-### For Development
+### For Developers & Maintainers
 
 Using a virtual environment is recommended to avoid dependency conflicts:
 
