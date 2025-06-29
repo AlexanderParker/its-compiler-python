@@ -175,10 +175,11 @@ class ITSCompiler:
         except Exception as e:
             errors.append(f"Schema loading error: {e}")
 
-        # Validate variables if present
-        if "variables" in template:
+        # Always validate variables - check references even if no variables defined
+        template_variables = template.get("variables", {})
+        if "content" in template:
             var_errors = self._validate_variables(
-                template["variables"], template["content"]
+                template_variables, template["content"]
             )
             errors.extend(var_errors)
 

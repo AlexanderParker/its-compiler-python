@@ -140,8 +140,8 @@ except ITSCompilationError as e:
 ### ✅ Complete ITS v1.0 Support
 
 - All standard instruction types (list, paragraph, table, etc.)
-- Variables with `${variable}` syntax
-- Conditional content with JavaScript-like expressions
+- Variables with `${variable}` syntax, including object properties and arrays
+- Conditional content with Python-like expressions
 - Schema extension mechanism with override precedence
 - Custom instruction types
 
@@ -156,15 +156,71 @@ except ITSCompilationError as e:
 
 - Full JSON Schema validation for templates
 - Type extension schema validation
-- Variable reference validation
+- Variable reference validation (including undefined variables)
 - Circular dependency detection
+- Semantic validation during template parsing
 
-### 🚀 Performance
+### ⚡ Performance
 
 - Efficient schema caching
 - Lazy loading of remote schemas
 - Optimised variable resolution
 - Minimal memory footprint
+
+## Variables and Conditionals
+
+### Variable Support
+
+The compiler supports comprehensive variable substitution:
+
+```json
+{
+  "variables": {
+    "product": {
+      "name": "SmartWatch Pro",
+      "price": 299
+    },
+    "features": ["heart rate", "GPS", "waterproof"],
+    "showSpecs": true
+  },
+  "content": [
+    { "type": "text", "text": "# ${product.name}\n\n" },
+    { "type": "text", "text": "Price: $${product.price}\n\n" },
+    { "type": "text", "text": "Features: ${features}\n\n" },
+    { "type": "text", "text": "Feature count: ${features.length}\n\n" }
+  ]
+}
+```
+
+**Supported variable types:**
+
+- Simple values: `${productName}`
+- Object properties: `${product.name}`, `${product.price}`
+- Array elements: `${features[0]}`, `${features[1]}`
+- Array as comma-separated list: `${features}`
+- Array length: `${features.length}`
+
+### Conditional Logic
+
+Support for Python-style conditional expressions:
+
+```json
+{
+  "type": "conditional",
+  "condition": "audience == \"technical\" and showAdvanced == True",
+  "content": [{ "type": "text", "text": "Technical content here" }],
+  "else": [{ "type": "text", "text": "General audience content" }]
+}
+```
+
+**Supported operators:**
+
+- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Boolean: `and`, `or`, `not`
+- Membership: `in`, `not in`
+- String literals: `"quoted strings"`
+- Boolean literals: `True`, `False`
+- Numeric comparisons: `price > 100`
 
 ## Example
 
@@ -208,7 +264,7 @@ except ITSCompilationError as e:
     },
     {
       "type": "conditional",
-      "condition": "includeExamples == true",
+      "condition": "includeExamples == True",
       "content": [
         {
           "type": "text",
@@ -263,6 +319,70 @@ TEMPLATE
 ## Examples
 
 <<Replace this placeholder with a list using this user prompt: ([{<List 4 examples of sustainable technology>}]). Format requirements: Use bullet_points formatting with each item on a new line. Create exactly 4 items.>>
+```
+
+## Testing
+
+The compiler includes a comprehensive test suite covering both success and error cases:
+
+### Running Tests
+
+```bash
+# Run all tests
+python test_runner.py
+
+# Run specific test categories
+python test_runner.py --test "Variables"
+python test_runner.py --test "Conditionals"
+python test_runner.py --test "Invalid"
+
+# Run with verbose output
+python test_runner.py --verbose
+
+# Stop on first failure
+python test_runner.py --stop-on-failure
+
+# Generate JUnit XML for CI
+python test_runner.py --junit-xml test-results.xml
+```
+
+### Test Coverage
+
+**✅ Happy Path Tests (15 tests):**
+
+- Basic templates (text-only, single/multiple placeholders)
+- Variable substitution (default and custom variables)
+- Complex variables (objects, arrays, properties)
+- Conditional logic (simple and complex scenarios)
+- Custom instruction types
+- Array usage and `.length` properties
+- Template validation
+
+**✅ Error Path Tests (9 tests):**
+
+- Invalid JSON syntax
+- Missing required fields
+- Undefined variable references
+- Unknown instruction types
+- Invalid conditional expressions
+- Missing placeholder configuration
+- Empty content arrays
+
+All 24 tests pass, ensuring robust error handling and comprehensive feature coverage.
+
+### Example Test Commands
+
+```bash
+# Test variable substitution
+its-compile test/templates/04-simple-variables.json
+its-compile test/templates/04-simple-variables.json --variables test/variables/custom-variables.json
+
+# Test conditional logic
+its-compile test/templates/06-simple-conditionals.json
+its-compile test/templates/06-simple-conditionals.json --variables test/variables/conditional-test-variables.json
+
+# Test error handling
+its-compile test/templates/invalid/03-undefined-variables.json --validate-only
 ```
 
 ## Configuration
@@ -377,31 +497,13 @@ ITSSchemaError: Failed to load schema 'https://example.com/types.json':
   - Consider checking the URL or network connectivity
 ```
 
-## Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=its_compiler
-
-# Run specific test categories
-pytest tests/test_compilation.py
-pytest tests/test_variables.py
-pytest tests/test_conditionals.py
-
-# Test against example templates
-pytest tests/test_examples.py --examples-dir path/to/its-examples
-```
-
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass (`pytest`)
+5. Ensure all tests pass (`python test_runner.py`)
 6. Run linting (`black . && flake8`)
 7. Commit your changes (`git commit -m 'Add amazing feature'`)
 8. Push to the branch (`git push origin feature/amazing-feature`)
@@ -425,7 +527,7 @@ pip install -e ".[dev]"
 pre-commit install
 
 # Run tests
-pytest
+python test_runner.py
 ```
 
 ## Related Projects

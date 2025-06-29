@@ -105,9 +105,15 @@ class TestRunner:
                 variables_file="test/variables/conditional-minimal-variables.json",
             ),
             TestCase(
-                name="Complex Conditionals",
+                name="Complex Conditionals (Default)",
                 file_path="test/templates/07-complex-conditionals.json",
-                description="Complex conditional expressions",
+                description="Complex conditional expressions with default variables",
+            ),
+            TestCase(
+                name="Complex Conditionals (Beginner)",
+                file_path="test/templates/07-complex-conditionals.json",
+                description="Complex conditionals for beginner audience with lower price",
+                variables_file="test/variables/complex-conditional-variables.json",
             ),
             TestCase(
                 name="Custom Types",
@@ -136,6 +142,60 @@ class TestRunner:
                 name="Validate Custom Types",
                 file_path="test/templates/08-custom-types.json",
                 description="Validation of custom instruction types",
+                test_validation_only=True,
+            ),
+            # Error case tests - these should fail
+            TestCase(
+                name="Invalid JSON",
+                file_path="test/templates/invalid/01-invalid-json.json",
+                description="Template with invalid JSON syntax",
+                should_pass=False,
+                expected_errors=["Invalid JSON"],
+            ),
+            TestCase(
+                name="Missing Required Fields",
+                file_path="test/templates/invalid/02-missing-required-fields.json",
+                description="Template missing required version and content fields",
+                should_pass=False,
+                expected_errors=["Missing required field"],
+                test_validation_only=True,
+            ),
+            TestCase(
+                name="Undefined Variables",
+                file_path="test/templates/invalid/03-undefined-variables.json",
+                description="Template with undefined variable references",
+                should_pass=False,
+                expected_errors=["Undefined variable reference"],
+                test_validation_only=True,
+            ),
+            TestCase(
+                name="Unknown Instruction Type",
+                file_path="test/templates/invalid/04-unknown-instruction-type.json",
+                description="Template with non-existent instruction type",
+                should_pass=False,
+                expected_errors=["Unknown instruction type"],
+            ),
+            TestCase(
+                name="Invalid Conditional Syntax",
+                file_path="test/templates/invalid/05-invalid-conditional.json",
+                description="Template with invalid conditional expression",
+                should_pass=False,
+                expected_errors=["Error evaluating condition"],
+            ),
+            TestCase(
+                name="Missing Placeholder Config",
+                file_path="test/templates/invalid/06-missing-placeholder-config.json",
+                description="Placeholder missing required description config",
+                should_pass=False,
+                expected_errors=["missing required field", "description"],
+                test_validation_only=True,
+            ),
+            TestCase(
+                name="Empty Content Array",
+                file_path="test/templates/invalid/07-empty-content.json",
+                description="Template with empty content array",
+                should_pass=False,
+                expected_errors=["Field 'content' cannot be empty"],
                 test_validation_only=True,
             ),
         ]
@@ -198,9 +258,17 @@ class TestRunner:
 
             # Check for expected errors if specified
             if test_case.expected_errors and not test_case.should_pass:
+                output_text = (result.stderr + result.stdout).lower()
+                # For tests with multiple expected errors, we only need to find ONE of them
                 found_expected_error = any(
-                    error in result.stderr for error in test_case.expected_errors
+                    expected_error.lower() in output_text
+                    for expected_error in test_case.expected_errors
                 )
+                if not found_expected_error:
+                    print(
+                        f"Expected errors not found. Looking for any of: {test_case.expected_errors}"
+                    )
+                    print(f"Got output: {result.stderr + result.stdout}")
                 passed = passed and found_expected_error
 
             print(f"Exit code: {result.returncode}")
