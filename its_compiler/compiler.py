@@ -54,10 +54,13 @@ class ITSCompiler:
         # Set base URL for relative schema references
         base_url = None
         try:
-            base_url = template_path.parent.resolve().as_uri() + "/"
+            # Resolve to absolute path first to avoid relative URI issues
+            abs_path = template_path.resolve()
+            base_url = abs_path.parent.as_uri() + "/"
         except (ValueError, OSError):
             # If we can't create a file URI, we'll skip relative URL resolution
             pass
+
         return self.compile(template, variables, base_url)
 
     def compile(
@@ -122,7 +125,21 @@ class ITSCompiler:
                 warnings=[],
             )
 
-        base_url = template_path.parent.as_uri() + "/"
+        # Set base URL for relative schema references
+        base_url = None
+        try:
+            # Resolve to absolute path first to avoid relative URI issues
+            abs_path = template_path.resolve()
+            base_url = abs_path.parent.as_uri() + "/"
+        except (ValueError, OSError) as e:
+            # If we can't create a file URI, we'll skip relative URL resolution
+            # This shouldn't prevent validation from working
+            if self.config.report_overrides:
+                print(
+                    f"Warning: Could not create base URL for relative schema resolution: {e}"
+                )
+            pass
+
         return self.validate(template, base_url)
 
     def validate(

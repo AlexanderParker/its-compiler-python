@@ -99,6 +99,11 @@ class VariableProcessor:
             var_ref = match.group(1)
             try:
                 value = self.resolve_variable_reference(var_ref, variables)
+
+                # Convert arrays to readable strings
+                if isinstance(value, list):
+                    return ", ".join(str(item) for item in value)
+
                 return str(value)
             except ITSVariableError:
                 # Re-raise with more context
@@ -113,7 +118,7 @@ class VariableProcessor:
     def resolve_variable_reference(
         self, var_ref: str, variables: Dict[str, Any]
     ) -> Any:
-        """Resolve a variable reference like 'user.name' or 'items[0]'."""
+        """Resolve a variable reference like 'user.name', 'items[0]', or 'features.length'."""
 
         # Split on dots for object property access
         parts = var_ref.split(".")
@@ -157,6 +162,10 @@ class VariableProcessor:
 
                 current = array_value[array_index]
             else:
+                # Handle special array/string properties
+                if part == "length" and isinstance(current, (list, str)):
+                    return len(current)
+
                 # Regular property access
                 if not isinstance(current, dict):
                     raise ITSVariableError(

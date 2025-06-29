@@ -17,7 +17,7 @@
     },
     {
       "type": "conditional",
-      "condition": "audience == 'technical' && settings.showAdvanced == true",
+      "condition": "audience == \"technical\" and settings.showAdvanced == True",
       "content": [
         {
           "type": "text",
@@ -55,7 +55,7 @@
     },
     {
       "type": "conditional",
-      "condition": "audience != 'technical' || settings.showBeginner == true",
+      "condition": "audience != \"technical\" or settings.showBeginner == True",
       "content": [
         {
           "type": "text",

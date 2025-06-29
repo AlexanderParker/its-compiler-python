@@ -1,0 +1,11 @@
+{
+  "topic": "machine learning algorithms",
+  "itemCount": 7,
+  "product": {
+    "name": "AI Assistant Pro",
+    "category": "software platform",
+    "price": 299
+  },
+  "features": ["natural language processing", "computer vision", "predictive analytics"],
+  "reviewCount": 5
+}

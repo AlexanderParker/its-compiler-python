@@ -24,6 +24,7 @@ class TestCase:
     should_pass: bool = True
     expected_errors: Optional[List[str]] = None
     test_validation_only: bool = False
+    variables_file: Optional[str] = None  # New: path to variables file
 
 
 @dataclass
@@ -65,19 +66,43 @@ class TestRunner:
                 description="Multiple instruction types",
             ),
             TestCase(
-                name="Simple Variables",
+                name="Simple Variables (Default)",
                 file_path="test/templates/04-simple-variables.json",
-                description="Variable substitution with ${variable} syntax",
+                description="Variable substitution using template defaults",
             ),
             TestCase(
-                name="Complex Variables",
+                name="Simple Variables (Custom)",
+                file_path="test/templates/04-simple-variables.json",
+                description="Variable substitution with custom variables file",
+                variables_file="test/variables/custom-variables.json",
+            ),
+            TestCase(
+                name="Complex Variables (Default)",
                 file_path="test/templates/05-complex-variables.json",
-                description="Object properties and array access",
+                description="Object properties and array access with defaults",
             ),
             TestCase(
-                name="Simple Conditionals",
+                name="Complex Variables (Custom)",
+                file_path="test/templates/05-complex-variables.json",
+                description="Object properties and array access with custom variables",
+                variables_file="test/variables/custom-variables.json",
+            ),
+            TestCase(
+                name="Simple Conditionals (Default)",
                 file_path="test/templates/06-simple-conditionals.json",
-                description="Basic conditional logic",
+                description="Basic conditional logic with default variables",
+            ),
+            TestCase(
+                name="Simple Conditionals (Inverted)",
+                file_path="test/templates/06-simple-conditionals.json",
+                description="Conditional logic with opposite boolean values",
+                variables_file="test/variables/conditional-test-variables.json",
+            ),
+            TestCase(
+                name="Simple Conditionals (All False)",
+                file_path="test/templates/06-simple-conditionals.json",
+                description="Conditional logic with all conditions false",
+                variables_file="test/variables/conditional-minimal-variables.json",
             ),
             TestCase(
                 name="Complex Conditionals",
@@ -88,6 +113,17 @@ class TestRunner:
                 name="Custom Types",
                 file_path="test/templates/08-custom-types.json",
                 description="Custom instruction type definitions",
+            ),
+            TestCase(
+                name="Array Usage (Default)",
+                file_path="test/templates/09-array-usage.json",
+                description="Using full arrays and array properties in templates",
+            ),
+            TestCase(
+                name="Array Usage (Custom)",
+                file_path="test/templates/09-array-usage.json",
+                description="Using full arrays with custom variable values",
+                variables_file="test/variables/custom-variables.json",
             ),
             # Validation-only tests
             TestCase(
@@ -110,9 +146,11 @@ class TestRunner:
         print(f"Running: {test_case.name}")
         print(f"File: {test_case.file_path}")
         print(f"Description: {test_case.description}")
+        if test_case.variables_file:
+            print(f"Variables: {test_case.variables_file}")
         print(f"{'='*60}")
 
-        # Check if file exists
+        # Check if template file exists
         if not Path(test_case.file_path).exists():
             return TestResult(
                 test_case=test_case,
@@ -123,10 +161,23 @@ class TestRunner:
                 exit_code=-1,
             )
 
+        # Check if variables file exists (if specified)
+        if test_case.variables_file and not Path(test_case.variables_file).exists():
+            return TestResult(
+                test_case=test_case,
+                passed=False,
+                output="",
+                error_output=f"Variables file not found: {test_case.variables_file}",
+                execution_time=0.0,
+                exit_code=-1,
+            )
+
         # Build command
         cmd = [self.compiler_command, test_case.file_path]
         if test_case.test_validation_only:
             cmd.append("--validate-only")
+        if test_case.variables_file:
+            cmd.extend(["--variables", test_case.variables_file])
         if self.verbose:
             cmd.append("--verbose")
 
@@ -154,7 +205,7 @@ class TestRunner:
 
             print(f"Exit code: {result.returncode}")
             print(f"Execution time: {execution_time:.2f}s")
-            print(f"Status: {'✓ PASS' if passed else '✗ FAIL'}")
+            print(f"Status: {'✅ PASS' if passed else '❌ FAIL'}")
 
             if self.verbose or not passed:
                 if result.stdout:
@@ -173,7 +224,7 @@ class TestRunner:
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
-            print(f"✗ FAIL - Test timed out after 30 seconds")
+            print(f"❌ FAIL - Test timed out after 30 seconds")
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -184,7 +235,7 @@ class TestRunner:
             )
         except Exception as e:
             execution_time = time.time() - start_time
-            print(f"✗ FAIL - Exception: {e}")
+            print(f"❌ FAIL - Exception: {e}")
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -206,7 +257,7 @@ class TestRunner:
             self.results.append(result)
 
             if not result.passed and stop_on_failure:
-                print(f"\n💥 Stopping on first failure: {test_case.name}")
+                print(f"\n🛑 Stopping on first failure: {test_case.name}")
                 break
 
         return self.print_summary()
@@ -225,7 +276,7 @@ class TestRunner:
         print(f"Failed: {len(failed_tests)}")
 
         if failed_tests:
-            print(f"\n❌ FAILED TESTS:")
+            print(f"\n🔴 FAILED TESTS:")
             for result in failed_tests:
                 print(f"  - {result.test_case.name}: {result.error_output[:100]}...")
 
@@ -238,7 +289,7 @@ class TestRunner:
         print(f"\nTotal execution time: {total_time:.2f}s")
 
         success = len(failed_tests) == 0
-        print(f"\nOverall result: {'✅ SUCCESS' if success else '❌ FAILURE'}")
+        print(f"\nOverall result: {'✅ SUCCESS' if success else '🔴 FAILURE'}")
 
         return success
 

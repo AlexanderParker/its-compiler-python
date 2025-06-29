@@ -20,7 +20,8 @@ from .compiler import ITSCompiler
 from .models import ITSConfig
 from .exceptions import ITSError, ITSValidationError, ITSCompilationError
 
-console = Console()
+# Configure console with safe encoding for Windows
+console = Console(force_terminal=True, legacy_windows=False)
 
 
 class TemplateChangeHandler(FileSystemEventHandler):
@@ -97,7 +98,10 @@ def compile_template(
             result = compiler.validate_file(template_path)
 
             if result.is_valid:
-                console.print("[green]✓ Template is valid[/green]", highlight=False)
+                # Use simple text instead of Unicode checkmark
+                console.print(
+                    "[green]PASS - Template is valid[/green]", highlight=False
+                )
                 if result.warnings and verbose:
                     for warning in result.warnings:
                         console.print(
@@ -105,7 +109,7 @@ def compile_template(
                         )
             else:
                 console.print(
-                    "[red]✗ Template validation failed[/red]", highlight=False
+                    "[red]FAIL - Template validation failed[/red]", highlight=False
                 )
                 for error in result.errors:
                     console.print(f"[red]Error: {error}[/red]", highlight=False)
