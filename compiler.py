@@ -1,0 +1,394 @@
+"""
+Main ITS compiler implementation.
+"""
+
+import json
+import re
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
+from urllib.parse import urljoin, urlparse
+
+from models import (
+    ITSConfig,
+    CompilationResult,
+    ValidationResult,
+    InstructionTypeDefinition,
+    TypeOverride,
+    OverrideType,
+)
+from exceptions import (
+    ITSValidationError,
+    ITSCompilationError,
+    ITSVariableError,
+    ITSConditionalError,
+)
+from schema_loader import SchemaLoader
+from variable_processor import VariableProcessor
+from conditional_evaluator import ConditionalEvaluator
+
+
+class ITSCompiler:
+    """Main compiler for ITS templates."""
+
+    def __init__(self, config: Optional[ITSConfig] = None):
+        self.config = config or ITSConfig()
+        self.schema_loader = SchemaLoader(self.config)
+        self.variable_processor = VariableProcessor()
+        self.conditional_evaluator = ConditionalEvaluator()
+
+    def compile_file(
+        self, template_path: str, variables: Optional[Dict[str, Any]] = None
+    ) -> CompilationResult:
+        """Compile a template from a file."""
+        template_path = Path(template_path)
+
+        if not template_path.exists():
+            raise ITSCompilationError(f"Template file not found: {template_path}")
+
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                template = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ITSCompilationError(f"Invalid JSON in template file: {e}")
+
+        # Set base URL for relative schema references
+        base_url = template_path.parent.as_uri() + "/"
+        return self.compile(template, variables, base_url)
+
+    def compile(
+        self,
+        template: Dict[str, Any],
+        variables: Optional[Dict[str, Any]] = None,
+        base_url: Optional[str] = None,
+    ) -> CompilationResult:
+        """Compile a template dictionary."""
+
+        # Validate template structure
+        validation_result = self.validate(template, base_url)
+        if not validation_result.is_valid:
+            raise ITSValidationError(
+                "Template validation failed", validation_errors=validation_result.errors
+            )
+
+        # Merge template variables with provided variables
+        template_variables = template.get("variables", {})
+        merged_variables = {**template_variables, **(variables or {})}
+
+        # Load and resolve instruction types
+        instruction_types, overrides = self._load_instruction_types(template, base_url)
+
+        # Process variables in content
+        processed_content = self._process_variables(
+            template["content"], merged_variables
+        )
+
+        # Evaluate conditionals
+        final_content = self._evaluate_conditionals(processed_content, merged_variables)
+
+        # Generate final prompt
+        prompt = self._generate_prompt(final_content, instruction_types, template)
+
+        return CompilationResult(
+            prompt=prompt,
+            template=template,
+            variables=merged_variables,
+            overrides=overrides,
+            warnings=validation_result.warnings,
+        )
+
+    def validate_file(self, template_path: str) -> ValidationResult:
+        """Validate a template file."""
+        template_path = Path(template_path)
+
+        if not template_path.exists():
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Template file not found: {template_path}"],
+                warnings=[],
+            )
+
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                template = json.load(f)
+        except json.JSONDecodeError as e:
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Invalid JSON in template file: {e}"],
+                warnings=[],
+            )
+
+        base_url = template_path.parent.as_uri() + "/"
+        return self.validate(template, base_url)
+
+    def validate(
+        self, template: Dict[str, Any], base_url: Optional[str] = None
+    ) -> ValidationResult:
+        """Validate a template dictionary."""
+        errors = []
+        warnings = []
+
+        # Basic structure validation
+        if not isinstance(template, dict):
+            errors.append("Template must be a JSON object")
+            return ValidationResult(False, errors, warnings)
+
+        # Required fields
+        if "version" not in template:
+            errors.append("Missing required field: version")
+        if "content" not in template:
+            errors.append("Missing required field: content")
+        elif not isinstance(template["content"], list):
+            errors.append("Field 'content' must be an array")
+        elif len(template["content"]) == 0:
+            errors.append("Field 'content' cannot be empty")
+
+        # Validate content elements
+        if "content" in template:
+            content_errors = self._validate_content(template["content"])
+            errors.extend(content_errors)
+
+        # Try to load schemas (this will catch schema-related errors)
+        try:
+            self._load_instruction_types(template, base_url)
+        except Exception as e:
+            errors.append(f"Schema loading error: {e}")
+
+        # Validate variables if present
+        if "variables" in template:
+            var_errors = self._validate_variables(
+                template["variables"], template["content"]
+            )
+            errors.extend(var_errors)
+
+        return ValidationResult(
+            is_valid=len(errors) == 0, errors=errors, warnings=warnings
+        )
+
+    def _validate_content(self, content: List[Dict[str, Any]]) -> List[str]:
+        """Validate content elements."""
+        errors = []
+
+        for i, element in enumerate(content):
+            if not isinstance(element, dict):
+                errors.append(f"Content element {i} must be an object")
+                continue
+
+            if "type" not in element:
+                errors.append(f"Content element {i} missing required field: type")
+                continue
+
+            element_type = element["type"]
+
+            if element_type == "text":
+                if "text" not in element:
+                    errors.append(f"Text element {i} missing required field: text")
+            elif element_type == "placeholder":
+                if "instructionType" not in element:
+                    errors.append(
+                        f"Placeholder element {i} missing required field: instructionType"
+                    )
+                if "config" not in element:
+                    errors.append(
+                        f"Placeholder element {i} missing required field: config"
+                    )
+                elif not isinstance(element["config"], dict):
+                    errors.append(f"Placeholder element {i} config must be an object")
+                elif "description" not in element["config"]:
+                    errors.append(
+                        f"Placeholder element {i} config missing required field: description"
+                    )
+            elif element_type == "conditional":
+                if "condition" not in element:
+                    errors.append(
+                        f"Conditional element {i} missing required field: condition"
+                    )
+                if "content" not in element:
+                    errors.append(
+                        f"Conditional element {i} missing required field: content"
+                    )
+                elif not isinstance(element["content"], list):
+                    errors.append(f"Conditional element {i} content must be an array")
+                else:
+                    # Recursively validate nested content
+                    nested_errors = self._validate_content(element["content"])
+                    errors.extend(nested_errors)
+
+                if "else" in element and not isinstance(element["else"], list):
+                    errors.append(f"Conditional element {i} else must be an array")
+                elif "else" in element:
+                    nested_errors = self._validate_content(element["else"])
+                    errors.extend(nested_errors)
+            else:
+                errors.append(f"Content element {i} has invalid type: {element_type}")
+
+        return errors
+
+    def _validate_variables(
+        self, variables: Dict[str, Any], content: List[Dict[str, Any]]
+    ) -> List[str]:
+        """Validate that all variable references can be resolved."""
+        errors = []
+
+        # Find all variable references in content
+        content_str = json.dumps(content)
+        variable_refs = re.findall(r"\$\{([^}]+)\}", content_str)
+
+        for var_ref in variable_refs:
+            try:
+                self.variable_processor.resolve_variable_reference(var_ref, variables)
+            except ITSVariableError as e:
+                errors.append(f"Undefined variable reference: ${{{var_ref}}}")
+
+        return errors
+
+    def _load_instruction_types(
+        self, template: Dict[str, Any], base_url: Optional[str] = None
+    ) -> tuple[Dict[str, InstructionTypeDefinition], List[TypeOverride]]:
+        """Load and resolve instruction types from schemas."""
+
+        instruction_types = {}
+        overrides = []
+
+        # Load extended schemas in order
+        extends = template.get("extends", [])
+        for schema_url in extends:
+            # Resolve relative URLs
+            if base_url and not urlparse(schema_url).scheme:
+                schema_url = urljoin(base_url, schema_url)
+
+            schema = self.schema_loader.load_schema(schema_url)
+            schema_types = schema.get("instructionTypes", {})
+
+            # Check for overrides
+            for type_name, type_def in schema_types.items():
+                if type_name in instruction_types:
+                    overrides.append(
+                        TypeOverride(
+                            type_name=type_name,
+                            override_source=schema_url,
+                            overridden_source=instruction_types[type_name].source
+                            or "unknown",
+                            override_type=OverrideType.SCHEMA_EXTENSION,
+                        )
+                    )
+
+                instruction_types[type_name] = InstructionTypeDefinition(
+                    name=type_name,
+                    template=type_def["template"],
+                    description=type_def.get("description"),
+                    config_schema=type_def.get("configSchema"),
+                    source=schema_url,
+                )
+
+        # Apply custom instruction types (highest precedence)
+        custom_types = template.get("customInstructionTypes", {})
+        for type_name, type_def in custom_types.items():
+            if type_name in instruction_types:
+                overrides.append(
+                    TypeOverride(
+                        type_name=type_name,
+                        override_source="customInstructionTypes",
+                        overridden_source=instruction_types[type_name].source
+                        or "unknown",
+                        override_type=OverrideType.CUSTOM,
+                    )
+                )
+
+            instruction_types[type_name] = InstructionTypeDefinition(
+                name=type_name,
+                template=type_def["template"],
+                description=type_def.get("description"),
+                config_schema=type_def.get("configSchema"),
+                source="custom",
+            )
+
+        return instruction_types, overrides
+
+    def _process_variables(
+        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Process variable references in content."""
+        return self.variable_processor.process_content(content, variables)
+
+    def _evaluate_conditionals(
+        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Evaluate conditional elements."""
+        return self.conditional_evaluator.evaluate_content(content, variables)
+
+    def _generate_prompt(
+        self,
+        content: List[Dict[str, Any]],
+        instruction_types: Dict[str, InstructionTypeDefinition],
+        template: Dict[str, Any],
+    ) -> str:
+        """Generate the final AI prompt."""
+
+        # Get compiler configuration
+        compiler_config = template.get("compilerConfig", {})
+        system_prompt = compiler_config.get(
+            "systemPrompt", self.config.default_system_prompt
+        )
+        user_content_wrapper = compiler_config.get(
+            "userContentWrapper", self.config.default_user_content_wrapper
+        )
+        instruction_wrapper = compiler_config.get(
+            "instructionWrapper", self.config.default_instruction_wrapper
+        )
+        processing_instructions = compiler_config.get(
+            "processingInstructions", self.config.default_processing_instructions
+        )
+
+        # Process content elements
+        processed_content = []
+
+        for element in content:
+            if element["type"] == "text":
+                processed_content.append(element["text"])
+            elif element["type"] == "placeholder":
+                instruction = self._generate_instruction(
+                    element, instruction_types, user_content_wrapper
+                )
+                wrapped_instruction = instruction_wrapper.format(
+                    instruction=instruction
+                )
+                processed_content.append(wrapped_instruction)
+
+        # Assemble final prompt
+        prompt_parts = ["INTRODUCTION", "", system_prompt, "", "INSTRUCTIONS", ""]
+
+        for i, instruction in enumerate(processing_instructions, 1):
+            prompt_parts.append(f"{i}. {instruction}")
+
+        prompt_parts.extend(["", "TEMPLATE", "", "".join(processed_content)])
+
+        return "\n".join(prompt_parts)
+
+    def _generate_instruction(
+        self,
+        placeholder: Dict[str, Any],
+        instruction_types: Dict[str, InstructionTypeDefinition],
+        user_content_wrapper: str,
+    ) -> str:
+        """Generate an instruction for a placeholder."""
+
+        instruction_type_name = placeholder["instructionType"]
+        config = placeholder["config"]
+
+        if instruction_type_name not in instruction_types:
+            available_types = list(instruction_types.keys())
+            raise ITSCompilationError(
+                f"Unknown instruction type: '{instruction_type_name}'",
+                element_id=placeholder.get("id"),
+                details={"available_types": available_types},
+            )
+
+        instruction_type = instruction_types[instruction_type_name]
+
+        try:
+            return instruction_type.format_instruction(config, user_content_wrapper)
+        except KeyError as e:
+            raise ITSCompilationError(
+                f"Missing required configuration for instruction type '{instruction_type_name}': {e}",
+                element_id=placeholder.get("id"),
+            )
