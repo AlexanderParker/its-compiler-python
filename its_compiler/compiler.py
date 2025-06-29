@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 from urllib.parse import urljoin, urlparse
 
-from models import (
+from .models import (
     ITSConfig,
     CompilationResult,
     ValidationResult,
@@ -16,15 +16,15 @@ from models import (
     TypeOverride,
     OverrideType,
 )
-from exceptions import (
+from .exceptions import (
     ITSValidationError,
     ITSCompilationError,
     ITSVariableError,
     ITSConditionalError,
 )
-from schema_loader import SchemaLoader
-from variable_processor import VariableProcessor
-from conditional_evaluator import ConditionalEvaluator
+from .schema_loader import SchemaLoader
+from .variable_processor import VariableProcessor
+from .conditional_evaluator import ConditionalEvaluator
 
 
 class ITSCompiler:
@@ -52,7 +52,12 @@ class ITSCompiler:
             raise ITSCompilationError(f"Invalid JSON in template file: {e}")
 
         # Set base URL for relative schema references
-        base_url = template_path.parent.as_uri() + "/"
+        base_url = None
+        try:
+            base_url = template_path.parent.resolve().as_uri() + "/"
+        except (ValueError, OSError):
+            # If we can't create a file URI, we'll skip relative URL resolution
+            pass
         return self.compile(template, variables, base_url)
 
     def compile(
@@ -349,10 +354,17 @@ class ITSCompiler:
                 instruction = self._generate_instruction(
                     element, instruction_types, user_content_wrapper
                 )
-                wrapped_instruction = instruction_wrapper.format(
-                    instruction=instruction
-                )
-                processed_content.append(wrapped_instruction)
+
+                # Check if the instruction already has wrapper brackets
+                if instruction.startswith("<<") and instruction.endswith(">>"):
+                    # Template already has wrapper, use as-is
+                    processed_content.append(instruction)
+                else:
+                    # Template doesn't have wrapper, apply it
+                    wrapped_instruction = instruction_wrapper.format(
+                        instruction=instruction
+                    )
+                    processed_content.append(wrapped_instruction)
 
         # Assemble final prompt
         prompt_parts = ["INTRODUCTION", "", system_prompt, "", "INSTRUCTIONS", ""]

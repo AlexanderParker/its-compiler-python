@@ -7,12 +7,12 @@ import time
 import hashlib
 from pathlib import Path
 from typing import Dict, Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
 
-from models import ITSConfig
-from exceptions import ITSSchemaError
+from .models import ITSConfig
+from .exceptions import ITSSchemaError
 
 
 class SchemaLoader:

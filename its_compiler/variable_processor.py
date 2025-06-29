@@ -6,7 +6,7 @@ import re
 import json
 from typing import Dict, List, Any, Union
 
-from exceptions import ITSVariableError
+from .exceptions import ITSVariableError
 
 
 class VariableProcessor:

@@ -7,7 +7,7 @@ import ast
 import operator
 from typing import Dict, List, Any, Union
 
-from exceptions import ITSConditionalError
+from .exceptions import ITSConditionalError
 
 
 class ConditionalEvaluator:
@@ -61,8 +61,11 @@ class ConditionalEvaluator:
     def evaluate_condition(self, condition: str, variables: Dict[str, Any]) -> bool:
         """Evaluate a conditional expression."""
         try:
+            # Convert single quotes to double quotes for proper Python parsing
+            processed_condition = condition.replace("'", '"')
+
             # Parse the expression
-            parsed = ast.parse(condition, mode="eval")
+            parsed = ast.parse(processed_condition, mode="eval")
 
             # Evaluate the expression
             result = self._evaluate_node(parsed.body, variables)
@@ -88,8 +91,15 @@ class ConditionalEvaluator:
             return node.value
 
         elif isinstance(node, ast.Name):
-            # Variable reference
+            # Variable reference or boolean literal
             var_name = node.id
+
+            # Handle boolean literals
+            if var_name == "true":
+                return True
+            elif var_name == "false":
+                return False
+
             if var_name not in variables:
                 raise ITSConditionalError(
                     f"Undefined variable '{var_name}' in condition",

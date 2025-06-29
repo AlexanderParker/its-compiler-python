@@ -114,18 +114,22 @@ class InstructionTypeDefinition:
     config_schema: Optional[Dict[str, Any]] = None
     source: Optional[str] = None  # Source schema or "custom"
 
-    def format_instruction(
-        self, config: Dict[str, Any], user_content_wrapper: str
-    ) -> str:
-        """Format the instruction template with config values."""
-        # Replace {description} with wrapped user content
-        description = config.get("description", "")
-        wrapped_description = user_content_wrapper.format(content=description)
 
-        # Replace config placeholders in template
-        formatted_template = self.template.format(
-            description=wrapped_description,
-            **{k: v for k, v in config.items() if k != "description"}
-        )
+    def format_instruction(self, config: Dict[str, Any], user_content_wrapper: str) -> str:
+        """Format the instruction template with config values."""
+        description = config.get("description", "")
+
+        # Start with the template
+        formatted_template = self.template
+
+        # The templates from the standard schema already contain the user content wrapper
+        # pattern ([{<{description}>}]), so we just substitute the description directly
+        formatted_template = formatted_template.replace("{description}", description)
+
+        # Replace other config placeholders
+        for key, value in config.items():
+            if key != "description":
+                placeholder = "{" + key + "}"
+                formatted_template = formatted_template.replace(placeholder, str(value))
 
         return formatted_template

@@ -9,8 +9,8 @@ __version__ = "0.1.0"
 __author__ = "Alexander Parker"
 __email__ = "your-email@example.com"
 
-from compiler import ITSCompiler
-from exceptions import (
+from .compiler import ITSCompiler
+from .exceptions import (
     ITSError,
     ITSValidationError,
     ITSCompilationError,

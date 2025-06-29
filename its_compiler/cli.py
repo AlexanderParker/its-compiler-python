@@ -16,9 +16,9 @@ from rich.text import Text
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from compiler import ITSCompiler
-from models import ITSConfig
-from exceptions import ITSError, ITSValidationError, ITSCompilationError
+from .compiler import ITSCompiler
+from .models import ITSConfig
+from .exceptions import ITSError, ITSValidationError, ITSCompilationError
 
 console = Console()
 
@@ -97,21 +97,27 @@ def compile_template(
             result = compiler.validate_file(template_path)
 
             if result.is_valid:
-                console.print("[green]✓ Template is valid[/green]")
+                console.print("[green]✓ Template is valid[/green]", highlight=False)
                 if result.warnings and verbose:
                     for warning in result.warnings:
-                        console.print(f"[yellow]Warning: {warning}[/yellow]")
+                        console.print(
+                            f"[yellow]Warning: {warning}[/yellow]", highlight=False
+                        )
             else:
-                console.print("[red]✗ Template validation failed[/red]")
+                console.print(
+                    "[red]✗ Template validation failed[/red]", highlight=False
+                )
                 for error in result.errors:
-                    console.print(f"[red]Error: {error}[/red]")
+                    console.print(f"[red]Error: {error}[/red]", highlight=False)
                 sys.exit(1)
         else:
             # Full compilation
             result = compiler.compile_file(template_path, variables)
 
             # Show compilation success
-            console.print("[green]✓ Template compiled successfully[/green]")
+            console.print(
+                "[green]Template compiled successfully[/green]", highlight=False
+            )
 
             # Show overrides if verbose
             if verbose and result.has_overrides:

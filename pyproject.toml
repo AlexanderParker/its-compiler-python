@@ -76,13 +76,13 @@ Changelog = "https://github.com/alexanderparker/its-compiler-python/blob/main/CH
 "ITS Specification" = "https://github.com/alexanderparker/instruction-template-specification"
 
 [project.scripts]
-its-compile = "cli:main"
+its-compile = "its_compiler.cli:main"
 
 [tool.hatch.version]
-path = "__init__.py"
+path = "its_compiler/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-include = ["*.py"]
+include = ["its_compiler"]
 
 [tool.black]
 line-length = 88
