@@ -219,7 +219,7 @@ class VariableProcessor:
         self, data: Dict[str, Any], variables: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Process variables in a dictionary."""
-        processed = {}
+        processed: Dict[str, Any] = {}
 
         for key, value in data.items():
             if isinstance(value, str):
@@ -235,7 +235,7 @@ class VariableProcessor:
 
     def _process_list(self, data: List[Any], variables: Dict[str, Any]) -> List[Any]:
         """Process variables in a list."""
-        processed = []
+        processed: List[Any] = []
 
         for item in data:
             if isinstance(item, str):
@@ -259,7 +259,7 @@ class VariableProcessor:
                 f"Too many variable references in string: {len(var_refs)}"
             )
 
-        def replace_variable(match):
+        def replace_variable(match: re.Match[str]) -> str:
             var_ref = match.group(1)
 
             # Validate variable reference syntax
@@ -294,11 +294,11 @@ class VariableProcessor:
         """Sanitise resolved variable value for safe output."""
 
         if isinstance(value, str):
-            # ... existing string handling code ...
+            # String values are returned as-is
             return value
 
         elif isinstance(value, list):
-            # ... existing list handling code ...
+            # Convert arrays to comma-separated string
             return ", ".join(str(item) for item in value)
 
         elif isinstance(value, dict):
