@@ -1,40 +1,33 @@
 name: Integration Tests
-
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
-
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Cache pip dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-${{ matrix.python-version }}-
             ${{ runner.os }}-pip-
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-
       - name: Set up test environment
         run: |
           # Configure security settings for CI
@@ -43,27 +36,22 @@ jobs:
           echo "ITS_ALLOW_HTTP=false" >> $GITHUB_ENV
           echo "ITS_BLOCK_LOCALHOST=true" >> $GITHUB_ENV
           echo "ITS_REQUEST_TIMEOUT=30" >> $GITHUB_ENV
-
       - name: Verify installation
         run: |
           its-compile --help
           python -c "import its_compiler; print(f'ITS Compiler version: {its_compiler.__version__}')"
-
       - name: Run integration tests
         run: |
           python test_runner.py --verbose --junit-xml test-results-${{ matrix.python-version }}.xml
-
       - name: Run security tests
         run: |
           python test_runner.py --category security --verbose
-
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ matrix.python-version }}
           path: test-results-${{ matrix.python-version }}.xml
-
       - name: Publish test results
         uses: dorny/test-reporter@v1
         if: always()
@@ -72,65 +60,52 @@ jobs:
           path: test-results-${{ matrix.python-version }}.xml
           reporter: java-junit
           fail-on-error: true
-
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Cache pip dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-lint-${{ hashFiles('pyproject.toml') }}
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-
       - name: Run black
         run: black --check --diff .
-
       - name: Run flake8
         run: flake8 its_compiler/ test/ test_runner.py
-
       - name: Run type checking
         run: mypy its_compiler/ --ignore-missing-imports || true
-
   security-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           pip install bandit safety
-
       - name: Run bandit security scan
         run: |
           bandit -r its_compiler/ -f json -o bandit-results.json || true
           bandit -r its_compiler/ || true
-
       - name: Run safety check
         run: |
           safety check --json --output safety-results.json || true
           safety check || true
-
       - name: Upload security scan results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-scan-results
