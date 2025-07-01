@@ -4,18 +4,9 @@
 [![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Falexanderparker%2Fits-compiler-python%2Fmain%2Fpyproject.toml)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Reference Python compiler for the [Instruction Template Specification (ITS)](https://github.com/alexanderparker/instruction-template-specification) that converts content templates with placeholders into structured AI prompts for content generation.
+Reference Python compiler for the [Instruction Template Specification (ITS)](https://github.com/alexanderparker/instruction-template-specification) that converts content templates with placeholders into structured AI prompts.
 
-## What is ITS?
-
-ITS enables content creators to build templates using natural language and visual placeholders, which then compile into prompts that instruct AI systems to generate specific types of content.
-
-**Traditional Templating vs ITS:**
-
-```
-Traditional: Template + Data → Content
-ITS:         Template → AI Prompt → AI-Generated Content
-```
+> **New to ITS?** See the [specification documentation](https://alexanderparker.github.io/instruction-template-specification/) for complete details on the template format and concepts.
 
 ## Quick Example
 
@@ -201,66 +192,21 @@ except ITSCompilationError as e:
 - Schema extension mechanism with override precedence
 - Custom instruction types
 
-### Developer-Friendly
+### Developer Tools
 
 - Comprehensive error messages with line numbers
 - Override reporting shows which types are being replaced
 - Watch mode for rapid development iteration
 - Validation with detailed feedback
 
-### Security
+### Security Features
 
-The ITS Compiler includes security features to help protect against common attack vectors. **Users are responsible for validating their own inputs** and ensuring templates meet their security requirements.
-
-#### Security Features
+The compiler includes security features to help protect against common attack vectors. **Users are responsible for validating their own inputs** and ensuring templates meet their security requirements.
 
 - **Schema Allowlist** - Control which schema URLs are permitted
 - **Expression Validation** - Validate conditional expressions
 - **Input Validation** - Scan content for problematic patterns
 - **SSRF Protection** - Block private networks and validate URLs
-
-#### Environment Variables
-
-**Network Security:**
-
-- `ITS_ALLOW_HTTP` - Allow HTTP URLs (default: false)
-- `ITS_BLOCK_LOCALHOST` - Block localhost access (default: true)
-- `ITS_REQUEST_TIMEOUT` - Network timeout in seconds (default: 10)
-- `ITS_DOMAIN_ALLOWLIST` - Comma-separated allowed domains
-
-**Schema Allowlist:**
-
-- `ITS_INTERACTIVE_ALLOWLIST` - Enable interactive prompts (default: true)
-- `ITS_ALLOWLIST_FILE` - Custom allowlist file location
-
-**Processing Limits:**
-
-- `ITS_MAX_TEMPLATE_SIZE` - Max template size in bytes (default: 1MB)
-- `ITS_MAX_CONTENT_ELEMENTS` - Max content elements (default: 1000)
-
-**Feature Toggles:**
-
-- `ITS_DISABLE_ALLOWLIST` - Disable schema allowlist
-- `ITS_DISABLE_INPUT_VALIDATION` - Disable input validation
-
-#### Allowlist Management
-
-When `ITS_INTERACTIVE_ALLOWLIST` is enabled, you'll be prompted for unknown schemas:
-
-```
-SCHEMA ALLOWLIST DECISION REQUIRED
-URL: https://example.com/custom-types.json
-
-1. Allow permanently (saved to allowlist)
-2. Allow for this session only
-3. Deny (compilation will fail)
-```
-
-**Management commands:**
-
-- `its-compile --allowlist-status` - View allowlist status
-- `its-compile --add-trusted-schema URL` - Add trusted schema
-- `its-compile --export-allowlist FILE` - Export allowlist
 
 ### Variables and Conditionals
 
@@ -311,46 +257,50 @@ Options:
   --help                    Show this message and exit
 ```
 
-## Testing
-
-Run the comprehensive test suite:
-
-```bash
-# Run all tests
-python test_runner.py
-
-# Run specific categories
-python test_runner.py --category security
-python test_runner.py --category integration
-
-# Run with verbose output
-python test_runner.py --verbose
-
-# Generate JUnit XML for CI
-python test_runner.py --junit-xml test-results.xml
-```
-
-**Test Coverage:**
-
-- ✅ **24 integration tests** - All ITS features and error cases
-- ✅ **8 security tests** - Malicious content detection and blocking
-- ✅ **9 error handling tests** - Invalid templates and edge cases
-
 ## Configuration
 
 ### Environment Variables
 
-```bash
-# Security settings
-export ITS_ALLOW_HTTP=false
-export ITS_INTERACTIVE_ALLOWLIST=false
-export ITS_REQUEST_TIMEOUT=30
+**Network Security:**
 
-# Processing limits
-export ITS_MAX_TEMPLATE_SIZE=1048576
-export ITS_ALLOWLIST_FILE=/path/to/allowlist.json
-export ITS_DOMAIN_ALLOWLIST="alexanderparker.github.io,your-domain.com"
+- `ITS_ALLOW_HTTP` - Allow HTTP URLs (default: false)
+- `ITS_BLOCK_LOCALHOST` - Block localhost access (default: true)
+- `ITS_REQUEST_TIMEOUT` - Network timeout in seconds (default: 10)
+- `ITS_DOMAIN_ALLOWLIST` - Comma-separated allowed domains
+
+**Schema Allowlist:**
+
+- `ITS_INTERACTIVE_ALLOWLIST` - Enable interactive prompts (default: true)
+- `ITS_ALLOWLIST_FILE` - Custom allowlist file location
+
+**Processing Limits:**
+
+- `ITS_MAX_TEMPLATE_SIZE` - Max template size in bytes (default: 1MB)
+- `ITS_MAX_CONTENT_ELEMENTS` - Max content elements (default: 1000)
+
+**Feature Toggles:**
+
+- `ITS_DISABLE_ALLOWLIST` - Disable schema allowlist
+- `ITS_DISABLE_INPUT_VALIDATION` - Disable input validation
+
+### Allowlist Management
+
+When `ITS_INTERACTIVE_ALLOWLIST` is enabled, you'll be prompted for unknown schemas:
+
 ```
+SCHEMA ALLOWLIST DECISION REQUIRED
+URL: https://example.com/custom-types.json
+
+1. Allow permanently (saved to allowlist)
+2. Allow for this session only
+3. Deny (compilation will fail)
+```
+
+**Management commands:**
+
+- `its-compile --allowlist-status` - View allowlist status
+- `its-compile --add-trusted-schema URL` - Add trusted schema
+- `its-compile --export-allowlist FILE` - Export allowlist
 
 ### Configuration File
 
@@ -389,6 +339,31 @@ ITSVariableError: Undefined variable reference at content[1].config.description:
   - Variable '${productName}' is not defined
   - Available variables: productType, featureCount
 ```
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Run all tests
+python test_runner.py
+
+# Run specific categories
+python test_runner.py --category security
+python test_runner.py --category integration
+
+# Run with verbose output
+python test_runner.py --verbose
+
+# Generate JUnit XML for CI
+python test_runner.py --junit-xml test-results.xml
+```
+
+**Test Coverage:**
+
+- **24 integration tests** - All ITS features and error cases
+- **8 security tests** - Malicious content detection and blocking
+- **9 error handling tests** - Invalid templates and edge cases
 
 ## API Reference
 
@@ -452,7 +427,3 @@ python test_runner.py
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-Built with ❤️ for the AI content generation community
