@@ -65,7 +65,7 @@
     {
       "type": "conditional",
       "condition": "(price >= 50 and price <= 150) or flag",
-      "content": [{ "type": "text", "text": "[OK] Parentheses and complex logic work\n" }]
+      "content": [{ "type": "text", "text": "[OK] Parentheses and complex logic work\n" }]      
     },
     {
       "type": "conditional",

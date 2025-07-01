@@ -308,9 +308,6 @@ class VariableProcessor:
         else:
             # Convert other types to string with length limit
             str_value = str(value)
-            # Add safety check to ensure it's definitely a string
-            if not isinstance(str_value, str):  # Safety check (should never happen)
-                str_value = repr(value)  # fallback to repr which always returns str
             if len(str_value) > 1000:
                 str_value = str_value[:1000] + "... [TRUNCATED]"
             return str_value
