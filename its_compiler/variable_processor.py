@@ -1,32 +1,189 @@
 """
-Variable processing for ITS Compiler.
+Variable processing for ITS Compiler with security enhancements.
 """
 
 import re
 import json
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Optional
 
 from .exceptions import ITSVariableError
+from .security import SecurityConfig, InputValidator
 
 
 class VariableProcessor:
-    """Handles variable resolution and substitution."""
+    """Handles variable resolution and substitution with security controls."""
 
-    def __init__(self):
+    def __init__(self, security_config: Optional[SecurityConfig] = None):
         # Pattern to match ${variable} references
         self.variable_pattern = re.compile(r"\$\{([^}]+)\}")
+
+        # Security components
+        self.security_config = security_config or SecurityConfig.from_environment()
+
+        self.input_validator = (
+            InputValidator(self.security_config)
+            if self.security_config.enable_input_validation
+            else None
+        )
+
+        # Processing limits
+        self.max_recursion_depth = self.security_config.processing.max_nesting_depth
+        self.max_variable_references = (
+            self.security_config.processing.max_variable_references
+        )
+        self.max_variable_name_length = (
+            self.security_config.processing.max_variable_name_length
+        )
 
     def process_content(
         self, content: List[Dict[str, Any]], variables: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Process variable references in content elements."""
+        """Process variable references in content elements with security validation."""
+
+        # Validate variables first
+        if self.input_validator:
+            try:
+                self._validate_variables_security(variables)
+            except Exception as e:
+                raise ITSVariableError(f"Variable security validation failed: {e}")
+
         processed_content = []
 
         for element in content:
-            processed_element = self._process_element(element, variables)
-            processed_content.append(processed_element)
+            try:
+                processed_element = self._process_element(element, variables)
+                processed_content.append(processed_element)
+            except ITSVariableError:
+                raise
+            except Exception as e:
+                raise ITSVariableError(f"Error processing variables in element: {e}")
 
         return processed_content
+
+    def _validate_variables_security(self, variables: Dict[str, Any]) -> None:
+        """Validate variables for security issues."""
+
+        if not isinstance(variables, dict):
+            raise ITSVariableError("Variables must be a dictionary")
+
+        # Check total variable count
+        total_vars = self._count_total_variables(variables)
+        if total_vars > self.max_variable_references:
+            raise ITSVariableError(
+                f"Too many variables: {total_vars} (max: {self.max_variable_references})"
+            )
+
+        # Validate each variable recursively
+        self._validate_variable_object(variables, "", 0)
+
+    def _count_total_variables(self, obj: Any, depth: int = 0) -> int:
+        """Count total number of variables recursively."""
+
+        if depth > self.max_recursion_depth:
+            return 0
+
+        count = 0
+        if isinstance(obj, dict):
+            count += len(obj)
+            for value in obj.values():
+                count += self._count_total_variables(value, depth + 1)
+        elif isinstance(obj, list):
+            for item in obj:
+                count += self._count_total_variables(item, depth + 1)
+
+        return count
+
+    def _validate_variable_object(self, obj: Any, path: str, depth: int) -> None:
+        """Recursively validate variable object structure."""
+
+        if depth > self.max_recursion_depth:
+            raise ITSVariableError(f"Variable nesting too deep at {path}")
+
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                self._validate_variable_name(key, f"{path}.{key}" if path else key)
+                self._validate_variable_value(value, f"{path}.{key}" if path else key)
+                self._validate_variable_object(
+                    value, f"{path}.{key}" if path else key, depth + 1
+                )
+
+        elif isinstance(obj, list):
+            if len(obj) > 1000:  # Reasonable limit for arrays
+                raise ITSVariableError(f"Array too large at {path}: {len(obj)} items")
+
+            for i, item in enumerate(obj):
+                self._validate_variable_object(item, f"{path}[{i}]", depth + 1)
+
+    def _validate_variable_name(self, name: str, path: str) -> None:
+        """Validate variable name for security."""
+
+        if not isinstance(name, str):
+            raise ITSVariableError(f"Variable name must be string at {path}")
+
+        if len(name) > self.max_variable_name_length:
+            raise ITSVariableError(
+                f"Variable name too long at {path}: {len(name)} chars"
+            )
+
+        # Check for valid identifier pattern
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
+            raise ITSVariableError(f"Invalid variable name at {path}: {name}")
+
+        # Check for dangerous names
+        dangerous_names = {
+            "constructor",
+            "prototype",
+            "__proto__",
+            "__class__",
+            "__bases__",
+            "eval",
+            "exec",
+            "function",
+            "import",
+            "global",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "open",
+            "input",
+            "compile",
+        }
+
+        if name.lower() in dangerous_names or name.startswith("__"):
+            raise ITSVariableError(f"Dangerous variable name at {path}: {name}")
+
+    def _validate_variable_value(self, value: Any, path: str) -> None:
+        """Validate variable value for security."""
+
+        if isinstance(value, str):
+            # Check string length
+            if len(value) > 10000:  # Reasonable limit
+                raise ITSVariableError(
+                    f"String value too long at {path}: {len(value)} chars"
+                )
+
+            # Check for dangerous content patterns
+            dangerous_patterns = [
+                r"<script[^>]*>",  # Script tags
+                r"javascript\s*:",  # JavaScript URLs
+                r"data\s*:\s*text/html",  # Data URLs
+                r"eval\s*\(",  # eval calls
+                r"Function\s*\(",  # Function constructor
+                r"\\x[0-9a-fA-F]{2}",  # Hex encoding
+                r"%[0-9a-fA-F]{2}",  # URL encoding
+            ]
+
+            for pattern in dangerous_patterns:
+                if re.search(pattern, value, re.IGNORECASE):
+                    raise ITSVariableError(
+                        f"Dangerous content detected in variable at {path}"
+                    )
+
+        elif isinstance(value, (int, float)):
+            # Check for reasonable numeric ranges
+            if isinstance(value, (int, float)) and abs(value) > 1e15:
+                raise ITSVariableError(f"Numeric value too large at {path}: {value}")
 
     def _process_element(
         self, element: Dict[str, Any], variables: Dict[str, Any]
@@ -93,18 +250,36 @@ class VariableProcessor:
         return processed
 
     def _process_string(self, text: str, variables: Dict[str, Any]) -> str:
-        """Process variable references in a string."""
+        """Process variable references in a string with security validation."""
+
+        # Check for too many variable references in a single string
+        var_refs = self.variable_pattern.findall(text)
+        if len(var_refs) > 50:  # Reasonable limit per string
+            raise ITSVariableError(
+                f"Too many variable references in string: {len(var_refs)}"
+            )
 
         def replace_variable(match):
             var_ref = match.group(1)
+
+            # Validate variable reference syntax
+            if len(var_ref) > 200:  # Reasonable limit for reference length
+                raise ITSVariableError(
+                    f"Variable reference too long: {var_ref[:50]}..."
+                )
+
+            # Check for dangerous patterns in variable reference
+            if ".." in var_ref or var_ref.startswith("_") or "__" in var_ref:
+                raise ITSVariableError(f"Suspicious variable reference: ${{{var_ref}}}")
+
             try:
                 value = self.resolve_variable_reference(var_ref, variables)
 
-                # Convert arrays to readable strings
-                if isinstance(value, list):
-                    return ", ".join(str(item) for item in value)
+                # Sanitise the resolved value
+                sanitised_value = self._sanitise_resolved_value(value, var_ref)
 
-                return str(value)
+                return sanitised_value
+
             except ITSVariableError:
                 # Re-raise with more context
                 raise ITSVariableError(
@@ -115,16 +290,72 @@ class VariableProcessor:
 
         return self.variable_pattern.sub(replace_variable, text)
 
+    def _sanitise_resolved_value(self, value: Any, var_ref: str) -> str:
+        """Sanitise resolved variable value for safe output."""
+
+        if isinstance(value, str):
+            # Limit string length in output
+            if len(value) > 5000:
+                value = value[:5000] + "... [TRUNCATED]"
+
+            # Basic output sanitisation (can be enhanced based on output context)
+            # Remove null bytes and control characters
+            value = re.sub(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]", "", value)
+
+            return value
+
+        elif isinstance(value, list):
+            # Convert arrays to readable strings with limits
+            if len(value) > 100:
+                display_items = value[:100]
+                return (
+                    ", ".join(str(item) for item in display_items) + "... [TRUNCATED]"
+                )
+            else:
+                return ", ".join(str(item) for item in value)
+
+        elif isinstance(value, dict):
+            # Convert objects to safe string representation
+            return f"[Object with {len(value)} properties]"
+
+        else:
+            # Convert other types to string with length limit
+            str_value = str(value)
+            if len(str_value) > 1000:
+                str_value = str_value[:1000] + "... [TRUNCATED]"
+            return str_value
+
     def resolve_variable_reference(
         self, var_ref: str, variables: Dict[str, Any]
     ) -> Any:
-        """Resolve a variable reference like 'user.name', 'items[0]', or 'features.length'."""
+        """Resolve a variable reference with enhanced security validation."""
+
+        # Validate reference syntax
+        if not re.match(
+            r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*(\[\d+\])*$",
+            var_ref.replace(".length", ""),
+        ):
+            raise ITSVariableError(
+                f"Invalid variable reference syntax: {var_ref}",
+                variable_path=var_ref,
+            )
 
         # Split on dots for object property access
         parts = var_ref.split(".")
         current = variables
 
+        # Track access depth for security
+        access_depth = 0
+        max_access_depth = self.security_config.processing.max_property_chain_depth
+
         for i, part in enumerate(parts):
+            access_depth += 1
+            if access_depth > max_access_depth:
+                raise ITSVariableError(
+                    f"Variable access chain too deep: {var_ref}",
+                    variable_path=var_ref,
+                )
+
             # Handle array access like items[0]
             if "[" in part and part.endswith("]"):
                 # Split array name and index
@@ -137,6 +368,13 @@ class VariableProcessor:
 
                 array_name = array_match.group(1)
                 array_index = int(array_match.group(2))
+
+                # Validate array index
+                if array_index > self.security_config.processing.max_array_index:
+                    raise ITSVariableError(
+                        f"Array index too large: {array_index} in {var_ref}",
+                        variable_path=var_ref,
+                    )
 
                 if array_name not in current:
                     raise ITSVariableError(
@@ -205,3 +443,12 @@ class VariableProcessor:
                 errors.append(str(e))
 
         return errors
+
+    def get_security_status(self) -> Dict[str, Any]:
+        """Get security status for variable processing."""
+        return {
+            "input_validation_enabled": self.input_validator is not None,
+            "max_variable_references": self.max_variable_references,
+            "max_variable_name_length": self.max_variable_name_length,
+            "max_recursion_depth": self.max_recursion_depth,
+        }

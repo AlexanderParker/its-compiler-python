@@ -1,20 +1,30 @@
 """
-Conditional expression evaluation for ITS Compiler.
+Conditional expression evaluation for ITS Compiler with security enhancements.
 """
 
 import re
 import ast
 import operator
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Optional
 
 from .exceptions import ITSConditionalError
+from .security import SecurityConfig, ExpressionSanitiser
 
 
 class ConditionalEvaluator:
-    """Evaluates conditional expressions for content inclusion."""
+    """Evaluates conditional expressions for content inclusion with security controls."""
 
-    def __init__(self):
-        # Supported operators
+    def __init__(self, security_config: Optional[SecurityConfig] = None):
+        # Security components
+        self.security_config = security_config or SecurityConfig.from_environment()
+
+        self.expression_sanitiser = (
+            ExpressionSanitiser(self.security_config)
+            if self.security_config.enable_expression_sanitisation
+            else None
+        )
+
+        # Supported operators (same as before but now validated)
         self.operators = {
             ast.Eq: operator.eq,
             ast.NotEq: operator.ne,
@@ -37,7 +47,7 @@ class ConditionalEvaluator:
 
         for element in content:
             if element["type"] == "conditional":
-                # Evaluate the condition
+                # Evaluate the condition with security validation
                 condition_result = self.evaluate_condition(
                     element["condition"], variables
                 )
@@ -59,13 +69,32 @@ class ConditionalEvaluator:
         return result
 
     def evaluate_condition(self, condition: str, variables: Dict[str, Any]) -> bool:
-        """Evaluate a conditional expression."""
+        """Evaluate a conditional expression with security validation."""
+
+        # Security validation
+        if self.expression_sanitiser:
+            try:
+                sanitised_condition = self.expression_sanitiser.sanitise_expression(
+                    condition, variables
+                )
+            except Exception as e:
+                raise ITSConditionalError(
+                    f"Security validation failed for condition '{condition}': {e}",
+                    condition=condition,
+                )
+        else:
+            sanitised_condition = condition
+
         try:
             # Convert single quotes to double quotes for proper Python parsing
-            processed_condition = condition.replace("'", '"')
+            processed_condition = sanitised_condition.replace("'", '"')
 
             # Parse the expression
             parsed = ast.parse(processed_condition, mode="eval")
+
+            # Additional security check if sanitiser is disabled
+            if not self.expression_sanitiser:
+                self._basic_security_check(parsed.body, condition)
 
             # Evaluate the expression
             result = self._evaluate_node(parsed.body, variables)
@@ -73,13 +102,42 @@ class ConditionalEvaluator:
             # Ensure result is boolean
             return bool(result)
 
+        except ITSConditionalError:
+            raise
         except Exception as e:
             raise ITSConditionalError(
                 f"Error evaluating condition '{condition}': {e}", condition=condition
             )
 
+    def _basic_security_check(self, node: ast.AST, condition: str) -> None:
+        """Basic security check when full sanitiser is disabled."""
+
+        # Check for dangerous node types
+        dangerous_nodes = {
+            ast.Call,
+            ast.FunctionDef,
+            ast.ClassDef,
+            ast.Import,
+            ast.ImportFrom,
+            ast.Exec,
+            ast.Global,
+            ast.Nonlocal,
+            ast.Lambda,
+            ast.GeneratorExp,
+            ast.ListComp,
+            ast.SetComp,
+            ast.DictComp,
+        }
+
+        for node_obj in ast.walk(node):
+            if type(node_obj) in dangerous_nodes:
+                raise ITSConditionalError(
+                    f"Dangerous expression detected in condition: {type(node_obj).__name__}",
+                    condition=condition,
+                )
+
     def _evaluate_node(self, node: ast.AST, variables: Dict[str, Any]) -> Any:
-        """Recursively evaluate an AST node."""
+        """Recursively evaluate an AST node with enhanced security."""
 
         if isinstance(node, ast.Constant):  # Python 3.8+
             return node.value
@@ -100,6 +158,13 @@ class ConditionalEvaluator:
             elif var_name == "false":
                 return False
 
+            # Security check for variable names
+            if self._is_dangerous_variable_name(var_name):
+                raise ITSConditionalError(
+                    f"Access to dangerous variable '{var_name}' is not allowed",
+                    condition=f"variable: {var_name}",
+                )
+
             if var_name not in variables:
                 raise ITSConditionalError(
                     f"Undefined variable '{var_name}' in condition",
@@ -110,6 +175,14 @@ class ConditionalEvaluator:
         elif isinstance(node, ast.Attribute):
             # Object property access (e.g., user.name)
             obj = self._evaluate_node(node.value, variables)
+
+            # Security check for attribute access
+            if self._is_dangerous_attribute(node.attr):
+                raise ITSConditionalError(
+                    f"Access to attribute '{node.attr}' is not allowed",
+                    condition=f"attribute: {node.attr}",
+                )
+
             if not isinstance(obj, dict):
                 raise ITSConditionalError(
                     f"Cannot access property '{node.attr}' on non-object value",
@@ -125,7 +198,21 @@ class ConditionalEvaluator:
         elif isinstance(node, ast.Subscript):
             # Array/dict subscript access (e.g., items[0])
             obj = self._evaluate_node(node.value, variables)
-            index = self._evaluate_node(node.slice, variables)
+
+            # Handle Python version differences for slice
+            if hasattr(node.slice, "value"):  # Python < 3.9
+                index = self._evaluate_node(node.slice.value, variables)
+            else:  # Python 3.9+
+                index = self._evaluate_node(node.slice, variables)
+
+            # Security check for large indices
+            if (
+                isinstance(index, int)
+                and abs(index) > self.security_config.processing.max_array_index
+            ):
+                raise ITSConditionalError(
+                    f"Array index too large: {index}", condition=f"subscript: {index}"
+                )
 
             try:
                 return obj[index]
@@ -210,6 +297,54 @@ class ConditionalEvaluator:
                 condition=f"expression type: {type(node).__name__}",
             )
 
+    def _is_dangerous_variable_name(self, name: str) -> bool:
+        """Check if variable name is dangerous."""
+        dangerous_names = {
+            "__builtins__",
+            "__globals__",
+            "__locals__",
+            "__import__",
+            "exec",
+            "eval",
+            "compile",
+            "open",
+            "input",
+            "raw_input",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "getattr",
+            "setattr",
+            "hasattr",
+            "delattr",
+            "callable",
+            "isinstance",
+            "issubclass",
+        }
+        return name in dangerous_names or name.startswith("__")
+
+    def _is_dangerous_attribute(self, attr: str) -> bool:
+        """Check if attribute access is dangerous."""
+        dangerous_attrs = {
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__dict__",
+            "__globals__",
+            "__locals__",
+            "__code__",
+            "__import__",
+            "__builtins__",
+            "func_globals",
+            "gi_frame",
+            "cr_frame",
+            "f_globals",
+            "f_locals",
+        }
+        return attr in dangerous_attrs or attr.startswith("_")
+
     def validate_condition(
         self, condition: str, variables: Dict[str, Any]
     ) -> List[str]:
@@ -217,10 +352,17 @@ class ConditionalEvaluator:
         errors = []
 
         try:
+            # Security validation first
+            if self.expression_sanitiser:
+                self.expression_sanitiser.sanitise_expression(condition, variables)
+
             # Try to parse the condition
             ast.parse(condition, mode="eval")
         except SyntaxError as e:
             errors.append(f"Syntax error in condition '{condition}': {e}")
+            return errors
+        except Exception as e:
+            errors.append(f"Security validation failed: {e}")
             return errors
 
         try:
@@ -230,3 +372,11 @@ class ConditionalEvaluator:
             errors.append(str(e))
 
         return errors
+
+    def get_security_status(self) -> Dict[str, Any]:
+        """Get security status for conditionals."""
+        return {
+            "expression_sanitisation_enabled": self.expression_sanitiser is not None,
+            "max_expression_length": self.security_config.processing.max_expression_length,
+            "max_expression_depth": self.security_config.processing.max_expression_depth,
+        }

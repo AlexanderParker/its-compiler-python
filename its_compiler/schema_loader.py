@@ -1,27 +1,46 @@
 """
-Schema loading and caching for ITS Compiler.
+Schema loading and caching for ITS Compiler with core security enhancements.
+Fixed to handle gzip-compressed responses properly.
 """
 
 import json
 import time
 import hashlib
+import gzip
+from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any, Optional
 from urllib.parse import urlparse, urljoin
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 from .models import ITSConfig
 from .exceptions import ITSSchemaError
+from .security import (
+    SecurityConfig,
+    URLValidator,
+    AllowlistManager,
+)
 
 
 class SchemaLoader:
-    """Handles loading and caching of ITS schemas."""
+    """Handles loading and caching of ITS schemas with security controls."""
 
-    def __init__(self, config: ITSConfig):
+    def __init__(
+        self, config: ITSConfig, security_config: Optional[SecurityConfig] = None
+    ):
         self.config = config
         self.cache_dir = None
         self._setup_cache()
+
+        # Security components
+        self.security_config = security_config or SecurityConfig.from_environment()
+        self.url_validator = URLValidator(self.security_config)
+        self.allowlist_manager = (
+            AllowlistManager(self.security_config)
+            if self.security_config.enable_allowlist
+            else None
+        )
 
     def _setup_cache(self):
         """Setup cache directory if caching is enabled."""
@@ -38,21 +57,33 @@ class SchemaLoader:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def load_schema(self, schema_url: str) -> Dict[str, Any]:
-        """Load a schema from URL or cache."""
+        """Load a schema from URL or cache with security validation."""
 
-        # Security checks
-        self._validate_schema_url(schema_url)
+        # Security validation
+        self._validate_schema_security(schema_url)
+
+        # Check allowlist
+        if self.allowlist_manager and not self.allowlist_manager.is_allowed(schema_url):
+            raise ITSSchemaError(
+                f"Schema not in allowlist and user denied access: {schema_url}",
+                schema_url=schema_url,
+            )
 
         # Try cache first
         if self.config.cache_enabled:
             cached_schema = self._load_from_cache(schema_url)
             if cached_schema is not None:
+                print(f"Schema cache hit: {schema_url}")
                 return cached_schema
 
-        # Load from URL
+        # Load from URL with security controls
         try:
-            schema = self._load_from_url(schema_url)
+            print(f"Fetching schema: {schema_url}")
+            schema = self._load_from_url_secure(schema_url)
+            print(f"Schema fetch successful: {schema_url}")
+
         except Exception as e:
+            print(f"Schema fetch failed: {schema_url} - {e}")
             raise ITSSchemaError(
                 f"Failed to load schema from {schema_url}: {e}", schema_url=schema_url
             )
@@ -60,57 +91,71 @@ class SchemaLoader:
         # Validate schema structure
         self._validate_schema_structure(schema, schema_url)
 
+        # Update allowlist fingerprint
+        if self.allowlist_manager:
+            self.allowlist_manager.update_fingerprint(
+                schema_url, json.dumps(schema, sort_keys=True)
+            )
+
         # Cache if enabled
         if self.config.cache_enabled:
             self._save_to_cache(schema_url, schema)
 
         return schema
 
-    def _validate_schema_url(self, url: str):
+    def _validate_schema_security(self, url: str) -> None:
         """Validate schema URL against security policies."""
+
+        # URL validation with SSRF protection
+        self.url_validator.validate_url(url)
+
+        # Additional schema-specific validations
         parsed = urlparse(url)
 
-        # Check protocol
-        if not self.config.allow_http and parsed.scheme == "http":
+        # Block dangerous file extensions
+        dangerous_extensions = {".exe", ".bat", ".cmd", ".scr", ".php", ".jsp"}
+        if any(url.lower().endswith(ext) for ext in dangerous_extensions):
+            print(f"Dangerous file extension in schema URL: {url}")
             raise ITSSchemaError(
-                f"HTTP not allowed for schema URLs: {url}", schema_url=url
+                f"Dangerous file extension in schema URL: {url}", schema_url=url
             )
 
-        if parsed.scheme not in ("http", "https", "file"):
+        # Validate path doesn't contain suspicious patterns
+        suspicious_patterns = ["..", "%2e%2e", "etc/passwd", "windows/system32"]
+        if any(pattern in url.lower() for pattern in suspicious_patterns):
+            print(f"Suspicious path pattern in schema URL: {url}")
             raise ITSSchemaError(
-                f"Unsupported schema URL scheme: {parsed.scheme}", schema_url=url
+                f"Suspicious path pattern in schema URL: {url}", schema_url=url
             )
 
-        # Check domain allowlist
-        if (
-            self.config.domain_allowlist
-            and parsed.scheme in ("http", "https")
-            and parsed.netloc not in self.config.domain_allowlist
-        ):
-            raise ITSSchemaError(
-                f"Domain not in allowlist: {parsed.netloc}", schema_url=url
-            )
+    def _load_from_url_secure(self, url: str) -> Dict[str, Any]:
+        """Load schema from URL with enhanced security controls and gzip support."""
 
-    def _load_from_url(self, url: str) -> Dict[str, Any]:
-        """Load schema from URL."""
+        # Create request with security headers and gzip support
+        headers = {
+            "User-Agent": "ITS-Compiler-Python/1.0",
+            "Accept": "application/json, text/plain",
+            "Accept-Encoding": "gzip, deflate",  # Accept compressed responses
+            "Cache-Control": "no-cache",
+        }
+
+        request = Request(url, headers=headers)
+
         try:
-            with urlopen(url, timeout=self.config.request_timeout) as response:
-                # Check content length
-                content_length = response.headers.get("content-length")
-                if content_length and int(content_length) > self.config.max_schema_size:
-                    raise ITSSchemaError(
-                        f"Schema too large: {content_length} bytes", schema_url=url
-                    )
+            with urlopen(
+                request, timeout=self.security_config.network.request_timeout
+            ) as response:
+                # Validate response
+                self._validate_response_security(response, url)
 
-                data = response.read()
+                # Read with size limits and handle compression
+                data = self._read_response_safely(response, url)
 
-                # Check actual size
-                if len(data) > self.config.max_schema_size:
-                    raise ITSSchemaError(
-                        f"Schema too large: {len(data)} bytes", schema_url=url
-                    )
-
-                return json.loads(data.decode("utf-8"))
+                # Parse JSON
+                try:
+                    return json.loads(data.decode("utf-8"))
+                except json.JSONDecodeError as e:
+                    raise ITSSchemaError(f"Invalid JSON in schema: {e}", schema_url=url)
 
         except HTTPError as e:
             raise ITSSchemaError(
@@ -122,15 +167,104 @@ class SchemaLoader:
             raise ITSSchemaError(
                 f"URL error loading schema: {e.reason}", schema_url=url
             )
-        except json.JSONDecodeError as e:
-            raise ITSSchemaError(f"Invalid JSON in schema: {e}", schema_url=url)
+
+    def _validate_response_security(self, response, url: str) -> None:
+        """Validate HTTP response for security."""
+
+        # Check content type
+        content_type = response.headers.get("content-type", "").lower()
+        allowed_types = ["application/json", "text/json", "text/plain"]
+
+        if not any(allowed_type in content_type for allowed_type in allowed_types):
+            print(f"Invalid content type for schema: {content_type}")
+            raise ITSSchemaError(
+                f"Invalid content type for schema: {content_type}", schema_url=url
+            )
+
+        # Check content length
+        content_length = response.headers.get("content-length")
+        if content_length:
+            size = int(content_length)
+            if size > self.security_config.network.max_response_size:
+                raise ITSSchemaError(f"Schema too large: {size} bytes", schema_url=url)
+
+        # Check for suspicious headers
+        suspicious_headers = ["x-powered-by", "server"]
+        for header in suspicious_headers:
+            value = response.headers.get(header, "").lower()
+            if any(dangerous in value for dangerous in ["php", "asp", "jsp", "cgi"]):
+                print(f"Warning: Suspicious server header detected: {header}={value}")
+
+    def _read_response_safely(self, response, url: str) -> bytes:
+        """Read response data with size and timeout controls, handling gzip compression."""
+
+        max_size = self.security_config.network.max_response_size
+        chunk_size = 8192
+        data = b""
+
+        # Read the response data
+        while True:
+            chunk = response.read(chunk_size)
+            if not chunk:
+                break
+
+            data += chunk
+
+            if len(data) > max_size:
+                raise ITSSchemaError(
+                    f"Schema response too large: {len(data)} bytes", schema_url=url
+                )
+
+        # Handle decompression if needed
+        content_encoding = response.headers.get("content-encoding", "").lower()
+
+        if "gzip" in content_encoding:
+            try:
+                # Decompress gzip data
+                data = gzip.decompress(data)
+            except gzip.BadGzipFile as e:
+                raise ITSSchemaError(
+                    f"Invalid gzip data in schema response: {e}", schema_url=url
+                )
+            except Exception as e:
+                raise ITSSchemaError(
+                    f"Failed to decompress schema response: {e}", schema_url=url
+                )
+        elif "deflate" in content_encoding:
+            try:
+                # Handle deflate compression
+                import zlib
+
+                data = zlib.decompress(data)
+            except Exception as e:
+                raise ITSSchemaError(
+                    f"Failed to decompress deflate schema response: {e}", schema_url=url
+                )
+        else:
+            # Check if data might be gzip even without proper header
+            # Some servers send gzip data without setting the header
+            if data.startswith(b"\x1f\x8b"):
+                try:
+                    data = gzip.decompress(data)
+                except Exception:
+                    # If decompression fails, use original data
+                    pass
+
+        return data
 
     def _validate_schema_structure(self, schema: Dict[str, Any], url: str):
-        """Basic validation of schema structure."""
+        """Enhanced validation of schema structure."""
+
+        # Basic structure validation
         if not isinstance(schema, dict):
             raise ITSSchemaError("Schema must be a JSON object", schema_url=url)
 
-        # Check for instructionTypes if this is a type extension schema
+        # Check for dangerous keys
+        dangerous_keys = {"__proto__", "constructor", "prototype"}
+        if any(key in schema for key in dangerous_keys):
+            print(f"Warning: Dangerous keys found in schema: {url}")
+
+        # Validate instructionTypes if present
         if "instructionTypes" in schema:
             if not isinstance(schema["instructionTypes"], dict):
                 raise ITSSchemaError(
@@ -139,17 +273,38 @@ class SchemaLoader:
 
             # Validate each instruction type
             for type_name, type_def in schema["instructionTypes"].items():
-                if not isinstance(type_def, dict):
-                    raise ITSSchemaError(
-                        f"Instruction type '{type_name}' must be an object",
-                        schema_url=url,
-                    )
+                self._validate_instruction_type(type_name, type_def, url)
 
-                if "template" not in type_def:
-                    raise ITSSchemaError(
-                        f"Instruction type '{type_name}' missing required 'template' field",
-                        schema_url=url,
-                    )
+    def _validate_instruction_type(
+        self, type_name: str, type_def: Dict[str, Any], url: str
+    ):
+        """Validate individual instruction type definition."""
+
+        if not isinstance(type_def, dict):
+            raise ITSSchemaError(
+                f"Instruction type '{type_name}' must be an object",
+                schema_url=url,
+            )
+
+        if "template" not in type_def:
+            raise ITSSchemaError(
+                f"Instruction type '{type_name}' missing required 'template' field",
+                schema_url=url,
+            )
+
+        # Validate template content for security
+        template = type_def["template"]
+        if not isinstance(template, str):
+            raise ITSSchemaError(
+                f"Instruction type '{type_name}' template must be a string",
+                schema_url=url,
+            )
+
+        # Check template for dangerous patterns
+        dangerous_patterns = ["<script", "javascript:", "data:text/html", "eval("]
+        for pattern in dangerous_patterns:
+            if pattern.lower() in template.lower():
+                print(f"Warning: Potentially dangerous pattern in template: {pattern}")
 
     def _get_cache_path(self, url: str) -> Path:
         """Get cache file path for a URL."""
@@ -200,7 +355,7 @@ class SchemaLoader:
                 json.dump(cache_data, f, indent=2)
         except IOError:
             # Ignore cache write errors
-            pass
+            print("Warning: Failed to write schema cache")
 
     def clear_cache(self):
         """Clear all cached schemas."""
@@ -209,3 +364,18 @@ class SchemaLoader:
 
         for cache_file in self.cache_dir.glob("*.json"):
             cache_file.unlink(missing_ok=True)
+
+        print("Schema cache cleared")
+
+    def get_security_status(self) -> Dict[str, Any]:
+        """Get security status and statistics."""
+
+        status = {
+            "security_enabled": True,
+            "allowlist_enabled": self.allowlist_manager is not None,
+        }
+
+        if self.allowlist_manager:
+            status["allowlist_stats"] = self.allowlist_manager.get_stats()
+
+        return status

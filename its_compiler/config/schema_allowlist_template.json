@@ -1,0 +1,14 @@
+{
+    "version": "1.0",
+    "updated": "2025-06-30T12:00:00Z",
+    "entries": {
+        "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json": {
+            "trust_level": "permanent",
+            "added_date": "2025-06-30T12:00:00Z",
+            "last_used": "2025-06-30T12:00:00Z",
+            "use_count": 0,
+            "fingerprint": null,
+            "notes": "Official ITS base schema"
+        }
+    }
+}
