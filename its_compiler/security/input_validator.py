@@ -4,7 +4,7 @@ Input validation and sanitisation for ITS Compiler.
 
 import json
 import re
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Optional, Set, Union, NoReturn
 from pathlib import Path
 
 from ..exceptions import ITSValidationError
@@ -14,7 +14,7 @@ from .config import SecurityConfig
 class InputSecurityError(ITSValidationError):
     """Input security validation error."""
 
-    def __init__(self, message: str, input_type: str, reason: str, **kwargs):
+    def __init__(self, message: str, input_type: str, reason: str, **kwargs: Any):
         super().__init__(message, **kwargs)
         self.input_type = input_type
         self.reason = reason
@@ -466,7 +466,6 @@ class InputValidator:
 
         # Check for malicious patterns
         if self.malicious_regex.search(text):
-
             self._security_violation(
                 f"Malicious content detected in {context}",
                 "text_content",
@@ -506,7 +505,7 @@ class InputValidator:
             )
 
     def _validate_object_depth(
-        self, obj: Dict[str, Any], current_depth: int, context: str
+        self, obj: Union[Dict[str, Any], List[Any]], current_depth: int, context: str
     ) -> None:
         """Validate object nesting depth."""
 
@@ -530,9 +529,8 @@ class InputValidator:
                         item, current_depth + 1, f"{context}[{i}]"
                     )
 
-    def _security_violation(self, message: str, input_type: str, reason: str) -> None:
+    def _security_violation(self, message: str, input_type: str, reason: str) -> NoReturn:
         """Log security violation and raise error."""
-
         raise InputSecurityError(message, input_type=input_type, reason=reason)
 
     def sanitise_filename(self, filename: str) -> str:

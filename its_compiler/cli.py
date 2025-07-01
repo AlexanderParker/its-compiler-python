@@ -10,7 +10,7 @@ import uuid
 import os
 import platform
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Any
 
 import click
 from rich.console import Console
@@ -22,7 +22,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from .compiler import ITSCompiler
-from .models import ITSConfig
+from .models import ITSConfig, CompilationResult, ValidationResult
 from .exceptions import (
     ITSError,
     ITSValidationError,
@@ -32,7 +32,7 @@ from .exceptions import (
 from .security import SecurityConfig, AllowlistManager, TrustLevel
 
 
-def setup_safe_console():
+def setup_safe_console() -> Tuple[Console, bool]:
     """Setup console that handles Windows encoding issues gracefully."""
 
     # Always use legacy mode on Windows to avoid Unicode issues
@@ -57,7 +57,9 @@ def setup_safe_console():
     return console, use_unicode
 
 
-def safe_print(message, style=None, highlight=None):
+def safe_print(
+    message: Any, style: Optional[str] = None, highlight: Optional[bool] = None
+) -> None:
     """Print message safely, handling Unicode encoding errors."""
     try:
         if style:
@@ -85,28 +87,30 @@ def safe_print(message, style=None, highlight=None):
         print(str(message))
 
 
-def create_safe_progress_context(description: str, disable_on_windows: bool = True):
+def create_safe_progress_context(
+    description: str, disable_on_windows: bool = True
+) -> Any:
     """Create a progress context that's safe for Windows."""
     if platform.system() == "Windows" and disable_on_windows:
         # On Windows, use a simple context manager that just prints status
         class SimpleProgress:
-            def __init__(self, description):
+            def __init__(self, description: str):
                 self.description = description
                 self.started = False
 
-            def __enter__(self):
+            def __enter__(self) -> "SimpleProgress":
                 safe_print(f"[blue]{self.description}[/blue]")
                 self.started = True
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args: Any) -> None:
                 if self.started:
                     safe_print("[green]Complete[/green]")
 
-            def add_task(self, description, total=None):
+            def add_task(self, description: str, total: Optional[int] = None) -> int:
                 return 0  # Dummy task ID
 
-            def update(self, task_id, **kwargs):
+            def update(self, task_id: int, **kwargs: Any) -> None:
                 pass  # No-op
 
         return SimpleProgress(description)
@@ -133,7 +137,7 @@ except Exception:
     CAN_USE_UNICODE = False
 
 
-def get_symbols():
+def get_symbols() -> dict[str, str]:
     """Get safe symbols for status messages."""
     if CAN_USE_UNICODE:
         return {"ok": "✓", "fail": "✗", "warn": "⚠", "info": "ℹ", "bullet": "•"}
@@ -167,7 +171,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
         self.verbose = verbose
         self.security_config = security_config
 
-    def on_modified(self, event):
+    def on_modified(self, event: Any) -> None:
         if event.is_directory:
             return
 
@@ -187,7 +191,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
             )
 
 
-def load_variables(variables_path: str) -> dict:
+def load_variables(variables_path: str) -> dict[str, Any]:
     """Load variables from JSON file with security validation."""
     try:
         variables_file = Path(variables_path)
@@ -218,7 +222,7 @@ def load_variables(variables_path: str) -> dict:
 
 def create_security_config(
     allow_http: bool,
-    interactive_allowlist: bool,
+    interactive_allowlist: Optional[bool],
     strict_mode: bool,
 ) -> SecurityConfig:
     """Create security configuration from CLI options."""

@@ -2,7 +2,7 @@
 Data models for ITS Compiler with security enhancements.
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
@@ -161,11 +161,11 @@ class ITSConfig:
     )
     default_instruction_wrapper: str = "<<{instruction}>>"
     default_user_content_wrapper: str = "([{<{content}>}])"
-    default_processing_instructions: List[str] = None
+    default_processing_instructions: Optional[List[str]] = None
 
     def __post_init__(self) -> None:
         if self.default_processing_instructions is None:
-            self.default_processing_instructions: List[str] = [
+            self.default_processing_instructions = [
                 "Replace each placeholder marked with << >> with generated content",
                 "The user's content request is wrapped in ([{< >}]) to distinguish it from instructions",
                 "Follow the format requirements specified after each user prompt",
@@ -177,7 +177,7 @@ class ITSConfig:
 
     def validate_config(self) -> List[str]:
         """Validate configuration and return warnings."""
-        warnings = []
+        warnings: List[str] = []
 
         if self.allow_http and self.enable_security_features:
             warnings.append("HTTP is enabled while security features are active")
@@ -232,7 +232,7 @@ class InstructionTypeDefinition:
 
     def validate_template_security(self) -> List[str]:
         """Validate template for security issues."""
-        issues = []
+        issues: List[str] = []
 
         # Check for dangerous patterns
         dangerous_patterns = [

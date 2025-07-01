@@ -30,7 +30,7 @@ class SchemaLoader:
         self, config: ITSConfig, security_config: Optional[SecurityConfig] = None
     ):
         self.config = config
-        self.cache_dir = None
+        self.cache_dir: Optional[Path] = None
         self._setup_cache()
 
         # Security components
@@ -42,7 +42,7 @@ class SchemaLoader:
             else None
         )
 
-    def _setup_cache(self):
+    def _setup_cache(self) -> None:
         """Setup cache directory if caching is enabled."""
         if not self.config.cache_enabled:
             return
@@ -54,7 +54,8 @@ class SchemaLoader:
             home = Path.home()
             self.cache_dir = home / ".cache" / "its-compiler"
 
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        if self.cache_dir:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def load_schema(self, schema_url: str) -> Dict[str, Any]:
         """Load a schema from URL or cache with security validation."""
@@ -153,7 +154,14 @@ class SchemaLoader:
 
                 # Parse JSON
                 try:
-                    return json.loads(data.decode("utf-8"))
+                    schema_data = json.loads(data.decode("utf-8"))
+                    # Add type check to ensure it's a dictionary
+                    if not isinstance(schema_data, dict):
+                        raise ITSSchemaError(
+                            f"Schema must be a JSON object, got {type(schema_data).__name__}",
+                            schema_url=url,
+                        )
+                    return schema_data  # Now mypy knows this is Dict[str, Any]
                 except json.JSONDecodeError as e:
                     raise ITSSchemaError(f"Invalid JSON in schema: {e}", schema_url=url)
 
@@ -168,7 +176,7 @@ class SchemaLoader:
                 f"URL error loading schema: {e.reason}", schema_url=url
             )
 
-    def _validate_response_security(self, response, url: str) -> None:
+    def _validate_response_security(self, response: Any, url: str) -> None:
         """Validate HTTP response for security."""
 
         # Check content type
@@ -195,7 +203,7 @@ class SchemaLoader:
             if any(dangerous in value for dangerous in ["php", "asp", "jsp", "cgi"]):
                 print(f"Warning: Suspicious server header detected: {header}={value}")
 
-    def _read_response_safely(self, response, url: str) -> bytes:
+    def _read_response_safely(self, response: Any, url: str) -> bytes:
         """Read response data with size and timeout controls, handling gzip compression."""
 
         max_size = self.security_config.network.max_response_size
@@ -252,7 +260,7 @@ class SchemaLoader:
 
         return data
 
-    def _validate_schema_structure(self, schema: Dict[str, Any], url: str):
+    def _validate_schema_structure(self, schema: Dict[str, Any], url: str) -> None:
         """Enhanced validation of schema structure."""
 
         # Basic structure validation
@@ -277,7 +285,7 @@ class SchemaLoader:
 
     def _validate_instruction_type(
         self, type_name: str, type_def: Dict[str, Any], url: str
-    ):
+    ) -> None:
         """Validate individual instruction type definition."""
 
         if not isinstance(type_def, dict):
@@ -308,6 +316,8 @@ class SchemaLoader:
 
     def _get_cache_path(self, url: str) -> Path:
         """Get cache file path for a URL."""
+        if not self.cache_dir:
+            raise ValueError("Cache directory not configured")
         # Create a safe filename from URL
         url_hash = hashlib.md5(url.encode()).hexdigest()
         return self.cache_dir / f"{url_hash}.json"
@@ -333,15 +343,27 @@ class SchemaLoader:
             with open(cache_path, "r", encoding="utf-8") as f:
                 cache_data = json.load(f)
 
-            # Return the cached schema
-            return cache_data.get("schema")
+            # Ensure cache_data is a dict and has the expected structure
+            if not isinstance(cache_data, dict) or "schema" not in cache_data:
+                # Corrupted cache, remove it
+                cache_path.unlink(missing_ok=True)
+                return None
+
+            schema = cache_data.get("schema")
+            # Ensure the schema is a dict
+            if not isinstance(schema, dict):
+                # Corrupted cache, remove it
+                cache_path.unlink(missing_ok=True)
+                return None
+
+            return schema  # Now mypy knows this is Dict[str, Any]
 
         except (json.JSONDecodeError, KeyError, IOError):
             # Corrupted cache, remove it
             cache_path.unlink(missing_ok=True)
             return None
 
-    def _save_to_cache(self, url: str, schema: Dict[str, Any]):
+    def _save_to_cache(self, url: str, schema: Dict[str, Any]) -> None:
         """Save schema to cache."""
         if not self.cache_dir:
             return
@@ -357,7 +379,7 @@ class SchemaLoader:
             # Ignore cache write errors
             print("Warning: Failed to write schema cache")
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear all cached schemas."""
         if not self.cache_dir or not self.cache_dir.exists():
             return
@@ -370,12 +392,13 @@ class SchemaLoader:
     def get_security_status(self) -> Dict[str, Any]:
         """Get security status and statistics."""
 
-        status = {
+        status: Dict[str, Any] = {
             "security_enabled": True,
             "allowlist_enabled": self.allowlist_manager is not None,
         }
 
         if self.allowlist_manager:
-            status["allowlist_stats"] = self.allowlist_manager.get_stats()
+            allowlist_stats = self.allowlist_manager.get_stats()
+            status["allowlist_stats"] = allowlist_stats
 
         return status

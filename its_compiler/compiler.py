@@ -5,7 +5,7 @@ Main ITS compiler implementation with core security enhancements.
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 from urllib.parse import urljoin, urlparse
 
 from .models import (
@@ -60,16 +60,16 @@ class ITSCompiler:
         """Compile a template from a file with security validation."""
 
         start_time = time.time()
-        template_path = Path(template_path)
+        template_path_obj = Path(template_path)
 
-        if not template_path.exists():
+        if not template_path_obj.exists():
             raise ITSCompilationError(f"Template file not found: {template_path}")
 
         # File security checks
-        self._validate_file_security(template_path)
+        self._validate_file_security(template_path_obj)
 
         try:
-            with open(template_path, "r", encoding="utf-8") as f:
+            with open(template_path_obj, "r", encoding="utf-8") as f:
                 template = json.load(f)
         except json.JSONDecodeError as e:
             raise ITSCompilationError(f"Invalid JSON in template file: {e}")
@@ -78,7 +78,7 @@ class ITSCompiler:
         base_url = None
         try:
             # Resolve to absolute path first to avoid relative URI issues
-            abs_path = template_path.resolve()
+            abs_path = template_path_obj.resolve()
             base_url = abs_path.parent.as_uri() + "/"
         except (ValueError, OSError):
             # If we can't create a file URI, we'll skip relative URL resolution
@@ -210,9 +210,9 @@ class ITSCompiler:
         """Validate a template file with security checks."""
 
         start_time = time.time()
-        template_path = Path(template_path)
+        template_path_obj = Path(template_path)
 
-        if not template_path.exists():
+        if not template_path_obj.exists():
             return ValidationResult(
                 is_valid=False,
                 errors=[f"Template file not found: {template_path}"],
@@ -221,7 +221,7 @@ class ITSCompiler:
 
         # File security validation
         try:
-            self._validate_file_security(template_path)
+            self._validate_file_security(template_path_obj)
         except ITSCompilationError as e:
             return ValidationResult(
                 is_valid=False,
@@ -230,7 +230,7 @@ class ITSCompiler:
             )
 
         try:
-            with open(template_path, "r", encoding="utf-8") as f:
+            with open(template_path_obj, "r", encoding="utf-8") as f:
                 template = json.load(f)
         except json.JSONDecodeError as e:
             return ValidationResult(
@@ -243,7 +243,7 @@ class ITSCompiler:
         base_url = None
         try:
             # Resolve to absolute path first to avoid relative URI issues
-            abs_path = template_path.resolve()
+            abs_path = template_path_obj.resolve()
             base_url = abs_path.parent.as_uri() + "/"
         except (ValueError, OSError) as e:
             # If we can't create a file URI, we'll skip relative URL resolution
@@ -259,8 +259,8 @@ class ITSCompiler:
     ) -> ValidationResult:
         """Validate a template dictionary with security validation."""
 
-        errors = []
-        warnings = []
+        errors: List[str] = []
+        warnings: List[str] = []
 
         # Input validation first
         if self.input_validator:
@@ -268,12 +268,9 @@ class ITSCompiler:
                 self.input_validator.validate_template(template)
             except Exception as e:
                 errors.append(f"Input validation failed: {e}")
-                return ValidationResult(False, errors, warnings)
-
-        # Basic structure validation
-        if not isinstance(template, dict):
-            errors.append("Template must be a JSON object")
-            return ValidationResult(False, errors, warnings)
+                return ValidationResult(
+                    is_valid=False, errors=errors, warnings=warnings
+                )
 
         # Required fields
         if "version" not in template:
@@ -310,12 +307,9 @@ class ITSCompiler:
 
     def _validate_content(self, content: List[Dict[str, Any]]) -> List[str]:
         """Validate content elements with enhanced security checks."""
-        errors = []
+        errors: List[str] = []
 
         for i, element in enumerate(content):
-            if not isinstance(element, dict):
-                errors.append(f"Content element {i} must be an object")
-                continue
 
             if "type" not in element:
                 errors.append(f"Content element {i} missing required field: type")
@@ -364,11 +358,12 @@ class ITSCompiler:
                     nested_errors = self._validate_content(element["content"])
                     errors.extend(nested_errors)
 
-                if "else" in element and not isinstance(element["else"], list):
-                    errors.append(f"Conditional element {i} else must be an array")
-                elif "else" in element:
-                    nested_errors = self._validate_content(element["else"])
-                    errors.extend(nested_errors)
+                if "else" in element:
+                    if not isinstance(element["else"], list):
+                        errors.append(f"Conditional element {i} else must be an array")
+                    else:
+                        nested_errors = self._validate_content(element["else"])
+                        errors.extend(nested_errors)
             else:
                 errors.append(f"Content element {i} has invalid type: {element_type}")
 
@@ -378,7 +373,7 @@ class ITSCompiler:
         self, variables: Dict[str, Any], content: List[Dict[str, Any]]
     ) -> List[str]:
         """Validate that all variable references can be resolved."""
-        errors = []
+        errors: List[str] = []
 
         # Find all variable references in content
         content_str = json.dumps(content)
@@ -396,11 +391,11 @@ class ITSCompiler:
 
     def _load_instruction_types(
         self, template: Dict[str, Any], base_url: Optional[str] = None
-    ) -> tuple[Dict[str, InstructionTypeDefinition], List[TypeOverride]]:
+    ) -> Tuple[Dict[str, InstructionTypeDefinition], List[TypeOverride]]:
         """Load and resolve instruction types from schemas."""
 
-        instruction_types = {}
-        overrides = []
+        instruction_types: Dict[str, InstructionTypeDefinition] = {}
+        overrides: List[TypeOverride] = []
 
         # Load extended schemas in order
         extends = template.get("extends", [])
@@ -517,7 +512,7 @@ class ITSCompiler:
         # Assemble final prompt
         prompt_parts = ["INTRODUCTION", "", system_prompt, "", "INSTRUCTIONS", ""]
 
-        for i, instruction in enumerate(processing_instructions, 1):
+        for i, instruction in enumerate(processing_instructions or [], 1):
             prompt_parts.append(f"{i}. {instruction}")
 
         prompt_parts.extend(["", "TEMPLATE", "", "".join(processed_content)])

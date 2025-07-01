@@ -4,7 +4,7 @@ URL validation and SSRF protection for ITS Compiler.
 
 import ipaddress
 import socket
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Dict, Any, Union
 from urllib.parse import urlparse
 
 from ..exceptions import ITSSchemaError
@@ -14,7 +14,7 @@ from .config import SecurityConfig
 class URLSecurityError(ITSSchemaError):
     """URL security validation error."""
 
-    def __init__(self, message: str, url: str, reason: str, **kwargs):
+    def __init__(self, message: str, url: str, reason: str, **kwargs: Any):
         super().__init__(message, **kwargs)
         self.url = url
         self.reason = reason
@@ -57,7 +57,7 @@ class URLValidator:
         except Exception as e:
             self._log_and_raise(url, f"URL validation error: {e}", "validation_error")
 
-    def _validate_url_structure(self, parsed, url: str) -> None:
+    def _validate_url_structure(self, parsed: Any, url: str) -> None:
         """Validate basic URL structure."""
         if not parsed.scheme:
             self._log_and_raise(url, "URL missing scheme", "missing_scheme")
@@ -73,7 +73,7 @@ class URLValidator:
         if len(url) > 2048:
             self._log_and_raise(url, "URL too long", "url_too_long")
 
-    def _validate_protocol(self, parsed, url: str) -> None:
+    def _validate_protocol(self, parsed: Any, url: str) -> None:
         """Validate URL protocol."""
         scheme = parsed.scheme.lower()
 
@@ -96,14 +96,14 @@ class URLValidator:
 
         # HTTP validation in production
         if scheme == "http":
-            if not self.network_config.allow_http_in_dev or self.config.is_production():
+            if not self.network_config.allow_http or self.config.is_production():
                 self._log_and_raise(
                     url,
                     "HTTP not allowed in production environment",
                     "http_in_production",
                 )
 
-    def _validate_domain(self, parsed, url: str) -> None:
+    def _validate_domain(self, parsed: Any, url: str) -> None:
         """Validate domain against allowlist."""
         if not parsed.netloc:
             return  # File URLs, etc.
@@ -119,7 +119,7 @@ class URLValidator:
                     url, f"Domain '{hostname}' not in allowlist", "domain_not_allowed"
                 )
 
-    def _validate_ssrf_protection(self, parsed, url: str) -> None:
+    def _validate_ssrf_protection(self, parsed: Any, url: str) -> None:
         """Validate against SSRF attacks."""
         if not parsed.hostname:
             return
@@ -142,12 +142,12 @@ class URLValidator:
         try:
             ip_addresses = self._resolve_hostname(hostname)
             for ip_str in ip_addresses:
-                self._validate_ip_address(ip_str, url)
+                self._validate_ip_address(str(ip_str), url)
         except socket.gaierror:
             # DNS resolution failed - could be suspicious
             print(f"Warning: DNS resolution failed for {hostname}")
 
-    def _resolve_hostname(self, hostname: str) -> List[str]:
+    def _resolve_hostname(self, hostname: str) -> List[Union[str, int]]:
         """Resolve hostname to IP addresses."""
         try:
             # Get all IP addresses for the hostname
@@ -228,11 +228,11 @@ class URLValidator:
         print(f"URL validation failure: {message}")
         raise URLSecurityError(message, url=url, reason=reason)
 
-    def get_url_info(self, url: str) -> dict:
+    def get_url_info(self, url: str) -> Dict[str, Any]:
         """Get detailed information about a URL for analysis."""
         try:
             parsed = urlparse(url)
-            info = {
+            info: Dict[str, Any] = {
                 "url": url,
                 "scheme": parsed.scheme,
                 "hostname": parsed.hostname,

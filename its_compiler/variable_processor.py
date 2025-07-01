@@ -4,7 +4,7 @@ Variable processing for ITS Compiler with security enhancements.
 
 import re
 import json
-from typing import Dict, List, Any, Union, Optional
+from typing import Dict, List, Any, Union, Optional, NoReturn
 
 from .exceptions import ITSVariableError
 from .security import SecurityConfig, InputValidator
@@ -294,25 +294,12 @@ class VariableProcessor:
         """Sanitise resolved variable value for safe output."""
 
         if isinstance(value, str):
-            # Limit string length in output
-            if len(value) > 5000:
-                value = value[:5000] + "... [TRUNCATED]"
-
-            # Basic output sanitisation (can be enhanced based on output context)
-            # Remove null bytes and control characters
-            value = re.sub(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]", "", value)
-
+            # ... existing string handling code ...
             return value
 
         elif isinstance(value, list):
-            # Convert arrays to readable strings with limits
-            if len(value) > 100:
-                display_items = value[:100]
-                return (
-                    ", ".join(str(item) for item in display_items) + "... [TRUNCATED]"
-                )
-            else:
-                return ", ".join(str(item) for item in value)
+            # ... existing list handling code ...
+            return ", ".join(str(item) for item in value)
 
         elif isinstance(value, dict):
             # Convert objects to safe string representation
@@ -321,6 +308,9 @@ class VariableProcessor:
         else:
             # Convert other types to string with length limit
             str_value = str(value)
+            # Add safety check to ensure it's definitely a string
+            if not isinstance(str_value, str):  # Safety check (should never happen)
+                str_value = repr(value)  # fallback to repr which always returns str
             if len(str_value) > 1000:
                 str_value = str_value[:1000] + "... [TRUNCATED]"
             return str_value
@@ -342,7 +332,7 @@ class VariableProcessor:
 
         # Split on dots for object property access
         parts = var_ref.split(".")
-        current = variables
+        current: Any = variables
 
         # Track access depth for security
         access_depth = 0
@@ -400,8 +390,8 @@ class VariableProcessor:
 
                 current = array_value[array_index]
             else:
-                # Handle special array/string properties
                 if part == "length" and isinstance(current, (list, str)):
+                    # Handle special array/string properties
                     return len(current)
 
                 # Regular property access

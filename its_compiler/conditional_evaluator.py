@@ -5,7 +5,7 @@ Conditional expression evaluation for ITS Compiler with security enhancements.
 import re
 import ast
 import operator
-from typing import Dict, List, Any, Union, Optional
+from typing import Callable, Dict, List, Any, Union, Optional
 
 from .exceptions import ITSConditionalError
 from .security import SecurityConfig, ExpressionSanitiser
@@ -24,8 +24,8 @@ class ConditionalEvaluator:
             else None
         )
 
-        # Supported operators (same as before but now validated)
-        self.operators = {
+        # Allowed binary operators
+        self.binary_operators: Dict[type, Callable[[Any, Any], Any]] = {
             ast.Eq: operator.eq,
             ast.NotEq: operator.ne,
             ast.Lt: operator.lt,
@@ -34,9 +34,15 @@ class ConditionalEvaluator:
             ast.GtE: operator.ge,
             ast.And: operator.and_,
             ast.Or: operator.or_,
-            ast.Not: operator.not_,
             ast.In: lambda a, b: a in b,
             ast.NotIn: lambda a, b: a not in b,
+        }
+
+        # Allowed unary operators
+        self.unary_operators: Dict[type, Callable[[Any], Any]] = {
+            ast.Not: operator.not_,
+            ast.USub: operator.neg,
+            ast.UAdd: operator.pos,
         }
 
     def evaluate_content(
@@ -112,14 +118,13 @@ class ConditionalEvaluator:
     def _basic_security_check(self, node: ast.AST, condition: str) -> None:
         """Basic security check when full sanitiser is disabled."""
 
-        # Check for dangerous node types
+        # Check for dangerous node types (removed ast.Exec as it doesn't exist in Python 3)
         dangerous_nodes = {
             ast.Call,
             ast.FunctionDef,
             ast.ClassDef,
             ast.Import,
             ast.ImportFrom,
-            ast.Exec,
             ast.Global,
             ast.Nonlocal,
             ast.Lambda,
@@ -183,6 +188,17 @@ class ConditionalEvaluator:
                     condition=f"attribute: {node.attr}",
                 )
 
+            # Special handling for 'length' property on lists and strings
+            if node.attr == "length":
+                if isinstance(obj, (list, str)):
+                    return len(obj)
+                else:
+                    raise ITSConditionalError(
+                        f"Property 'length' is only available on lists and strings, got {type(obj).__name__}",
+                        condition=f"property access: {node.attr}",
+                    )
+
+            # Regular dictionary property access
             if not isinstance(obj, dict):
                 raise ITSConditionalError(
                     f"Cannot access property '{node.attr}' on non-object value",
@@ -236,19 +252,15 @@ class ConditionalEvaluator:
             for op, comparator in zip(node.ops, node.comparators):
                 right = self._evaluate_node(comparator, variables)
 
-                if type(op) not in self.operators:
+                if type(op) not in self.binary_operators:
                     raise ITSConditionalError(
                         f"Unsupported operator: {type(op).__name__}",
                         condition=f"operator: {type(op).__name__}",
                     )
 
-                op_func = self.operators[type(op)]
+                binary_op_func = self.binary_operators[type(op)]
 
-                # Handle special case for 'in' operator with strings
-                if isinstance(op, (ast.In, ast.NotIn)):
-                    result = op_func(left, right)
-                else:
-                    result = op_func(left, right)
+                result = binary_op_func(left, right)
 
                 if not result:
                     return False
@@ -259,8 +271,6 @@ class ConditionalEvaluator:
 
         elif isinstance(node, ast.BoolOp):
             # Boolean operations (and, or)
-            op_func = self.operators[type(node.op)]
-
             if isinstance(node.op, ast.And):
                 # All values must be truthy
                 for value in node.values:
@@ -279,17 +289,14 @@ class ConditionalEvaluator:
             # Unary operations (not, -, +)
             operand = self._evaluate_node(node.operand, variables)
 
-            if isinstance(node.op, ast.Not):
-                return not operand
-            elif isinstance(node.op, ast.USub):
-                return -operand
-            elif isinstance(node.op, ast.UAdd):
-                return +operand
-            else:
+            if type(node.op) not in self.unary_operators:
                 raise ITSConditionalError(
                     f"Unsupported unary operator: {type(node.op).__name__}",
                     condition=f"unary operator: {type(node.op).__name__}",
                 )
+
+            unary_op_func = self.unary_operators[type(node.op)]
+            return unary_op_func(operand)
 
         else:
             raise ITSConditionalError(

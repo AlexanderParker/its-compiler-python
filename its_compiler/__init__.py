@@ -7,6 +7,8 @@ Converts content templates with placeholders into structured AI prompts.
 Includes comprehensive security features for safe template processing.
 """
 
+from typing import Dict, List, Any
+
 __version__ = "0.1.0"
 __author__ = "Alexander Parker"
 __email__ = "your-email@example.com"
@@ -75,12 +77,12 @@ __all__ = [
 
 
 # Version information
-def get_version():
+def get_version() -> str:
     """Get the current version of ITS Compiler Python."""
     return __version__
 
 
-def get_security_info():
+def get_security_info() -> Dict[str, Any]:
     """Get information about available security features."""
     return {
         "version": __version__,

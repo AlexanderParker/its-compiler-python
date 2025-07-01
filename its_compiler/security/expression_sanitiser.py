@@ -12,7 +12,7 @@ from .config import SecurityConfig
 class ExpressionSecurityError(ITSConditionalError):
     """Expression security validation error."""
 
-    def __init__(self, message: str, expression: str, reason: str, **kwargs):
+    def __init__(self, message: str, expression: str, reason: str, **kwargs: Any):
         super().__init__(message, **kwargs)
         self.expression = expression
         self.reason = reason
@@ -346,13 +346,13 @@ class ExpressionSanitiser:
             reason=reason,
         )
 
-    def get_expression_complexity(self, expression: str) -> Dict[str, int]:
+    def get_expression_complexity(self, expression: str) -> Dict[str, Any]:
         """Analyse expression complexity for monitoring."""
 
         try:
             parsed = ast.parse(expression, mode="eval")
 
-            complexity = {
+            complexity: Dict[str, Any] = {
                 "length": len(expression),
                 "node_count": len(list(ast.walk(parsed))),
                 "max_depth": self._calculate_ast_depth(parsed.body),

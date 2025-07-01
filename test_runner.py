@@ -131,6 +131,12 @@ class TestRunner:
                 test_category="integration",
             ),
             TestCase(
+                name="Comprehensive Conditional Operators",
+                file_path="test/templates/10-comprehensive-conditionals.json",
+                description="Test all conditional operators: unary, binary, in/not in, chained comparisons",
+                test_category="integration",
+            ),
+            TestCase(
                 name="Custom Types",
                 file_path="test/templates/08-custom-types.json",
                 description="Custom instruction type definitions",
@@ -342,7 +348,12 @@ class TestRunner:
         start_time = time.time()
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=30  # 30 second timeout
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                encoding="utf-8",
+                errors="replace",
             )
             execution_time = time.time() - start_time
 
