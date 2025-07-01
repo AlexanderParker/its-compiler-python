@@ -180,22 +180,26 @@ class TemplateChangeHandler(FileSystemEventHandler):
             safe_print(f"[yellow]File changed: {changed_path}[/yellow]")
             try:
                 success = compile_template(
-                            str(self.template_path),
-                            self.output_path,
-                            self.variables_path,
-                            False,  # validate_only
-                            self.verbose,
-                            False,  # watch
-                            False,  # no_cache
-                            self.security_config,
-                            None,  # security_report
-                            watch_mode=True,  # Pass watch_mode=True
-                        )
-        
+                    str(self.template_path),
+                    self.output_path,
+                    self.variables_path,
+                    False,  # validate_only
+                    self.verbose,
+                    False,  # watch
+                    False,  # no_cache
+                    self.security_config,
+                    None,  # security_report
+                    watch_mode=True,  # Pass watch_mode=True
+                )
+
                 if success:
-                    safe_print(f"[green]{SYMBOLS['ok']} Watch compilation successful[/green]")
+                    safe_print(
+                        f"[green]{SYMBOLS['ok']} Watch compilation successful[/green]"
+                    )
                 else:
-                    safe_print(f"[blue]{SYMBOLS['info']} Waiting for fixes... (Ctrl+C to stop)[/blue]")
+                    safe_print(
+                        f"[blue]{SYMBOLS['info']} Waiting for fixes... (Ctrl+C to stop)[/blue]"
+                    )
             except (
                 ITSSecurityError,
                 ITSValidationError,
@@ -393,8 +397,8 @@ def compile_template(
     no_cache: bool,
     security_config: SecurityConfig,
     security_report_path: Optional[str],
-    watch_mode: bool = False,  # Add this parameter
-) -> bool:  # Return success/failure indicator
+    watch_mode: bool = False,
+) -> bool:
     """Compile a template file with security controls."""
 
     # Generate unique operation ID for tracking
@@ -444,27 +448,27 @@ def compile_template(
             # Validation only
             with create_safe_progress_context("Validating template...") as progress:
                 task = progress.add_task("Validating template...", total=None)
-                result = compiler.validate_file(template_path)
+                validation_result = compiler.validate_file(template_path)
                 progress.update(task, completed=True)
 
-            if result.is_valid:
+            if validation_result.is_valid:
                 safe_print(f"[green]{SYMBOLS['ok']} Template is valid[/green]")
-                if result.warnings and verbose:
-                    for warning in result.warnings:
+                if validation_result.warnings and verbose:
+                    for warning in validation_result.warnings:
                         safe_print(
                             f"[yellow]{SYMBOLS['warn']} Warning: {warning}[/yellow]"
                         )
-                if result.security_issues and verbose:
-                    for issue in result.security_issues:
+                if validation_result.security_issues and verbose:
+                    for issue in validation_result.security_issues:
                         safe_print(
                             f"[orange]{SYMBOLS['warn']} Security: {issue}[/orange]"
                         )
                 return True
             else:
                 safe_print(f"[red]{SYMBOLS['fail']} Template validation failed[/red]")
-                for error in result.errors:
+                for error in validation_result.errors:
                     safe_print(f"[red]Error: {error}[/red]")
-                for issue in result.security_issues:
+                for issue in validation_result.security_issues:
                     safe_print(f"[red]Security: {issue}[/red]")
                 if not watch_mode:
                     sys.exit(1)
@@ -473,7 +477,7 @@ def compile_template(
             # Full compilation
             with create_safe_progress_context("Compiling template...") as progress:
                 task = progress.add_task("Compiling template...", total=None)
-                result = compiler.compile_file(template_path, variables)
+                compilation_result = compiler.compile_file(template_path, variables)
                 progress.update(task, completed=True)
 
             # Show compilation success
@@ -482,8 +486,19 @@ def compile_template(
                 f"[green]{SYMBOLS['ok']} Template compiled successfully ({compilation_time:.2f}s)[/green]"
             )
 
-            # [Rest of the success handling code remains the same...]
             # Show security metrics, overrides, warnings, etc.
+            if verbose:
+                if compilation_result.overrides:
+                    safe_print(f"[yellow]Type Overrides:[/yellow]")
+                    for override in compilation_result.overrides:
+                        safe_print(
+                            f"  {override.type_name}: {override.override_source} -> {override.overridden_source}"
+                        )
+
+                if compilation_result.warnings:
+                    safe_print(f"[yellow]Warnings:[/yellow]")
+                    for warning in compilation_result.warnings:
+                        safe_print(f"  {warning}")
 
             # Output result
             if output_path:
@@ -500,7 +515,7 @@ def compile_template(
                 try:
                     output_file.parent.mkdir(parents=True, exist_ok=True)
                     with open(output_file, "w", encoding="utf-8") as f:
-                        f.write(result.prompt)
+                        f.write(compilation_result.prompt)
                     safe_print(f"[blue]Output written to: {output_path}[/blue]")
                 except PermissionError:
                     error_msg = f"Permission denied writing to: {output_path}"
@@ -510,7 +525,7 @@ def compile_template(
                     return False
             else:
                 safe_print("\n" + "=" * 80)
-                safe_print(result.prompt)
+                safe_print(compilation_result.prompt)
                 safe_print("=" * 80)
 
         # Generate security report if requested
