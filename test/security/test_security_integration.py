@@ -5,18 +5,18 @@ End-to-end security integration tests and attack simulations.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from its_compiler import ITSCompiler
-from its_compiler.models import ITSConfig
-from its_compiler.security import SecurityConfig
 from its_compiler.exceptions import (
+    ITSCompilationError,
     ITSSecurityError,
     ITSValidationError,
-    ITSCompilationError,
 )
+from its_compiler.models import ITSConfig
+from its_compiler.security import SecurityConfig
 
 
 @pytest.fixture

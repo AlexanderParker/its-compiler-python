@@ -1,8 +1,8 @@
 {
-    "audience": "beginner",
-    "productPrice": 800,
-    "settings": {
-        "showAdvanced": false,
-        "showBeginner": true
-    }
+  "audience": "beginner",
+  "productPrice": 800,
+  "settings": {
+    "showAdvanced": false,
+    "showBeginner": true
+  }
 }

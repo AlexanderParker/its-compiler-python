@@ -2,12 +2,12 @@
 Variable processing for ITS Compiler with security enhancements.
 """
 
-import re
 import json
-from typing import Dict, List, Any, Optional
+import re
+from typing import Any, Dict, List, Optional
 
 from .exceptions import ITSVariableError
-from .security import SecurityConfig, InputValidator
+from .security import InputValidator, SecurityConfig
 
 
 class VariableProcessor:

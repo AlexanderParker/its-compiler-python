@@ -1,7 +1,9 @@
 {
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
   "version": "1.0.0",
-  "extends": ["https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"],  
+  "extends": [
+    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"
+  ],
   "description": "Comprehensive test for all conditional operators",
   "variables": {
     "flag": true,
@@ -19,23 +21,37 @@
     {
       "type": "conditional",
       "condition": "not flag",
-      "content": [{ "type": "text", "text": "[FAIL] This should NOT appear (unary NOT test)\n" }],
+      "content": [
+        {
+          "type": "text",
+          "text": "[FAIL] This should NOT appear (unary NOT test)\n"
+        }
+      ],
       "else": [{ "type": "text", "text": "[OK] Unary NOT operator works\n" }]
     },
     {
       "type": "conditional",
       "condition": "number < 10 and number > 0",
-      "content": [{ "type": "text", "text": "[OK] AND operator with comparisons works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] AND operator with comparisons works\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "text in [\"hello world\", \"goodbye\"]",
-      "content": [{ "type": "text", "text": "[OK] IN operator with list works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] IN operator with list works\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "\"world\" in text",
-      "content": [{ "type": "text", "text": "[OK] IN operator with string contains works\n" }]
+      "content": [
+        {
+          "type": "text",
+          "text": "[OK] IN operator with string contains works\n"
+        }
+      ]
     },
     {
       "type": "conditional",
@@ -50,7 +66,9 @@
     {
       "type": "conditional",
       "condition": "number >= 5",
-      "content": [{ "type": "text", "text": "[OK] Greater than or equal works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] Greater than or equal works\n" }
+      ]
     },
     {
       "type": "conditional",
@@ -65,27 +83,37 @@
     {
       "type": "conditional",
       "condition": "(price >= 50 and price <= 150) or flag",
-      "content": [{ "type": "text", "text": "[OK] Parentheses and complex logic work\n" }]      
+      "content": [
+        { "type": "text", "text": "[OK] Parentheses and complex logic work\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "-number < 0",
-      "content": [{ "type": "text", "text": "[OK] Unary minus operator works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] Unary minus operator works\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "+number > 0",
-      "content": [{ "type": "text", "text": "[OK] Unary plus operator works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] Unary plus operator works\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "items.length == 3",
-      "content": [{ "type": "text", "text": "[OK] Array length property works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] Array length property works\n" }
+      ]
     },
     {
       "type": "conditional",
       "condition": "text.length > 5",
-      "content": [{ "type": "text", "text": "[OK] String length property works\n" }]
+      "content": [
+        { "type": "text", "text": "[OK] String length property works\n" }
+      ]
     }
   ]
 }

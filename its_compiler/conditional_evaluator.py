@@ -4,10 +4,10 @@ Conditional expression evaluation for ITS Compiler with security enhancements.
 
 import ast
 import operator
-from typing import Callable, Dict, List, Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .exceptions import ITSConditionalError
-from .security import SecurityConfig, ExpressionSanitiser
+from .security import ExpressionSanitiser, SecurityConfig
 
 
 class ConditionalEvaluator:

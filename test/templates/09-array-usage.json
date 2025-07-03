@@ -1,14 +1,21 @@
 {
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
   "version": "1.0.0",
-  "extends": ["https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"],
+  "extends": [
+    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"
+  ],
   "variables": {
     "product": {
       "name": "SmartHome Hub",
       "category": "IoT device",
       "price": 199
     },
-    "features": ["voice control", "home automation", "energy monitoring", "security integration"],
+    "features": [
+      "voice control",
+      "home automation",
+      "energy monitoring",
+      "security integration"
+    ],
     "tags": ["smart", "connected", "efficient"],
     "specifications": {
       "connectivity": ["WiFi", "Bluetooth", "Zigbee"],

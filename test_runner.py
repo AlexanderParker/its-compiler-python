@@ -4,13 +4,13 @@ Integration test runner for ITS Compiler with security test support.
 Runs a suite of test templates to validate compiler functionality and security.
 """
 
-import subprocess
-import time
-from pathlib import Path
-from typing import List, Optional
-from dataclasses import dataclass
 import argparse
 import html
+import subprocess
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
 
 
 @dataclass
@@ -558,8 +558,8 @@ class TestRunner:
     def generate_junit_xml(self, output_file: str):
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
-            from xml.etree.ElementTree import Element, SubElement, tostring
             from xml.dom import minidom
+            from xml.etree.ElementTree import Element, SubElement, tostring
         except ImportError:
             print("Warning: Cannot generate JUnit XML (xml module not available)")
             return

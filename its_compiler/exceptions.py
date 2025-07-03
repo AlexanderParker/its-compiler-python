@@ -2,8 +2,8 @@
 Exception classes for ITS Compiler with security enhancements.
 """
 
-from typing import Optional, Any, Dict, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 class ITSError(Exception):

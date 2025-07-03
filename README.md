@@ -16,7 +16,9 @@ Reference Python compiler for the [Instruction Template Specification (ITS)](htt
 {
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
   "version": "1.0.0",
-  "extends": ["https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"],
+  "extends": [
+    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"
+  ],
   "variables": {
     "topic": "sustainable technology",
     "includeExamples": true

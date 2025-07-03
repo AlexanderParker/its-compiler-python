@@ -3,7 +3,7 @@
   "title": "ITS Compiler Security Defaults Configuration",
   "description": "Default security configuration for ITS Compiler with environment-specific settings",
   "version": "1.0.0",
-  
+
   "environments": {
     "development": {
       "description": "Development environment with relaxed security for local testing",
@@ -62,7 +62,7 @@
         "max_log_size_mb": 50
       }
     },
-    
+
     "staging": {
       "description": "Staging environment with moderate security for testing",
       "security_level": "staging",
@@ -126,7 +126,7 @@
         "max_log_size_mb": 100
       }
     },
-    
+
     "production": {
       "description": "Production environment with maximum security",
       "security_level": "production",
@@ -171,9 +171,24 @@
         "max_expression_depth": 8,
         "max_expression_nodes": 50,
         "blocked_ast_nodes": [
-          "Import", "ImportFrom", "FunctionDef", "AsyncFunctionDef", "ClassDef",
-          "Global", "Nonlocal", "Exec", "Eval", "Call", "Lambda", "Yield",
-          "YieldFrom", "Await", "GeneratorExp", "ListComp", "SetComp", "DictComp"
+          "Import",
+          "ImportFrom",
+          "FunctionDef",
+          "AsyncFunctionDef",
+          "ClassDef",
+          "Global",
+          "Nonlocal",
+          "Exec",
+          "Eval",
+          "Call",
+          "Lambda",
+          "Yield",
+          "YieldFrom",
+          "Await",
+          "GeneratorExp",
+          "ListComp",
+          "SetComp",
+          "DictComp"
         ],
         "max_processing_time": 15,
         "max_memory_usage": 67108864
@@ -205,7 +220,7 @@
       }
     }
   },
-  
+
   "trusted_schema_patterns": [
     {
       "pattern": "https://alexanderparker.github.io/instruction-template-specification/**",
@@ -220,7 +235,7 @@
       "auto_approve": true
     }
   ],
-  
+
   "dangerous_patterns": {
     "expressions": [
       "__\\w+__",
@@ -256,19 +271,9 @@
       "\\\\u[0-9a-fA-F]{4}",
       "%[0-9a-fA-F]{2}"
     ],
-    "filenames": [
-      "\\.\\.",
-      "%",
-      "<",
-      ">",
-      "|",
-      ":",
-      "\"",
-      "?",
-      "*"
-    ]
+    "filenames": ["\\.\\.", "%", "<", ">", "|", ":", "\"", "?", "*"]
   },
-  
+
   "rate_limit_rules": {
     "template_compilation": {
       "max_requests": 60,
@@ -291,14 +296,14 @@
       "burst_allowance": 2
     }
   },
-  
+
   "security_headers": {
     "user_agent": "ITS-Compiler-Python/1.0",
     "accept": "application/json, text/plain",
     "accept_encoding": "gzip, deflate",
     "cache_control": "no-cache"
   },
-  
+
   "compliance": {
     "gdpr": {
       "enabled": true,
@@ -317,7 +322,7 @@
       "audit_access": true
     }
   },
-  
+
   "monitoring": {
     "performance_tracking": true,
     "error_tracking": true,

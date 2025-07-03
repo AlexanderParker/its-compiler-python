@@ -7,11 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from its_compiler.security import (
-    URLValidator,
-    URLSecurityError,
-    SecurityConfig,
-)
+from its_compiler.security import SecurityConfig, URLSecurityError, URLValidator
 
 
 @pytest.fixture

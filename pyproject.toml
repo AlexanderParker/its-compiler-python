@@ -29,7 +29,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -58,26 +57,19 @@ dev = [
     "pytest-mock>=3.10.0",
     "pytest-timeout>=2.1.0",
 
-    # Security testing
-    "bandit>=1.7.0",
-    "safety>=2.3.0",
-    "semgrep>=1.0.0",
-
-    # Code quality
+    # Code quality (streamlined)
     "black>=22.0.0",
     "isort>=5.12.0",
     "flake8>=6.0.0",
+    "flake8-bugbear>=23.0.0",
+    "pep8-naming>=0.13.0",
     "mypy>=1.0.0",
-    "pylint>=2.15.0",
 
-    # Documentation
-    "sphinx>=5.0.0",
-    "sphinx-rtd-theme>=1.2.0",
-    "myst-parser>=0.18.0",
+    # Security
+    "bandit[toml]>=1.7.0",
 
     # Development tools
     "pre-commit>=3.0.0",
-    "tox>=4.0.0",
     "build>=0.10.0",
     "twine>=4.0.0",
 ]
@@ -147,15 +139,12 @@ filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 # Security Configuration
 [tool.bandit]
 exclude_dirs = ["test", "docs"]
-skips = ["B101", "B601"]        # Skip assert_used and shell injection in tests
-
-[tool.bandit.assert_used]
-skips = ["*_test.py", "test_*.py"]
+skips = ["B101", "B601"]
 
 # Code Quality Configuration
 [tool.black]
 line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -201,25 +190,44 @@ strict_equality = true
 module = ["rich.*", "watchdog.*", "requests.*"]
 ignore_missing_imports = true
 
-[tool.pylint.messages_control]
-disable = [
-    "too-few-public-methods",
-    "too-many-arguments",
-    "too-many-instance-attributes",
-    "too-many-locals",
-    "too-many-branches",
-    "duplicate-code",
+# Streamlined flake8 config
+[tool.flake8]
+max-line-length = 120
+extend-ignore = [
+    "E203", # Whitespace before ':' (conflicts with black)
+    "W503", # Line break before binary operator (conflicts with black)
+    "E501", # Line too long (handled by black)
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
+    "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D106", # Missing docstring in public nested class
+    "D107", # Missing docstring in __init__
+    "D200", # One-line docstring should fit on one line
+    "D202", # No blank lines allowed after function docstring
+    "D205", # 1 blank line required between summary line and description
+    "D212", # Multi-line docstring summary should start at the first line
+    "D400", # First line should end with a period
+    "D401", # First line should be in imperative mood
+    "D415", # First line should end with a period, question mark, or exclamation point
 ]
-
-[tool.pylint.format]
-max-line-length = 88
-
-[tool.pylint.design]
-max-args = 10
-max-locals = 20
-max-returns = 10
-max-branches = 15
-max-statements = 50
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".pytest_cache",
+    "test/templates/invalid/",
+    "test/templates/security/",
+]
+per-file-ignores = [
+    "__init__.py:F401", # Allow unused imports in __init__ files
+]
 
 # Coverage Configuration
 [tool.coverage.run]
@@ -251,76 +259,3 @@ directory = "htmlcov"
 
 [tool.coverage.xml]
 output = "coverage.xml"
-
-[tool.flake8]
-max-line-length = 120
-extend-ignore = ["E501"]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "*.egg-info"
-]
-
-# Tox Configuration for Multiple Environment Testing
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py38,py39,py310,py311,py312,security,docs,lint
-isolated_build = true
-
-[testenv]
-deps = 
-    pytest>=7.0.0
-    pytest-cov>=4.0.0
-    pytest-mock>=3.10.0
-    pytest-timeout>=2.1.0
-commands = 
-    pytest {posargs}
-
-[testenv:security]
-deps = 
-    bandit[toml]>=1.7.0
-    safety>=2.3.0
-    semgrep>=1.0.0
-commands = 
-    bandit -r its_compiler -f json -o bandit-report.json
-    safety check --json --output safety-report.json
-    # semgrep --config=auto --json --output=semgrep-report.json its_compiler/
-
-[testenv:docs]
-deps = 
-    sphinx>=5.0.0
-    sphinx-rtd-theme>=1.2.0
-    myst-parser>=0.18.0
-commands = 
-    sphinx-build -W -b html docs docs/_build/html
-
-[testenv:lint]
-deps = 
-    black>=22.0.0
-    isort>=5.12.0
-    flake8>=6.0.0
-    mypy>=1.0.0
-    pylint>=2.15.0
-commands = 
-    black --check its_compiler test
-    isort --check-only its_compiler test
-    flake8 its_compiler test
-    mypy its_compiler
-    pylint its_compiler
-
-[testenv:integration]
-commands = 
-    python test_runner.py --verbose
-
-[testenv:security-tests]
-commands = 
-    python test_runner.py --security-only --verbose
-"""
-
-# Note: Pre-commit configuration should be in .pre-commit-config.yaml file
-# This is included here for reference but should be moved to a separate file

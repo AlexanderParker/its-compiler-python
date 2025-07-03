@@ -4,11 +4,7 @@ Tests for InputValidator malicious content detection and input validation.
 
 import pytest
 
-from its_compiler.security import (
-    InputValidator,
-    InputSecurityError,
-    SecurityConfig,
-)
+from its_compiler.security import InputSecurityError, InputValidator, SecurityConfig
 
 
 @pytest.fixture

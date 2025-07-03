@@ -12,9 +12,9 @@ import pytest
 
 from its_compiler.security import (
     AllowlistManager,
-    TrustLevel,
     SchemaEntry,
     SecurityConfig,
+    TrustLevel,
 )
 
 

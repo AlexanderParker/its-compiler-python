@@ -7,7 +7,7 @@ Converts content templates with placeholders into structured AI prompts.
 Includes comprehensive security features for safe template processing.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 __version__ = "0.1.0"
 __author__ = "Alexander Parker"
@@ -15,34 +15,34 @@ __email__ = "your-email@example.com"
 
 from .compiler import ITSCompiler
 from .exceptions import (
-    ITSError,
-    ITSValidationError,
     ITSCompilationError,
-    ITSSchemaError,
-    ITSVariableError,
     ITSConditionalError,
-    ITSSecurityError,
     ITSConfigurationError,
+    ITSError,
+    ITSSchemaError,
+    ITSSecurityError,
     ITSTimeoutError,
+    ITSValidationError,
+    ITSVariableError,
 )
 from .models import (
     CompilationResult,
-    ValidationResult,
-    TypeOverride,
-    ITSConfig,
     InstructionTypeDefinition,
-    SecurityReport,
+    ITSConfig,
     SecurityMetrics,
+    SecurityReport,
+    TypeOverride,
+    ValidationResult,
 )
 
 # Security components for advanced usage
 from .security import (
-    SecurityConfig,
     AllowlistManager,
-    TrustLevel,
-    URLValidator,
     ExpressionSanitiser,
     InputValidator,
+    SecurityConfig,
+    TrustLevel,
+    URLValidator,
 )
 
 __all__ = [

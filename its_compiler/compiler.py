@@ -3,31 +3,24 @@ Main ITS compiler implementation with core security enhancements.
 """
 
 import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-from urllib.parse import urljoin, urlparse
 import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urljoin, urlparse
 
+from .conditional_evaluator import ConditionalEvaluator
+from .exceptions import ITSCompilationError, ITSValidationError, ITSVariableError
 from .models import (
-    ITSConfig,
     CompilationResult,
-    ValidationResult,
     InstructionTypeDefinition,
-    TypeOverride,
+    ITSConfig,
     OverrideType,
-)
-from .exceptions import (
-    ITSValidationError,
-    ITSCompilationError,
-    ITSVariableError,
+    TypeOverride,
+    ValidationResult,
 )
 from .schema_loader import SchemaLoader
+from .security import InputValidator, SecurityConfig
 from .variable_processor import VariableProcessor
-from .conditional_evaluator import ConditionalEvaluator
-from .security import (
-    SecurityConfig,
-    InputValidator,
-)
 
 
 class ITSCompiler:
@@ -284,7 +277,6 @@ class ITSCompiler:
         errors: List[str] = []
 
         for i, element in enumerate(content):
-
             if "type" not in element:
                 errors.append(f"Content element {i} missing required field: type")
                 continue

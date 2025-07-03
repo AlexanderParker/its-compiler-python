@@ -2,9 +2,9 @@
 Interactive schema allowlist management for ITS Compiler.
 """
 
-import json
 import hashlib
-from dataclasses import dataclass, asdict
+import json
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path

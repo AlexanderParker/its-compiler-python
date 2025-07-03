@@ -3,22 +3,18 @@ Schema loading and caching for ITS Compiler with core security enhancements.
 Fixed to handle gzip-compressed responses properly.
 """
 
+import gzip
+import hashlib
 import json
 import time
-import hashlib
-import gzip
 from pathlib import Path
-from typing import Dict, Any, Optional
-from urllib.request import urlopen, Request
-from urllib.error import URLError, HTTPError
+from typing import Any, Dict, Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-from .models import ITSConfig
 from .exceptions import ITSSchemaError
-from .security import (
-    SecurityConfig,
-    URLValidator,
-    AllowlistManager,
-)
+from .models import ITSConfig
+from .security import AllowlistManager, SecurityConfig, URLValidator
 
 
 class SchemaLoader:

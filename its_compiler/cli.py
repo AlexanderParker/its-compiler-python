@@ -4,28 +4,28 @@ Fixed for cross-platform Unicode compatibility.
 """
 
 import json
+import platform
 import sys
 import time
-import platform
 from pathlib import Path
-from typing import Optional, Tuple, Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from watchdog.observers import Observer
+from rich.table import Table
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 from .compiler import ITSCompiler
-from .models import ITSConfig
 from .exceptions import (
-    ITSError,
-    ITSValidationError,
     ITSCompilationError,
+    ITSError,
     ITSSecurityError,
+    ITSValidationError,
 )
-from .security import SecurityConfig, AllowlistManager, TrustLevel
+from .models import ITSConfig
+from .security import AllowlistManager, SecurityConfig, TrustLevel
 
 
 def setup_safe_console() -> Tuple[Console, bool]:
