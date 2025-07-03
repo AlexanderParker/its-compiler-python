@@ -4,7 +4,7 @@ Security configuration for ITS Compiler.
 
 import os
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Set
+from typing import List, Optional, Set
 from pathlib import Path
 
 

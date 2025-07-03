@@ -399,7 +399,6 @@ class VariableProcessor:
                     )
 
                 if part not in current:
-                    path_so_far = ".".join(parts[: i + 1])
                     raise ITSVariableError(
                         f"Variable '{part}' not found in {'.'.join(parts[:i]) if i > 0 else 'root'}",
                         variable_path=var_ref,

@@ -295,7 +295,6 @@ class TestAllowlistManager:
         url1 = "https://first.com/schema.json"
         allowlist_manager.add_trusted_url(url1, TrustLevel.PERMANENT)
 
-        allowlist_file = temp_config_dir / "test_allowlist.json"
         backup_file = temp_config_dir / "test_allowlist.bak"
 
         # Add another entry (should create backup)

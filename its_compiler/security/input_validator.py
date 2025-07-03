@@ -4,7 +4,7 @@ Input validation and sanitisation for ITS Compiler.
 
 import json
 import re
-from typing import Dict, Any, List, Optional, Set, Union, NoReturn
+from typing import Dict, Any, List, Optional, Union, NoReturn
 from pathlib import Path
 
 from ..exceptions import ITSValidationError

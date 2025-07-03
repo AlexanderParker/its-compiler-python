@@ -432,6 +432,6 @@ class TestURLValidator:
 
                 try:
                     url_validator.validate_url(url)
-                except URLSecurityError as e:
+                except URLSecurityError:
                     # Some edge cases might still fail due to security rules, that's OK
                     pass

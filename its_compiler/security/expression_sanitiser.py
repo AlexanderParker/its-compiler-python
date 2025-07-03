@@ -4,7 +4,7 @@ Expression sanitisation and validation for ITS Compiler conditionals.
 
 import ast
 import re
-from typing import Set, Optional, Dict, Any, List
+from typing import Dict, Any, List
 from ..exceptions import ITSConditionalError
 from .config import SecurityConfig
 

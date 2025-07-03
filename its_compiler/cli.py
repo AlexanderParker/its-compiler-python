@@ -7,7 +7,6 @@ import json
 import sys
 import time
 import uuid
-import os
 import platform
 from pathlib import Path
 from typing import Optional, Tuple, Any, Dict
@@ -20,7 +19,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from .compiler import ITSCompiler
-from .models import ITSConfig, CompilationResult, ValidationResult
+from .models import ITSConfig
 from .exceptions import (
     ITSError,
     ITSValidationError,
@@ -77,7 +76,7 @@ def safe_print(
                 console.print(safe_message, style=style, highlight=highlight)
             else:
                 console.print(safe_message, highlight=highlight)
-        except:
+        except Exception:
             # Ultimate fallback
             print(safe_message)
     except Exception:
@@ -220,7 +219,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
                 if self.verbose:
                     import traceback
 
-                    safe_print(f"[red]Error details:[/red]")
+                    safe_print("[red]Error details:[/red]")
                     for line in traceback.format_exc().splitlines():
                         safe_print(f"[red]  {line}[/red]")
                 safe_print(
@@ -242,7 +241,7 @@ def load_variables(variables_path: str) -> Dict[str, Any]:
             variables = json.load(f)
 
         if not isinstance(variables, dict):
-            safe_print(f"[red]Variables file must contain a JSON object[/red]")
+            safe_print("[red]Variables file must contain a JSON object[/red]")
             sys.exit(1)
 
         return variables
@@ -399,9 +398,6 @@ def compile_template(
 ) -> bool:
     """Compile a template file with security controls."""
 
-    # Generate unique operation ID for tracking
-    operation_id = str(uuid.uuid4())[:8]
-
     # Load variables if provided
     variables = {}
     if variables_path:
@@ -430,7 +426,7 @@ def compile_template(
             safe_print(f"[blue]Security Configuration:[/blue]")
             safe_print(f"  HTTP allowed: {security_config.network.allow_http}")
             safe_print(
-                f"  Interactive allowlist: {security_config.allowlist.interactive_mode}"
+                "  Interactive allowlist: {security_config.allowlist.interactive_mode}"
             )
             safe_print(f"  Block localhost: {security_config.network.block_localhost}")
 
@@ -487,14 +483,14 @@ def compile_template(
             # Show security metrics, overrides, warnings, etc.
             if verbose:
                 if compilation_result.overrides:
-                    safe_print(f"[yellow]Type Overrides:[/yellow]")
+                    safe_print("[yellow]Type Overrides:[/yellow]")
                     for override in compilation_result.overrides:
                         safe_print(
-                            f"  {override.type_name}: {override.override_source} -> {override.overridden_source}"
+                            "  {override.type_name}: {override.override_source} -> {override.overridden_source}"
                         )
 
                 if compilation_result.warnings:
-                    safe_print(f"[yellow]Warnings:[/yellow]")
+                    safe_print("[yellow]Warnings:[/yellow]")
                     for warning in compilation_result.warnings:
                         safe_print(f"  {warning}")
 

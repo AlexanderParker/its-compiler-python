@@ -4,7 +4,7 @@ URL validation and SSRF protection for ITS Compiler.
 
 import ipaddress
 import socket
-from typing import Optional, List, Set, Dict, Any, Union
+from typing import List, Dict, Any, Union
 from urllib.parse import urlparse
 
 from ..exceptions import ITSSchemaError
@@ -252,7 +252,7 @@ class URLValidator:
             if parsed.hostname:
                 try:
                     info["resolved_ips"] = self._resolve_hostname(parsed.hostname)
-                except:
+                except e:
                     info["resolved_ips"] = []
 
             return info

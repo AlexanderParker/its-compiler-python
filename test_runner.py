@@ -420,7 +420,7 @@ class TestRunner:
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
-            print(f"❌ FAIL - Test timed out after 30 seconds")
+            print("❌ FAIL - Test timed out after 30 seconds")
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -529,19 +529,19 @@ class TestRunner:
                 categories[cat]["failed"] += 1
 
         if len(categories) > 1:
-            print(f"\nBreakdown by category:")
+            print("\nBreakdown by category:")
             for cat, stats in categories.items():
                 print(f"  {cat}: {stats['passed']}/{stats['total']} passed")
 
         if failed_tests:
-            print(f"\n🔴 FAILED TESTS:")
+            print("\n🔴 FAILED TESTS:")
             for result in failed_tests:
                 print(
                     f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}..."
                 )
 
         if passed_tests:
-            print(f"\n✅ PASSED TESTS:")
+            print("\n✅ PASSED TESTS:")
             for result in passed_tests:
                 print(
                     f"  - {result.test_case.name} ({result.test_case.test_category}) ({result.execution_time:.2f}s)"

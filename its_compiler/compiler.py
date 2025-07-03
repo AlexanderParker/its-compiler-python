@@ -58,7 +58,6 @@ class ITSCompiler:
     ) -> CompilationResult:
         """Compile a template from a file with security validation."""
 
-        start_time = time.time()
         template_path_obj = Path(template_path)
 
         if not template_path_obj.exists():
@@ -83,13 +82,8 @@ class ITSCompiler:
             # If we can't create a file URI, we'll skip relative URL resolution
             pass
 
-        # Compile with security tracking
-        try:
-            result = self.compile(template, variables, base_url)
-            return result
-
-        except Exception as e:
-            raise
+        result = self.compile(template, variables, base_url)
+        return result
 
     def _validate_file_security(self, template_path: Path) -> None:
         """Validate file security properties."""
@@ -147,40 +141,30 @@ class ITSCompiler:
             except Exception as e:
                 raise ITSValidationError(f"Variables validation failed: {e}")
 
-        try:
-            # Load and resolve instruction types
-            instruction_types, overrides = self._load_instruction_types(
-                template, base_url
-            )
+        # Load and resolve instruction types
+        instruction_types, overrides = self._load_instruction_types(template, base_url)
 
-            # Process variables in content with security
-            processed_content = self._process_variables(
-                template["content"], merged_variables
-            )
+        # Process variables in content with security
+        processed_content = self._process_variables(
+            template["content"], merged_variables
+        )
 
-            # Evaluate conditionals with security
-            final_content = self._evaluate_conditionals(
-                processed_content, merged_variables
-            )
+        # Evaluate conditionals with security
+        final_content = self._evaluate_conditionals(processed_content, merged_variables)
 
-            # Generate final prompt
-            prompt = self._generate_prompt(final_content, instruction_types, template)
+        # Generate final prompt
+        prompt = self._generate_prompt(final_content, instruction_types, template)
 
-            # Validate final prompt
-            self._validate_final_prompt(prompt)
+        # Validate final prompt
+        self._validate_final_prompt(prompt)
 
-            compilation_time = time.time() - start_time
-
-            return CompilationResult(
-                prompt=prompt,
-                template=template,
-                variables=merged_variables,
-                overrides=overrides,
-                warnings=validation_result.warnings,
-            )
-
-        except Exception as e:
-            raise
+        return CompilationResult(
+            prompt=prompt,
+            template=template,
+            variables=merged_variables,
+            overrides=overrides,
+            warnings=validation_result.warnings,
+        )
 
     def _validate_final_prompt(self, prompt: str) -> None:
         """Validate the final generated prompt for security."""
@@ -208,7 +192,6 @@ class ITSCompiler:
     def validate_file(self, template_path: str) -> ValidationResult:
         """Validate a template file with security checks."""
 
-        start_time = time.time()
         template_path_obj = Path(template_path)
 
         if not template_path_obj.exists():
@@ -383,7 +366,7 @@ class ITSCompiler:
         for var_ref in variable_refs:
             try:
                 self.variable_processor.resolve_variable_reference(var_ref, variables)
-            except ITSVariableError as e:
+            except ITSVariableError:
                 errors.append(f"Undefined variable reference: ${{{var_ref}}}")
 
         return errors

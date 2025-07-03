@@ -109,9 +109,6 @@ class SchemaLoader:
         # URL validation with SSRF protection
         self.url_validator.validate_url(url)
 
-        # Additional schema-specific validations
-        parsed = urlparse(url)
-
         # Block dangerous file extensions
         dangerous_extensions = {".exe", ".bat", ".cmd", ".scr", ".php", ".jsp"}
         if any(url.lower().endswith(ext) for ext in dangerous_extensions):

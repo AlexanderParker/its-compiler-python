@@ -303,8 +303,6 @@ class TestSecurityIntegration:
         import threading
         import time
 
-        template = {"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}
-
         # Set low concurrent limit
         compiler.rate_limiter.config.network.max_concurrent_requests = 1
 
@@ -345,7 +343,7 @@ class TestSecurityIntegration:
         template = {"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}
 
         # Compile template to generate audit events
-        result = compiler.compile(template)
+        compiler.compile(template)
 
     def test_production_security_hardening(self, production_compiler):
         """Test production security settings are more restrictive."""

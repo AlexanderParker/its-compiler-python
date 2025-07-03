@@ -2,7 +2,6 @@
 Conditional expression evaluation for ITS Compiler with security enhancements.
 """
 
-import re
 import ast
 import operator
 from typing import Callable, Dict, List, Any, Optional
