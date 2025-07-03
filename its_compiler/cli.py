@@ -59,6 +59,7 @@ def safe_print(
             safe_message = safe_message.replace(old, new)
         print(safe_message)
 
+
 def create_safe_progress_context(
     description: str, disable_on_windows: bool = True
 ) -> Any:
@@ -111,20 +112,16 @@ except Exception:
 
 def get_symbols() -> Dict[str, str]:
     """Get safe symbols for status messages."""
-    if CAN_USE_UNICODE:
-        return {"ok": "✓", "fail": "❌", "warn": "⚠", "info": "ℹ", "bullet": "•"}
-    else:
-        return {
-            "ok": "[OK]",
-            "fail": "[FAIL]",
-            "warn": "[WARN]",
-            "info": "[INFO]",
-            "bullet": "*",
-        }
-
+    symbols = {
+        "ok": ("✓", "[OK]"),
+        "fail": ("✗", "[FAIL]"),
+        "warn": ("⚠", "[WARN]"),
+        "info": ("ℹ", "[INFO]"),
+        "bullet": ("•", "*"),
+    }
+    return {k: v[0] if CAN_USE_UNICODE else v[1] for k, v in symbols.items()}
 
 SYMBOLS = get_symbols()
-
 
 class TemplateChangeHandler(FileSystemEventHandler):
     """Handler for template file changes in watch mode."""
