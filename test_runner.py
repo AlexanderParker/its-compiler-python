@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import argparse
+import html
 
 
 @dataclass
@@ -298,6 +299,27 @@ class TestRunner:
             ),
         ]
 
+    def _safe_text_for_xml(self, text: str) -> str:
+        """Safely escape text for XML, handling Unicode and control characters."""
+        if not text:
+            return ""
+
+        # Remove control characters that are not allowed in XML
+        # XML 1.0 allows: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+        import re
+
+        # Remove control characters except tab, newline, and carriage return
+        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)
+
+        # Escape HTML/XML entities
+        text = html.escape(text, quote=True)
+
+        # Truncate very long text to prevent XML bloat
+        if len(text) > 10000:
+            text = text[:10000] + "... [TRUNCATED]"
+
+        return text
+
     def run_test(self, test_case: TestCase) -> TestResult:
         """Run a single test case."""
         print(f"\n{'='*60}")
@@ -536,7 +558,7 @@ class TestRunner:
         return success
 
     def generate_junit_xml(self, output_file: str):
-        """Generate JUnit XML for CI systems."""
+        """Generate JUnit XML for CI systems with proper escaping."""
         try:
             from xml.etree.ElementTree import Element, SubElement, tostring
             from xml.dom import minidom
@@ -563,32 +585,68 @@ class TestRunner:
 
             for result in results:
                 testcase = SubElement(testsuite, "testcase")
-                testcase.set("name", result.test_case.name)
+                # Use safe text for all XML content
+                testcase.set("name", self._safe_text_for_xml(result.test_case.name))
                 testcase.set("classname", f"ITSCompiler{category.title()}Tests")
                 testcase.set("time", str(result.execution_time))
 
                 if not result.passed:
                     failure = SubElement(testcase, "failure")
                     failure.set("message", "Test failed")
-                    failure.text = result.error_output
+                    failure.text = self._safe_text_for_xml(result.error_output)
 
                 if result.output:
                     stdout = SubElement(testcase, "system-out")
-                    stdout.text = result.output
+                    stdout.text = self._safe_text_for_xml(result.output)
 
                 if result.error_output:
                     stderr = SubElement(testcase, "system-err")
-                    stderr.text = result.error_output
+                    stderr.text = self._safe_text_for_xml(result.error_output)
 
-        # Pretty print XML
-        rough_string = tostring(testsuites, "unicode")
-        reparsed = minidom.parseString(rough_string)
-        pretty_xml = reparsed.toprettyxml(indent="  ")
+        # Convert to string with proper encoding
+        try:
+            rough_string = tostring(testsuites, encoding="unicode")
 
-        with open(output_file, "w") as f:
-            f.write(pretty_xml)
+            # Parse and pretty print with error handling
+            try:
+                reparsed = minidom.parseString(rough_string)
+                pretty_xml = reparsed.toprettyxml(indent="  ")
 
-        print(f"JUnit XML report written to: {output_file}")
+                # Remove empty lines that toprettyxml sometimes adds
+                pretty_xml = "\n".join(
+                    [line for line in pretty_xml.split("\n") if line.strip()]
+                )
+
+            except Exception as e:
+                print(f"Warning: Could not pretty-print XML ({e}), using raw XML")
+                pretty_xml = rough_string
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(pretty_xml)
+
+            print(f"JUnit XML report written to: {output_file}")
+
+        except Exception as e:
+            print(f"Error generating JUnit XML: {e}")
+            # Try writing a minimal XML as fallback
+            try:
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                    f.write("<testsuites>\n")
+                    f.write(
+                        f'  <testsuite name="ITS Compiler Tests" tests="{len(self.results)}">\n'
+                    )
+                    for result in self.results:
+                        safe_name = self._safe_text_for_xml(result.test_case.name)
+                        status = "passed" if result.passed else "failed"
+                        f.write(
+                            f'    <testcase name="{safe_name}" status="{status}"/>\n'
+                        )
+                    f.write("  </testsuite>\n")
+                    f.write("</testsuites>\n")
+                print(f"Fallback JUnit XML written to: {output_file}")
+            except Exception as fallback_e:
+                print(f"Could not write fallback XML either: {fallback_e}")
 
     def list_categories(self):
         """List available test categories."""
