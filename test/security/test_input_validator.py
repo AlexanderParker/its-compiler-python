@@ -647,4 +647,3 @@ class TestInputValidator:
             input_validator.validate_template("not an object")
 
         assert "Template must be a JSON object" in str(exc_info.value)
-

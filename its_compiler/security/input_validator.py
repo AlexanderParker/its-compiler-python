@@ -529,7 +529,9 @@ class InputValidator:
                         item, current_depth + 1, f"{context}[{i}]"
                     )
 
-    def _security_violation(self, message: str, input_type: str, reason: str) -> NoReturn:
+    def _security_violation(
+        self, message: str, input_type: str, reason: str
+    ) -> NoReturn:
         """Log security violation and raise error."""
         raise InputSecurityError(message, input_type=input_type, reason=reason)
 
