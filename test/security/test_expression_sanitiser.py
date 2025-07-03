@@ -2,9 +2,6 @@
 Tests for ExpressionSanitiser AST injection prevention and expression validation.
 """
 
-import ast
-from unittest.mock import MagicMock
-
 import pytest
 
 from its_compiler.security import (

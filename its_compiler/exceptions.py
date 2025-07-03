@@ -2,7 +2,7 @@
 Exception classes for ITS Compiler with security enhancements.
 """
 
-from typing import Optional, List, Any, Dict
+from typing import Optional, Any, Dict, List
 from datetime import datetime
 
 

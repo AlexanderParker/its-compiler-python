@@ -2,9 +2,6 @@
 Tests for InputValidator malicious content detection and input validation.
 """
 
-import json
-from unittest.mock import MagicMock
-
 import pytest
 
 from its_compiler.security import (

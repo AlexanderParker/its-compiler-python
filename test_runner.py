@@ -4,12 +4,10 @@ Integration test runner for ITS Compiler with security test support.
 Runs a suite of test templates to validate compiler functionality and security.
 """
 
-import json
 import subprocess
-import sys
 import time
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional
 from dataclasses import dataclass
 import argparse
 import html

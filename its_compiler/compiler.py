@@ -5,7 +5,7 @@ Main ITS compiler implementation with core security enhancements.
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, List, Any, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
 from .models import (
@@ -20,7 +20,6 @@ from .exceptions import (
     ITSValidationError,
     ITSCompilationError,
     ITSVariableError,
-    ITSConditionalError,
 )
 from .schema_loader import SchemaLoader
 from .variable_processor import VariableProcessor

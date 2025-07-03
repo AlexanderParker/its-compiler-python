@@ -3,7 +3,7 @@ Tests for URLValidator SSRF protection and URL security validation.
 """
 
 import socket
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 

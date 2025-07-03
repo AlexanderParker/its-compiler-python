@@ -7,7 +7,7 @@ Converts content templates with placeholders into structured AI prompts.
 Includes comprehensive security features for safe template processing.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 __version__ = "0.1.0"
 __author__ = "Alexander Parker"

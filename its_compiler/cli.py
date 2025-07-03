@@ -15,8 +15,6 @@ from typing import Optional, Tuple, Any, Dict
 import click
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler

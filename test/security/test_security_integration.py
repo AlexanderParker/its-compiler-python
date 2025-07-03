@@ -11,7 +11,7 @@ import pytest
 
 from its_compiler import ITSCompiler
 from its_compiler.models import ITSConfig
-from its_compiler.security import SecurityConfig, AllowlistManager
+from its_compiler.security import SecurityConfig
 from its_compiler.exceptions import (
     ITSSecurityError,
     ITSValidationError,

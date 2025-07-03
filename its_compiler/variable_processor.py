@@ -4,7 +4,7 @@ Variable processing for ITS Compiler with security enhancements.
 
 import re
 import json
-from typing import Dict, List, Any, Union, Optional, NoReturn
+from typing import Dict, List, Any, Optional
 
 from .exceptions import ITSVariableError
 from .security import SecurityConfig, InputValidator
