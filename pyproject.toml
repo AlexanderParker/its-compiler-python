@@ -28,7 +28,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Text Processing :: Markup",
     "Topic :: Security",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "click>=8.0.0",
     "rich>=13.0.0",
@@ -183,7 +183,7 @@ ensure_newline_before_comments = true
 src_paths = ["its_compiler", "test"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
