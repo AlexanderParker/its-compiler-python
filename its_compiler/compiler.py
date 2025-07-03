@@ -86,8 +86,6 @@ class ITSCompiler:
 
     def _validate_file_security(self, template_path: Path) -> None:
         """Validate file security properties."""
-
-        # Check file size
         try:
             file_size = template_path.stat().st_size
             if file_size > self.security_config.processing.max_template_size:
@@ -95,15 +93,13 @@ class ITSCompiler:
         except OSError as e:
             raise ITSCompilationError(f"Cannot access template file: {e}")
 
-        # Check file extension
+        # Warn about unusual extensions or suspicious patterns
         if template_path.suffix.lower() not in {".json", ".its"}:
             print(f"Warning: Unusual file extension: {template_path.suffix}")
 
-        # Validate filename for suspicious patterns
-        filename = template_path.name
         suspicious_patterns = ["..", "%", "<", ">", "|", ":", '"', "?", "*"]
-        if any(pattern in filename for pattern in suspicious_patterns):
-            print(f"Warning: Suspicious filename pattern: {filename}")
+        if any(pattern in template_path.name for pattern in suspicious_patterns):
+            print(f"Warning: Suspicious filename pattern: {template_path.name}")
 
     def compile(
         self,
