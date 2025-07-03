@@ -173,7 +173,7 @@ class ITSCompiler:
             r"javascript\s*:",
             r"data\s*:\s*text/html",
             r"\\x[0-9a-fA-F]{2}",
-        ]                
+        ]
 
         for pattern in dangerous_patterns:
             if re.search(pattern, prompt, re.IGNORECASE):

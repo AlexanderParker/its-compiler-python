@@ -121,7 +121,9 @@ def get_symbols() -> Dict[str, str]:
     }
     return {k: v[0] if CAN_USE_UNICODE else v[1] for k, v in symbols.items()}
 
+
 SYMBOLS = get_symbols()
+
 
 class TemplateChangeHandler(FileSystemEventHandler):
     """Handler for template file changes in watch mode."""
