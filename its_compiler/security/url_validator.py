@@ -252,7 +252,7 @@ class URLValidator:
             if parsed.hostname:
                 try:
                     info["resolved_ips"] = self._resolve_hostname(parsed.hostname)
-                except e:
+                except Exception:
                     info["resolved_ips"] = []
 
             return info

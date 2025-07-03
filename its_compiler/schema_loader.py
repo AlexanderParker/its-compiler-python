@@ -9,7 +9,6 @@ import hashlib
 import gzip
 from pathlib import Path
 from typing import Dict, Any, Optional
-from urllib.parse import urlparse
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 

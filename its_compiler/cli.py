@@ -6,7 +6,6 @@ Fixed for cross-platform Unicode compatibility.
 import json
 import sys
 import time
-import uuid
 import platform
 from pathlib import Path
 from typing import Optional, Tuple, Any, Dict
@@ -423,7 +422,7 @@ def compile_template(
         # Show security status if verbose
         if verbose:
             security_status = compiler.get_security_status()
-            safe_print(f"[blue]Security Configuration:[/blue]")
+            safe_print("[blue]Security Configuration:[/blue]")
             safe_print(f"  HTTP allowed: {security_config.network.allow_http}")
             safe_print(
                 "  Interactive allowlist: {security_config.allowlist.interactive_mode}"

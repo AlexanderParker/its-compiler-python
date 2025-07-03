@@ -3,7 +3,6 @@ Main ITS compiler implementation with core security enhancements.
 """
 
 import json
-import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from urllib.parse import urljoin, urlparse
@@ -113,8 +112,6 @@ class ITSCompiler:
         base_url: Optional[str] = None,
     ) -> CompilationResult:
         """Compile a template dictionary with comprehensive security validation."""
-
-        start_time = time.time()
 
         # Input validation
         if self.input_validator:
