@@ -29,28 +29,15 @@ from .security import SecurityConfig, AllowlistManager, TrustLevel
 
 
 def setup_safe_console() -> Tuple[Console, bool]:
-    """Setup console that handles Windows encoding issues gracefully."""
-
-    # Always use legacy mode on Windows to avoid Unicode issues
-    if platform.system() == "Windows":
-        # Force legacy mode and safe settings for Windows
-        console = Console(
-            force_terminal=True,
-            legacy_windows=True,
-            width=None,
-            color_system="auto",
-            safe_box=True,
-            file=sys.stdout,
-        )
-        use_unicode = False
-    else:
-        # Non-Windows systems usually handle Unicode fine
-        console = Console(
-            force_terminal=True, legacy_windows=False, width=None, color_system="auto"
-        )
-        use_unicode = True
-
-    return console, use_unicode
+    """Setup console with Windows compatibility."""
+    is_windows = platform.system() == "Windows"
+    console = Console(
+        force_terminal=True,
+        legacy_windows=is_windows,
+        safe_box=is_windows,
+        color_system="auto",
+    )
+    return console, not is_windows
 
 
 def safe_print(
@@ -58,30 +45,19 @@ def safe_print(
 ) -> None:
     """Print message safely, handling Unicode encoding errors."""
     try:
-        if style:
-            console.print(message, style=style, highlight=highlight)
-        else:
-            console.print(message, highlight=highlight)
-    except UnicodeEncodeError:
-        # Remove Unicode characters and try again
+        console.print(message, style=style, highlight=highlight)
+    except (UnicodeEncodeError, Exception):
+        # Fallback to plain print with safe message
         safe_message = str(message)
-        safe_message = safe_message.replace("✓", "[OK]").replace("✗", "[FAIL]")
-        safe_message = safe_message.replace("❌", "[FAIL]").replace("⚠", "[WARN]")
-        safe_message = safe_message.replace("ℹ", "[INFO]").replace("•", "*")
-        safe_message = safe_message.replace("→", "->").replace("❯", ">")
-
-        try:
-            if style:
-                console.print(safe_message, style=style, highlight=highlight)
-            else:
-                console.print(safe_message, highlight=highlight)
-        except Exception:
-            # Ultimate fallback
-            print(safe_message)
-    except Exception:
-        # Final fallback for any other errors
-        print(str(message))
-
+        for old, new in [
+            ("✓", "[OK]"),
+            ("✗", "[FAIL]"),
+            ("⚠", "[WARN]"),
+            ("ℹ", "[INFO]"),
+            ("•", "*"),
+        ]:
+            safe_message = safe_message.replace(old, new)
+        print(safe_message)
 
 def create_safe_progress_context(
     description: str, disable_on_windows: bool = True
