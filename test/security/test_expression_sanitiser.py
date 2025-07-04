@@ -13,13 +13,13 @@ from its_compiler.security import (
 )
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def security_config() -> SecurityConfig:
     """Create security config for testing."""
     return SecurityConfig.for_development()
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def production_config() -> SecurityConfig:
     """Create production security config."""
     config = SecurityConfig.from_environment()
@@ -29,13 +29,13 @@ def production_config() -> SecurityConfig:
     return config
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def expression_sanitiser(security_config) -> ExpressionSanitiser:
     """Create expression sanitiser with test config."""
     return ExpressionSanitiser(security_config)
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def production_sanitiser(production_config) -> ExpressionSanitiser:
     """Create expression sanitiser with production config."""
     return ExpressionSanitiser(production_config)
