@@ -1,6 +1,6 @@
 """
 Schema loading and caching for ITS Compiler with core security enhancements.
-Fixed to handle gzip-compressed responses properly.
+Fixed to handle gzip-compressed responses properly and address security issues.
 """
 
 import gzip
@@ -134,7 +134,8 @@ class SchemaLoader:
         request = Request(url, headers=headers)
 
         try:
-            with urlopen(
+            # nosec B310: URL validation done above
+            with urlopen(  # nosec
                 request, timeout=self.security_config.network.request_timeout
             ) as response:
                 # Validate response
@@ -310,7 +311,8 @@ class SchemaLoader:
         if not self.cache_dir:
             raise ValueError("Cache directory not configured")
         # Create a safe filename from URL
-        url_hash = hashlib.md5(url.encode()).hexdigest()
+        # nosec B324: MD5 used for cache file naming only, not security
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()  # nosec
         return self.cache_dir / f"{url_hash}.json"
 
     def _load_from_cache(self, url: str) -> Optional[Dict[str, Any]]:

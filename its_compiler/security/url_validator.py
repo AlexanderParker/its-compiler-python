@@ -131,7 +131,8 @@ class URLValidator:
             localhost_variants = {
                 "localhost",
                 "127.0.0.1",
-                "0.0.0.0",
+                # nosec B104: This is a validation check, not binding to all interfaces
+                "0.0.0.0",  # nosec
                 "::1",
                 "0000:0000:0000:0000:0000:0000:0000:0001",
             }
@@ -147,7 +148,7 @@ class URLValidator:
             # DNS resolution failed - could be suspicious
             print(f"Warning: DNS resolution failed for {hostname}")
 
-    def _resolve_hostname(self, hostname: str) -> List[Union[str, int]]:
+    def _resolve_hostname(self, hostname: str) -> List[str]:
         """Resolve hostname to IP addresses."""
         try:
             # Get all IP addresses for the hostname

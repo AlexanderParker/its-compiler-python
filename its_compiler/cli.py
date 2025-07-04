@@ -46,7 +46,7 @@ def safe_print(
     """Print message safely, handling Unicode encoding errors."""
     try:
         console.print(message, style=style, highlight=highlight)
-    except (UnicodeEncodeError, Exception):
+    except Exception:
         # Fallback to plain print with safe message
         safe_message = str(message)
         for old, new in [
@@ -299,7 +299,7 @@ def handle_allowlist_commands(
                         table.add_row(key.replace("_", " ").title(), str(value))
 
                 console.print(table)
-            except (UnicodeEncodeError, Exception):
+            except Exception:
                 safe_print("Schema Allowlist Status:")
                 for key, value in stats.items():
                     if key != "most_used":
@@ -458,9 +458,9 @@ def compile_template(
             if verbose:
                 if compilation_result.overrides:
                     safe_print("[yellow]Type Overrides:[/yellow]")
-                    for override in compilation_result.overrides:
+                    for type_override in compilation_result.overrides:
                         safe_print(
-                            "  {override.type_name}: {override.override_source} -> {override.overridden_source}"
+                            f"  {type_override.type_name}: {type_override.override_source} -> {type_override.overridden_source}"
                         )
 
                 if compilation_result.warnings:
@@ -819,7 +819,7 @@ def validate_security_config(
             )
 
             console.print(table)
-        except (UnicodeEncodeError, Exception):
+        except Exception:
             safe_print("Security Configuration:")
             safe_print(f"  HTTP Allowed: {security_config.network.allow_http}")
             safe_print(f"  Allowlist Enabled: {security_config.enable_allowlist}")
