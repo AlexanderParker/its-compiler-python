@@ -10,7 +10,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -25,7 +25,7 @@ class TestCase:
     test_validation_only: bool = False
     variables_file: Optional[str] = None
     test_category: str = "integration"
-    extra_args: List[str] = None  # Additional CLI arguments
+    extra_args: Optional[List[str]] = None
 
 
 @dataclass
@@ -555,7 +555,7 @@ class TestRunner:
 
         return success
 
-    def generate_junit_xml(self, output_file: str):
+    def generate_junit_xml(self, output_file: str) -> None:
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
             from xml.dom import minidom
@@ -567,7 +567,7 @@ class TestRunner:
         testsuites = Element("testsuites")
 
         # Group by category
-        categories = {}
+        categories: Dict[str, Dict[str, int]] = {}
         for result in self.results:
             cat = result.test_case.test_category
             if cat not in categories:
@@ -646,7 +646,7 @@ class TestRunner:
             except Exception as fallback_e:
                 print(f"Could not write fallback XML either: {fallback_e}")
 
-    def list_categories(self):
+    def list_categories(self) -> None:
         """List available test categories."""
         test_cases = self.get_test_cases()
         categories = {}
@@ -662,7 +662,7 @@ class TestRunner:
             print(f"  {cat}: {count} tests")
 
 
-def main():
+def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Run ITS Compiler integration and security tests"

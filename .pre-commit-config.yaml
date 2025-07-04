@@ -46,6 +46,8 @@ repos:
         additional_dependencies:
           - types-requests
           - types-python-dateutil
+          - pytest
+          - pytest-stubs
         args: ["--ignore-missing-imports"]
   # Security scanning (focused approach)
   - repo: https://github.com/pycqa/bandit

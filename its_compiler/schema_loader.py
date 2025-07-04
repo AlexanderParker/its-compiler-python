@@ -248,7 +248,7 @@ class SchemaLoader:
                     data = gzip.decompress(data)
                 except Exception:
                     # If decompression fails, use original data
-                    pass
+                    return data
 
         return data
 

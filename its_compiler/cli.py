@@ -373,7 +373,7 @@ def compile_template(
     """Compile a template file with security controls."""
 
     # Load variables if provided
-    variables = {}
+    variables: Dict[str, Any] = {}
     if variables_path:
         try:
             variables = load_variables(variables_path)
@@ -460,7 +460,11 @@ def compile_template(
                     safe_print("[yellow]Type Overrides:[/yellow]")
                     for type_override in compilation_result.overrides:
                         safe_print(
-                            f"  {type_override.type_name}: {type_override.override_source} -> {type_override.overridden_source}"
+                            (
+                                f"  {type_override.type_name}: "
+                                f"{type_override.override_source} -> "
+                                f"{type_override.overridden_source}"
+                            )
                         )
 
                 if compilation_result.warnings:

@@ -4,7 +4,7 @@ URL validation and SSRF protection for ITS Compiler.
 
 import ipaddress
 import socket
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 from ..exceptions import ITSSchemaError
