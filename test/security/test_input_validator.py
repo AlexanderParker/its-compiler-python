@@ -9,13 +9,13 @@ import pytest
 from its_compiler.security import InputSecurityError, InputValidator, SecurityConfig
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def security_config() -> SecurityConfig:
     """Create security config for testing."""
     return SecurityConfig.for_development()
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def production_config() -> SecurityConfig:
     """Create production security config."""
     config = SecurityConfig.from_environment()
@@ -25,13 +25,13 @@ def production_config() -> SecurityConfig:
     return config
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def input_validator(security_config) -> InputValidator:
     """Create input validator with test config."""
     return InputValidator(security_config)
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def production_validator(production_config) -> InputValidator:
     """Create input validator with production config."""
     return InputValidator(production_config)

@@ -19,14 +19,14 @@ from its_compiler.models import ITSConfig
 from its_compiler.security import SecurityConfig
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def temp_dir():
     """Create temporary directory for test files."""
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def security_config(temp_dir) -> SecurityConfig:
     """Create security config for testing."""
     config = SecurityConfig.for_development()
@@ -34,7 +34,7 @@ def security_config(temp_dir) -> SecurityConfig:
     return config
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def production_config(temp_dir) -> SecurityConfig:
     """Create production security config."""
     config = SecurityConfig.from_environment()
@@ -42,19 +42,19 @@ def production_config(temp_dir) -> SecurityConfig:
     return config
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def its_config() -> ITSConfig:
     """Create ITS compiler config."""
     return ITSConfig(cache_enabled=False)
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def compiler(its_config, security_config) -> ITSCompiler:
     """Create compiler with security enabled."""
     return ITSCompiler(its_config, security_config)
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def production_compiler(its_config, production_config) -> ITSCompiler:
     """Create compiler with production security."""
     return ITSCompiler(its_config, production_config)
