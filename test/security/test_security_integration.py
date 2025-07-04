@@ -144,9 +144,7 @@ class TestSecurityIntegration:
         }
 
         # Mock non-interactive mode
-        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = (
-            False
-        )
+        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = False
 
         with pytest.raises((ITSValidationError, ITSCompilationError)):
             compiler.compile(template)
@@ -161,18 +159,14 @@ class TestSecurityIntegration:
         }
 
         # Enable interactive mode
-        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = (
-            True
-        )
+        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = True
 
         with pytest.raises((ITSValidationError, ITSCompilationError)):
             compiler.compile(template)
 
     @patch("builtins.input", return_value="2")  # Session allow
     @patch("urllib.request.urlopen")
-    def test_interactive_allowlist_allow(
-        self, mock_urlopen, mock_input, compiler
-    ) -> None:
+    def test_interactive_allowlist_allow(self, mock_urlopen, mock_input, compiler) -> None:
         """Test interactive allowlist approval allows compilation."""
         # Mock HTTP response
         mock_response = MagicMock()
@@ -195,9 +189,7 @@ class TestSecurityIntegration:
         }
 
         # Enable interactive mode
-        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = (
-            True
-        )
+        compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = True
 
         # Should compile successfully after approval
         result = compiler.compile(template)
@@ -270,18 +262,14 @@ class TestSecurityIntegration:
         malicious_path = temp_dir / "subdir" / ".." / ".." / "etc" / "passwd"
 
         # Should block or sanitize path traversal
-        with pytest.raises(
-            (ITSValidationError, ITSCompilationError, FileNotFoundError)
-        ):
+        with pytest.raises((ITSValidationError, ITSCompilationError, FileNotFoundError)):
             compiler.compile_file(str(malicious_path))
 
     def test_custom_instruction_type_security(self, compiler) -> None:
         """Test custom instruction types are validated for security."""
         malicious_template = {
             "version": "1.0.0",
-            "customInstructionTypes": {
-                "malicious": {"template": "<script>alert('xss')</script> {description}"}
-            },
+            "customInstructionTypes": {"malicious": {"template": "<script>alert('xss')</script> {description}"}},
             "content": [
                 {
                     "type": "placeholder",
@@ -353,14 +341,8 @@ class TestSecurityIntegration:
         prod_config = production_compiler.security_config
         dev_config = SecurityConfig.for_development()
 
-        assert (
-            prod_config.processing.max_template_size
-            <= dev_config.processing.max_template_size
-        )
-        assert (
-            prod_config.processing.max_expression_depth
-            <= dev_config.processing.max_expression_depth
-        )
+        assert prod_config.processing.max_template_size <= dev_config.processing.max_template_size
+        assert prod_config.processing.max_expression_depth <= dev_config.processing.max_expression_depth
 
     def test_error_information_disclosure(self, production_compiler) -> None:
         """Test error messages don't disclose sensitive information."""
@@ -447,9 +429,7 @@ class TestSecurityIntegration:
                         {
                             "type": "placeholder",
                             "instructionType": "paragraph",
-                            "config": {
-                                "description": "Generate content about ${topic}"
-                            },
+                            "config": {"description": "Generate content about ${topic}"},
                         }
                     ],
                 },

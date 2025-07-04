@@ -258,9 +258,7 @@ class TestExpressionSanitiser:
             variables_with_dangerous = {**variables, var_name: True}
 
             with pytest.raises(ExpressionSecurityError) as exc_info:
-                expression_sanitiser.sanitise_expression(
-                    f"{var_name} == True", variables_with_dangerous
-                )
+                expression_sanitiser.sanitise_expression(f"{var_name} == True", variables_with_dangerous)
 
             assert "Dangerous variable name" in str(exc_info.value)
 
@@ -310,9 +308,7 @@ class TestExpressionSanitiser:
 
         for attr in dangerous_attrs:
             with pytest.raises(ExpressionSecurityError) as exc_info:
-                expression_sanitiser.sanitise_expression(
-                    f"obj.{attr} == None", variables
-                )
+                expression_sanitiser.sanitise_expression(f"obj.{attr} == None", variables)
 
             assert "Dangerous attribute access" in str(exc_info.value)
 
@@ -328,9 +324,7 @@ class TestExpressionSanitiser:
         large_index = expression_sanitiser.config.processing.max_array_index + 1
 
         with pytest.raises(ExpressionSecurityError) as exc_info:
-            expression_sanitiser.sanitise_expression(
-                f"items[{large_index}] == 1", variables
-            )
+            expression_sanitiser.sanitise_expression(f"items[{large_index}] == 1", variables)
 
         assert "Array index too large" in str(exc_info.value)
 
@@ -345,9 +339,7 @@ class TestExpressionSanitiser:
         large_negative = -(expression_sanitiser.config.processing.max_array_index + 1)
 
         with pytest.raises(ExpressionSecurityError) as exc_info:
-            expression_sanitiser.sanitise_expression(
-                f"items[{large_negative}] == 1", variables
-            )
+            expression_sanitiser.sanitise_expression(f"items[{large_negative}] == 1", variables)
 
         assert "Array index too negative" in str(exc_info.value)
 
@@ -409,15 +401,10 @@ class TestExpressionSanitiser:
         variables = {"test": True}
 
         # Safe expression
-        assert (
-            expression_sanitiser.is_expression_safe("test == True", variables) is True
-        )
+        assert expression_sanitiser.is_expression_safe("test == True", variables) is True
 
         # Unsafe expression
-        assert (
-            expression_sanitiser.is_expression_safe("exec('malicious')", variables)
-            is False
-        )
+        assert expression_sanitiser.is_expression_safe("exec('malicious')", variables) is False
 
     def test_get_safe_operators(self, expression_sanitiser) -> None:
         """Test getting list of safe operators."""

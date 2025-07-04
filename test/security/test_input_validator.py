@@ -204,9 +204,7 @@ class TestInputValidator:
         # Missing description in config
         template = {
             "version": "1.0.0",
-            "content": [
-                {"type": "placeholder", "instructionType": "paragraph", "config": {}}
-            ],
+            "content": [{"type": "placeholder", "instructionType": "paragraph", "config": {}}],
         }
 
         with pytest.raises(InputSecurityError) as exc_info:
@@ -219,9 +217,7 @@ class TestInputValidator:
         # Missing condition
         template = {
             "version": "1.0.0",
-            "content": [
-                {"type": "conditional", "content": [{"type": "text", "text": "test"}]}
-            ],
+            "content": [{"type": "conditional", "content": [{"type": "text", "text": "test"}]}],
         }
 
         with pytest.raises(InputSecurityError) as exc_info:
@@ -559,9 +555,7 @@ class TestInputValidator:
             sanitised = input_validator.sanitise_filename(filename)
 
             # Should not contain dangerous characters
-            assert not any(
-                char in sanitised for char in ["<", ">", ":", '"', "|", "?", "*", "\\"]
-            )
+            assert not any(char in sanitised for char in ["<", ">", ":", '"', "|", "?", "*", "\\"])
 
             # Should not contain path traversal
             assert ".." not in sanitised
