@@ -6,6 +6,7 @@ import json
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,14 +20,14 @@ from its_compiler.security import (
 
 
 @pytest.fixture
-def temp_config_dir():
+def temp_config_dir() -> Generator[Path, None, None]:
     """Create temporary config directory."""
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
 
 @pytest.fixture
-def security_config(temp_config_dir) -> SecurityConfig:
+def security_config(temp_config_dir: Path) -> SecurityConfig:
     """Create security config with temp directory."""
     config = SecurityConfig.for_development()
     config.allowlist.allowlist_file = str(temp_config_dir / "test_allowlist.json")
@@ -34,7 +35,7 @@ def security_config(temp_config_dir) -> SecurityConfig:
 
 
 @pytest.fixture
-def allowlist_manager(security_config) -> AllowlistManager:
+def allowlist_manager(security_config: SecurityConfig) -> AllowlistManager:
     """Create allowlist manager with test config."""
     return AllowlistManager(security_config)
 
@@ -42,7 +43,7 @@ def allowlist_manager(security_config) -> AllowlistManager:
 class TestAllowlistManager:
     """Test AllowlistManager functionality."""
 
-    def test_initialization(self, allowlist_manager):
+    def test_initialization(self, allowlist_manager: AllowlistManager) -> None:
         """Test manager initializes correctly."""
         assert allowlist_manager.entries == {}
         assert allowlist_manager.session_allowed == set()

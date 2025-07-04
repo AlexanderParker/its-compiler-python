@@ -30,13 +30,13 @@ def production_config() -> SecurityConfig:
 
 
 @pytest.fixture
-def expression_sanitiser(security_config) -> ExpressionSanitiser:
+def expression_sanitiser(security_config: SecurityConfig) -> ExpressionSanitiser:
     """Create expression sanitiser with test config."""
     return ExpressionSanitiser(security_config)
 
 
 @pytest.fixture
-def production_sanitiser(production_config) -> ExpressionSanitiser:
+def production_sanitiser(production_config: SecurityConfig) -> ExpressionSanitiser:
     """Create expression sanitiser with production config."""
     return ExpressionSanitiser(production_config)
 
@@ -223,7 +223,7 @@ class TestExpressionSanitiser:
             assert "Forbidden AST node type" in str(exc_info.value)
             assert exc_info.value.reason == "forbidden_node_type"
 
-    def test_nesting_depth_limit(self, production_sanitiser) -> None:
+    def test_nesting_depth_limit(self, production_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions that exceed nesting depth are rejected."""
         variables = {"test": True}
 
@@ -444,7 +444,7 @@ class TestExpressionSanitiser:
 
     def test_boolean_literal_handling(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test boolean literal handling."""
-        variables = {}
+        variables: Dict[str, Any] = {}
 
         # Test different boolean representations
         boolean_expressions = [
@@ -506,7 +506,7 @@ class TestExpressionSanitiser:
         for expr in literal_expressions:
             expression_sanitiser.sanitise_expression(expr, variables)
 
-    def test_production_security_limits(self, production_sanitiser) -> None:
+    def test_production_security_limits(self, production_sanitiser: ExpressionSanitiser) -> None:
         """Test stricter limits in production mode."""
         variables = {"test": True}
 

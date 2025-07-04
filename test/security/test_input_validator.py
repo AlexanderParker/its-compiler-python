@@ -2,7 +2,7 @@
 Tests for InputValidator malicious content detection and input validation.
 """
 
-from typing import Dict
+from typing import Any, Dict
 
 import pytest
 
@@ -26,13 +26,13 @@ def production_config() -> SecurityConfig:
 
 
 @pytest.fixture
-def input_validator(security_config) -> InputValidator:
+def input_validator(security_config: SecurityConfig) -> InputValidator:
     """Create input validator with test config."""
     return InputValidator(security_config)
 
 
 @pytest.fixture
-def production_validator(production_config) -> InputValidator:
+def production_validator(production_config: SecurityConfig) -> InputValidator:
     """Create input validator with production config."""
     return InputValidator(production_config)
 
@@ -131,7 +131,7 @@ class TestInputValidator:
 
         assert "Field 'content' must be an array" in str(exc_info.value)
 
-    def test_too_many_content_elements(self, production_validator) -> None:
+    def test_too_many_content_elements(self, production_validator: InputValidator) -> None:
         """Test limit on number of content elements."""
         # Create template with too many elements
         many_elements = [{"type": "text", "text": f"element {i}"} for i in range(600)]
@@ -398,7 +398,7 @@ class TestInputValidator:
     def test_object_nesting_depth(self, input_validator: InputValidator) -> None:
         """Test object nesting depth validation."""
         # Create deeply nested object
-        nested_obj: Dict[str, any] = {}
+        nested_obj: Dict[str, Any] = {}
         current = nested_obj
         for _ in range(15):  # Exceed depth limit
             current["nested"] = {}
@@ -633,6 +633,6 @@ class TestInputValidator:
     def test_template_not_object(self, input_validator: InputValidator) -> None:
         """Test template that is not an object."""
         with pytest.raises(InputSecurityError) as exc_info:
-            input_validator.validate_template("not an object")
+            input_validator.validate_template("not an object")  # type: ignore
 
         assert "Template must be a JSON object" in str(exc_info.value)
