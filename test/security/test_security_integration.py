@@ -5,6 +5,7 @@ End-to-end security integration tests and attack simulations.
 import json
 import tempfile
 from pathlib import Path
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,14 +21,14 @@ from its_compiler.security import SecurityConfig
 
 
 @pytest.fixture
-def temp_dir():
+def temp_dir() -> Generator[Path, None, None]:
     """Create temporary directory for test files."""
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
 
 @pytest.fixture
-def security_config(temp_dir) -> SecurityConfig:
+def security_config(temp_dir: Path) -> SecurityConfig:
     """Create security config for testing."""
     config = SecurityConfig.for_development()
     config.allowlist.allowlist_file = str(temp_dir / "test_allowlist.json")
@@ -35,7 +36,7 @@ def security_config(temp_dir) -> SecurityConfig:
 
 
 @pytest.fixture
-def production_config(temp_dir) -> SecurityConfig:
+def production_config(temp_dir: Path) -> SecurityConfig:
     """Create production security config."""
     config = SecurityConfig.from_environment()
     config.allowlist.allowlist_file = str(temp_dir / "prod_allowlist.json")
@@ -49,13 +50,13 @@ def its_config() -> ITSConfig:
 
 
 @pytest.fixture
-def compiler(its_config, security_config) -> ITSCompiler:
+def compiler(its_config: ITSConfig, security_config: SecurityConfig) -> ITSCompiler:
     """Create compiler with security enabled."""
     return ITSCompiler(its_config, security_config)
 
 
 @pytest.fixture
-def production_compiler(its_config, production_config) -> ITSCompiler:
+def production_compiler(its_config: ITSConfig, production_config: SecurityConfig) -> ITSCompiler:
     """Create compiler with production security."""
     return ITSCompiler(its_config, production_config)
 
