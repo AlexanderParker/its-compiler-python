@@ -380,7 +380,7 @@ class TestSecurityIntegration:
                 "content": [],
             }
             current_content.append(nested)
-            current_content = nested["content"]  # type: ignore[assignment]
+            current_content = nested["content"]
 
         current_content.append({"type": "text", "text": "deep"})
 
