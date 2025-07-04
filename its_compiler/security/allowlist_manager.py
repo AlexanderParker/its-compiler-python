@@ -93,9 +93,7 @@ class AllowlistManager:
             data = {
                 "version": "1.0",
                 "updated": datetime.now(timezone.utc).isoformat(),
-                "entries": {
-                    url: entry.to_dict() for url, entry in self.entries.items()
-                },
+                "entries": {url: entry.to_dict() for url, entry in self.entries.items()},
             }
 
             # Create directory if needed
@@ -258,10 +256,7 @@ class AllowlistManager:
             fingerprint = self._calculate_fingerprint(content)
 
             # Check for changes
-            if (
-                self.entries[url].fingerprint
-                and self.entries[url].fingerprint != fingerprint
-            ):
+            if self.entries[url].fingerprint and self.entries[url].fingerprint != fingerprint:
                 print(f"Warning: Schema content changed for {url}")
 
             self.entries[url].fingerprint = fingerprint
@@ -269,12 +264,8 @@ class AllowlistManager:
 
     def get_stats(self) -> Dict:
         """Get allowlist statistics."""
-        permanent_count = sum(
-            1 for e in self.entries.values() if e.trust_level == TrustLevel.PERMANENT
-        )
-        denied_count = sum(
-            1 for e in self.entries.values() if e.trust_level == TrustLevel.NEVER
-        )
+        permanent_count = sum(1 for e in self.entries.values() if e.trust_level == TrustLevel.PERMANENT)
+        denied_count = sum(1 for e in self.entries.values() if e.trust_level == TrustLevel.NEVER)
         session_count = len(self.session_allowed)
 
         return {
@@ -287,9 +278,7 @@ class AllowlistManager:
 
     def _get_most_used_schemas(self, limit: int) -> List[Dict]:
         """Get most frequently used schemas."""
-        sorted_entries = sorted(
-            self.entries.values(), key=lambda e: e.use_count, reverse=True
-        )
+        sorted_entries = sorted(self.entries.values(), key=lambda e: e.use_count, reverse=True)
 
         return [
             {

@@ -43,12 +43,12 @@ class TestResult:
 class TestRunner:
     """Runs integration and security tests for the ITS compiler."""
 
-    def __init__(self, compiler_command: str = "its-compile", verbose: bool = False):
+    def __init__(self: "TestRunner", compiler_command: str = "its-compile", verbose: bool = False):
         self.compiler_command = compiler_command
         self.verbose = verbose
         self.results: List[TestResult] = []
 
-    def get_test_cases(self) -> List[TestCase]:
+    def get_test_cases(self: "TestRunner") -> List[TestCase]:
         """Define all test cases including security tests."""
         return [
             # Integration Tests
@@ -297,7 +297,7 @@ class TestRunner:
             ),
         ]
 
-    def _safe_text_for_xml(self, text: str) -> str:
+    def _safe_text_for_xml(self: "TestRunner", text: str) -> str:
         """Safely escape text for XML, handling Unicode and control characters."""
         if not text:
             return ""
@@ -318,7 +318,7 @@ class TestRunner:
 
         return text
 
-    def run_test(self, test_case: TestCase) -> TestResult:
+    def run_test(self: "TestRunner", test_case: TestCase) -> TestResult:
         """Run a single test case."""
         print(f"\n{'='*60}")
         print(f"Running: {test_case.name}")
@@ -378,24 +378,17 @@ class TestRunner:
             execution_time = time.time() - start_time
 
             # Determine if test passed
-            passed = (
-                result.returncode == 0
-                if test_case.should_pass
-                else result.returncode != 0
-            )
+            passed = result.returncode == 0 if test_case.should_pass else result.returncode != 0
 
             # Check for expected errors if specified
             if test_case.expected_errors and not test_case.should_pass:
                 output_text = (result.stderr + result.stdout).lower()
                 # For tests with multiple expected errors, we only need to find ONE of them
                 found_expected_error = any(
-                    expected_error.lower() in output_text
-                    for expected_error in test_case.expected_errors
+                    expected_error.lower() in output_text for expected_error in test_case.expected_errors
                 )
                 if not found_expected_error:
-                    print(
-                        f"Expected errors not found. Looking for any of: {test_case.expected_errors}"
-                    )
+                    print(f"Expected errors not found. Looking for any of: {test_case.expected_errors}")
                     print(f"Got output: {result.stderr + result.stdout}")
                 passed = passed and found_expected_error
 
@@ -441,13 +434,9 @@ class TestRunner:
                 exit_code=-3,
             )
 
-    def run_tests_by_category(
-        self, category: str, stop_on_failure: bool = False
-    ) -> bool:
+    def run_tests_by_category(self: "TestRunner", category: str, stop_on_failure: bool = False) -> bool:
         """Run tests filtered by category."""
-        test_cases = [
-            tc for tc in self.get_test_cases() if tc.test_category == category
-        ]
+        test_cases = [tc for tc in self.get_test_cases() if tc.test_category == category]
 
         if not test_cases:
             print(f"No tests found for category: {category}")
@@ -463,20 +452,14 @@ class TestRunner:
                 print(f"\n🛑 Stopping on first failure: {test_case.name}")
                 break
 
-        return all(
-            r.passed for r in self.results if r.test_case.test_category == category
-        )
+        return all(r.passed for r in self.results if r.test_case.test_category == category)
 
-    def run_all_tests(
-        self, stop_on_failure: bool = False, category_filter: Optional[str] = None
-    ) -> bool:
+    def run_all_tests(self: "TestRunner", stop_on_failure: bool = False, category_filter: Optional[str] = None) -> bool:
         """Run all test cases or filter by category."""
         test_cases = self.get_test_cases()
 
         if category_filter:
-            test_cases = [
-                tc for tc in test_cases if tc.test_category == category_filter
-            ]
+            test_cases = [tc for tc in test_cases if tc.test_category == category_filter]
             if not test_cases:
                 print(f"No tests found for category: {category_filter}")
                 return True
@@ -496,7 +479,7 @@ class TestRunner:
 
         return self.print_summary(category_filter)
 
-    def print_summary(self, category_filter: Optional[str] = None) -> bool:
+    def print_summary(self: "TestRunner", category_filter: Optional[str] = None) -> bool:
         """Print test summary and return overall success."""
         print(f"\n{'='*60}")
         print("TEST SUMMARY")
@@ -505,9 +488,7 @@ class TestRunner:
         # Filter results if category specified
         results = self.results
         if category_filter:
-            results = [
-                r for r in self.results if r.test_case.test_category == category_filter
-            ]
+            results = [r for r in self.results if r.test_case.test_category == category_filter]
 
         passed_tests = [r for r in results if r.passed]
         failed_tests = [r for r in results if not r.passed]
@@ -536,16 +517,12 @@ class TestRunner:
         if failed_tests:
             print("\n🔴 FAILED TESTS:")
             for result in failed_tests:
-                print(
-                    f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}..."
-                )
+                print(f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}...")
 
         if passed_tests:
             print("\n✅ PASSED TESTS:")
             for result in passed_tests:
-                print(
-                    f"  - {result.test_case.name} ({result.test_case.test_category}) ({result.execution_time:.2f}s)"
-                )
+                print(f"  - {result.test_case.name} ({result.test_case.test_category}) ({result.execution_time:.2f}s)")
 
         total_time = sum(r.execution_time for r in results)
         print(f"\nTotal execution time: {total_time:.2f}s")
@@ -555,11 +532,10 @@ class TestRunner:
 
         return success
 
-    def generate_junit_xml(self, output_file: str) -> None:
+    def generate_junit_xml(self: "TestRunner", output_file: str) -> None:
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
-            from xml.dom import minidom
-            from xml.etree.ElementTree import Element, SubElement, tostring
+            from xml.etree.ElementTree import Element, SubElement
         except ImportError:
             print("Warning: Cannot generate JUnit XML (xml module not available)")
             return
@@ -567,7 +543,7 @@ class TestRunner:
         testsuites = Element("testsuites")
 
         # Group by category
-        categories: Dict[str, Dict[str, int]] = {}
+        categories: Dict[str, List[TestResult]] = {}  # Fixed type annotation
         for result in self.results:
             cat = result.test_case.test_category
             if cat not in categories:
@@ -601,52 +577,7 @@ class TestRunner:
                     stderr = SubElement(testcase, "system-err")
                     stderr.text = self._safe_text_for_xml(result.error_output)
 
-        # Convert to string with proper encoding
-        try:
-            rough_string = tostring(testsuites, encoding="unicode")
-
-            # Parse and pretty print with error handling
-            try:
-                reparsed = minidom.parseString(rough_string)
-                pretty_xml = reparsed.toprettyxml(indent="  ")
-
-                # Remove empty lines that toprettyxml sometimes adds
-                pretty_xml = "\n".join(
-                    [line for line in pretty_xml.split("\n") if line.strip()]
-                )
-
-            except Exception as e:
-                print(f"Warning: Could not pretty-print XML ({e}), using raw XML")
-                pretty_xml = rough_string
-
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(pretty_xml)
-
-            print(f"JUnit XML report written to: {output_file}")
-
-        except Exception as e:
-            print(f"Error generating JUnit XML: {e}")
-            # Try writing a minimal XML as fallback
-            try:
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-                    f.write("<testsuites>\n")
-                    f.write(
-                        f'  <testsuite name="ITS Compiler Tests" tests="{len(self.results)}">\n'
-                    )
-                    for result in self.results:
-                        safe_name = self._safe_text_for_xml(result.test_case.name)
-                        status = "passed" if result.passed else "failed"
-                        f.write(
-                            f'    <testcase name="{safe_name}" status="{status}"/>\n'
-                        )
-                    f.write("  </testsuite>\n")
-                    f.write("</testsuites>\n")
-                print(f"Fallback JUnit XML written to: {output_file}")
-            except Exception as fallback_e:
-                print(f"Could not write fallback XML either: {fallback_e}")
-
-    def list_categories(self) -> None:
+    def list_categories(self: "TestRunner") -> None:
         """List available test categories."""
         test_cases = self.get_test_cases()
         categories = {}
@@ -664,21 +595,15 @@ class TestRunner:
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Run ITS Compiler integration and security tests"
-    )
+    parser = argparse.ArgumentParser(description="Run ITS Compiler integration and security tests")
     parser.add_argument(
         "--compiler",
         default="its-compile",
         help="Compiler command to test (default: its-compile)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    parser.add_argument(
-        "--stop-on-failure", action="store_true", help="Stop on first test failure"
-    )
-    parser.add_argument(
-        "--junit-xml", help="Generate JUnit XML report to specified file"
-    )
+    parser.add_argument("--stop-on-failure", action="store_true", help="Stop on first test failure")
+    parser.add_argument("--junit-xml", help="Generate JUnit XML report to specified file")
     parser.add_argument("--test", help="Run specific test by name")
     parser.add_argument(
         "--category",
@@ -691,12 +616,8 @@ def main() -> int:
         ],
         help="Run tests from specific category",
     )
-    parser.add_argument(
-        "--list-categories", action="store_true", help="List available test categories"
-    )
-    parser.add_argument(
-        "--security-only", action="store_true", help="Run only security tests"
-    )
+    parser.add_argument("--list-categories", action="store_true", help="List available test categories")
+    parser.add_argument("--security-only", action="store_true", help="Run only security tests")
 
     args = parser.parse_args()
 
@@ -712,9 +633,7 @@ def main() -> int:
     if args.test:
         # Run specific test
         test_cases = runner.get_test_cases()
-        matching_tests = [
-            tc for tc in test_cases if args.test.lower() in tc.name.lower()
-        ]
+        matching_tests = [tc for tc in test_cases if args.test.lower() in tc.name.lower()]
 
         if not matching_tests:
             print(f"No tests found matching: {args.test}")
@@ -730,9 +649,7 @@ def main() -> int:
         success = runner.print_summary()
     elif args.category:
         # Run tests from specific category
-        success = runner.run_all_tests(
-            stop_on_failure=args.stop_on_failure, category_filter=args.category
-        )
+        success = runner.run_all_tests(stop_on_failure=args.stop_on_failure, category_filter=args.category)
     else:
         # Run all tests
         success = runner.run_all_tests(stop_on_failure=args.stop_on_failure)

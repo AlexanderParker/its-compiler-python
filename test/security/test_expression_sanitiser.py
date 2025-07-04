@@ -44,7 +44,7 @@ def production_sanitiser(production_config) -> ExpressionSanitiser:
 class TestExpressionSanitiser:
     """Test ExpressionSanitiser security functionality."""
 
-    def test_valid_simple_expressions(self, expression_sanitiser) -> None:
+    def test_valid_simple_expressions(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test valid simple expressions pass validation."""
         variables = {"user": {"name": "John"}, "active": True, "count": 5}
 
@@ -64,7 +64,7 @@ class TestExpressionSanitiser:
             result = expression_sanitiser.sanitise_expression(expr, variables)
             assert result == expr  # Should return unchanged
 
-    def test_valid_complex_expressions(self, expression_sanitiser) -> None:
+    def test_valid_complex_expressions(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test valid complex expressions pass validation."""
         variables = {
             "settings": {"debug": True, "level": 2},
@@ -88,7 +88,7 @@ class TestExpressionSanitiser:
                 # Expected for some expressions with forbidden constructs
                 pass
 
-    def test_expression_too_long(self, expression_sanitiser) -> None:
+    def test_expression_too_long(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions that exceed length limits are rejected."""
         variables = {"test": True}
 
@@ -101,7 +101,7 @@ class TestExpressionSanitiser:
         assert "Expression too long" in str(exc_info.value)
         assert exc_info.value.reason == "expression_too_long"
 
-    def test_empty_expression(self, expression_sanitiser) -> None:
+    def test_empty_expression(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test empty expressions are rejected."""
         variables: Dict[str, Any] = {}
 
@@ -111,7 +111,7 @@ class TestExpressionSanitiser:
         assert "Empty expression" in str(exc_info.value)
         assert exc_info.value.reason == "empty_expression"
 
-    def test_unbalanced_parentheses(self, expression_sanitiser) -> None:
+    def test_unbalanced_parentheses(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions with unbalanced parentheses are rejected."""
         variables = {"test": True}
 
@@ -128,7 +128,7 @@ class TestExpressionSanitiser:
 
             assert "Unbalanced parentheses" in str(exc_info.value)
 
-    def test_unbalanced_brackets(self, expression_sanitiser) -> None:
+    def test_unbalanced_brackets(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions with unbalanced brackets are rejected."""
         variables = {"items": [1, 2, 3]}
 
@@ -144,7 +144,7 @@ class TestExpressionSanitiser:
 
             assert "Unbalanced brackets" in str(exc_info.value)
 
-    def test_dangerous_patterns_detected(self, expression_sanitiser) -> None:
+    def test_dangerous_patterns_detected(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test dangerous patterns in expressions are detected."""
         variables = {"test": True}
 
@@ -167,7 +167,7 @@ class TestExpressionSanitiser:
             assert "Dangerous pattern detected" in str(exc_info.value)
             assert exc_info.value.reason == "dangerous_pattern"
 
-    def test_suspicious_characters(self, expression_sanitiser) -> None:
+    def test_suspicious_characters(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions with suspicious characters are rejected."""
         variables = {"test": True}
 
@@ -185,7 +185,7 @@ class TestExpressionSanitiser:
             assert "Suspicious characters" in str(exc_info.value)
             assert exc_info.value.reason == "suspicious_characters"
 
-    def test_syntax_errors(self, expression_sanitiser) -> None:
+    def test_syntax_errors(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions with syntax errors are rejected."""
         variables = {"test": True}
 
@@ -204,7 +204,7 @@ class TestExpressionSanitiser:
             assert "Syntax error" in str(exc_info.value)
             assert exc_info.value.reason == "syntax_error"
 
-    def test_forbidden_ast_nodes(self, expression_sanitiser) -> None:
+    def test_forbidden_ast_nodes(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions with forbidden AST nodes are rejected."""
         variables = {"test": True}
 
@@ -238,7 +238,7 @@ class TestExpressionSanitiser:
         assert "nesting too deep" in str(exc_info.value)
         assert exc_info.value.reason == "nesting_too_deep"
 
-    def test_variable_name_validation(self, expression_sanitiser) -> None:
+    def test_variable_name_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test variable name validation."""
         variables = {"valid": True, "test123": True}
 
@@ -262,7 +262,7 @@ class TestExpressionSanitiser:
 
             assert "Dangerous variable name" in str(exc_info.value)
 
-    def test_variable_name_too_long(self, expression_sanitiser) -> None:
+    def test_variable_name_too_long(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test variable names that are too long are rejected."""
         long_name = "a" * 200  # Exceed limit
         variables = {long_name: True}
@@ -273,7 +273,7 @@ class TestExpressionSanitiser:
         assert "Variable name too long" in str(exc_info.value)
         assert exc_info.value.reason == "variable_name_too_long"
 
-    def test_invalid_variable_characters(self, expression_sanitiser) -> None:
+    def test_invalid_variable_characters(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test variable names with invalid characters are rejected."""
         # This would be caught at the parsing stage, but test the validation
         variables = {"test": True}
@@ -282,7 +282,7 @@ class TestExpressionSanitiser:
         with pytest.raises(ExpressionSecurityError):
             expression_sanitiser.sanitise_expression("test-invalid == True", variables)
 
-    def test_attribute_access_validation(self, expression_sanitiser) -> None:
+    def test_attribute_access_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test object attribute access validation."""
         variables = {"obj": {"safe_attr": True, "_private": True}}
 
@@ -295,7 +295,7 @@ class TestExpressionSanitiser:
 
         assert "Private attribute access not allowed" in str(exc_info.value)
 
-    def test_dangerous_attribute_access(self, expression_sanitiser) -> None:
+    def test_dangerous_attribute_access(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test dangerous attribute access is blocked."""
         variables = {"obj": {"__class__": type}}
 
@@ -312,7 +312,7 @@ class TestExpressionSanitiser:
 
             assert "Dangerous attribute access" in str(exc_info.value)
 
-    def test_array_index_validation(self, expression_sanitiser) -> None:
+    def test_array_index_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test array index validation."""
         variables = {"items": [1, 2, 3, 4, 5]}
 
@@ -328,7 +328,7 @@ class TestExpressionSanitiser:
 
         assert "Array index too large" in str(exc_info.value)
 
-    def test_negative_array_index_validation(self, expression_sanitiser) -> None:
+    def test_negative_array_index_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test negative array index validation."""
         variables = {"items": [1, 2, 3]}
 
@@ -343,7 +343,7 @@ class TestExpressionSanitiser:
 
         assert "Array index too negative" in str(exc_info.value)
 
-    def test_literal_size_validation(self, expression_sanitiser) -> None:
+    def test_literal_size_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test literal size validation."""
         variables = {"test": True}
 
@@ -355,7 +355,7 @@ class TestExpressionSanitiser:
 
         assert "Literal too large" in str(exc_info.value)
 
-    def test_variable_reference_counting(self, expression_sanitiser) -> None:
+    def test_variable_reference_counting(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test variable reference counting."""
         # Create expression with many variable references
         many_vars = {f"var{i}": True for i in range(200)}
@@ -368,7 +368,7 @@ class TestExpressionSanitiser:
 
         assert "Too many variable references" in str(exc_info.value)
 
-    def test_undefined_variable_logging(self, expression_sanitiser) -> None:
+    def test_undefined_variable_logging(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test undefined variable reference logging."""
         variables = {"defined": True}
 
@@ -376,7 +376,7 @@ class TestExpressionSanitiser:
         with pytest.raises(ExpressionSecurityError):
             expression_sanitiser.sanitise_expression("undefined == True", variables)
 
-    def test_get_expression_complexity(self, expression_sanitiser) -> None:
+    def test_get_expression_complexity(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expression complexity analysis."""
         expr = 'user.name == "John" and user.active == True'
 
@@ -387,7 +387,7 @@ class TestExpressionSanitiser:
         assert complexity["max_depth"] > 0
         assert complexity["variable_count"] > 0
 
-    def test_expression_complexity_parse_error(self, expression_sanitiser) -> None:
+    def test_expression_complexity_parse_error(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expression complexity with parse error."""
         invalid_expr = "invalid syntax =="
 
@@ -396,7 +396,7 @@ class TestExpressionSanitiser:
         assert complexity["length"] == len(invalid_expr)
         assert complexity["parse_error"] is True
 
-    def test_is_expression_safe(self, expression_sanitiser) -> None:
+    def test_is_expression_safe(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expression safety check."""
         variables = {"test": True}
 
@@ -406,7 +406,7 @@ class TestExpressionSanitiser:
         # Unsafe expression
         assert expression_sanitiser.is_expression_safe("exec('malicious')", variables) is False
 
-    def test_get_safe_operators(self, expression_sanitiser) -> None:
+    def test_get_safe_operators(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test getting list of safe operators."""
         operators = expression_sanitiser.get_safe_operators()
 
@@ -429,7 +429,7 @@ class TestExpressionSanitiser:
         for op in expected_operators:
             assert op in operators
 
-    def test_get_blocked_patterns(self, expression_sanitiser) -> None:
+    def test_get_blocked_patterns(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test getting list of blocked patterns."""
         patterns = expression_sanitiser.get_blocked_patterns()
 
@@ -442,7 +442,7 @@ class TestExpressionSanitiser:
         for pattern in expected_patterns:
             assert pattern in patterns
 
-    def test_boolean_literal_handling(self, expression_sanitiser) -> None:
+    def test_boolean_literal_handling(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test boolean literal handling."""
         variables = {}
 
@@ -458,7 +458,7 @@ class TestExpressionSanitiser:
             # Should not raise exception
             expression_sanitiser.sanitise_expression(expr, variables)
 
-    def test_comparison_operators(self, expression_sanitiser) -> None:
+    def test_comparison_operators(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test all comparison operators."""
         variables = {"num": 5, "text": "hello"}
 
@@ -476,7 +476,7 @@ class TestExpressionSanitiser:
         for expr in comparison_expressions:
             expression_sanitiser.sanitise_expression(expr, variables)
 
-    def test_boolean_operators(self, expression_sanitiser) -> None:
+    def test_boolean_operators(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test boolean operators."""
         variables = {"a": True, "b": False, "c": True}
 
@@ -492,7 +492,7 @@ class TestExpressionSanitiser:
         for expr in boolean_expressions:
             expression_sanitiser.sanitise_expression(expr, variables)
 
-    def test_list_tuple_literals(self, expression_sanitiser) -> None:
+    def test_list_tuple_literals(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test list and tuple literals."""
         variables = {"item": 2}
 
@@ -516,7 +516,7 @@ class TestExpressionSanitiser:
         with pytest.raises(ExpressionSecurityError):
             production_sanitiser.sanitise_expression(long_expr, variables)
 
-    def test_security_context_in_errors(self, expression_sanitiser) -> None:
+    def test_security_context_in_errors(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test security context is preserved in errors."""
         variables = {"test": True}
 
@@ -527,7 +527,7 @@ class TestExpressionSanitiser:
             assert e.reason is not None
             assert "malicious" in e.expression or len(e.expression) == 100  # Truncated
 
-    def test_edge_case_expressions(self, expression_sanitiser) -> None:
+    def test_edge_case_expressions(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test various edge case expressions."""
         variables = {"items": [1, 2, 3], "obj": {"key": "value"}, "flag": True}
 

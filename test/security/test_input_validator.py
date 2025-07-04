@@ -40,7 +40,7 @@ def production_validator(production_config) -> InputValidator:
 class TestInputValidator:
     """Test InputValidator security functionality."""
 
-    def test_valid_template_structure(self, input_validator) -> None:
+    def test_valid_template_structure(self, input_validator: InputValidator) -> None:
         """Test valid template structure passes validation."""
         valid_template = {
             "version": "1.0.0",
@@ -57,7 +57,7 @@ class TestInputValidator:
         # Should not raise exception
         input_validator.validate_template(valid_template)
 
-    def test_template_too_large(self, input_validator) -> None:
+    def test_template_too_large(self, input_validator: InputValidator) -> None:
         """Test template size limit enforcement."""
         # Create large template content
         large_text = "x" * (2 * 1024 * 1024)  # 2MB of content
@@ -72,7 +72,7 @@ class TestInputValidator:
         assert "Template too large" in str(exc_info.value)
         assert exc_info.value.reason == "size_exceeded"
 
-    def test_missing_required_fields(self, input_validator) -> None:
+    def test_missing_required_fields(self, input_validator: InputValidator) -> None:
         """Test detection of missing required fields."""
         # Missing version
         template_no_version = {"content": [{"type": "text", "text": "test"}]}
@@ -91,7 +91,7 @@ class TestInputValidator:
 
         assert "Missing required field: content" in str(exc_info.value)
 
-    def test_invalid_version_format(self, input_validator) -> None:
+    def test_invalid_version_format(self, input_validator: InputValidator) -> None:
         """Test detection of invalid version format."""
         invalid_versions = [
             "1.0",  # Missing patch version
@@ -112,7 +112,7 @@ class TestInputValidator:
             assert "Invalid version format" in str(exc_info.value)
             assert exc_info.value.reason == "invalid_version"
 
-    def test_content_array_validation(self, input_validator) -> None:
+    def test_content_array_validation(self, input_validator: InputValidator) -> None:
         """Test content array validation."""
         # Empty content array
         empty_content_template = {"version": "1.0.0", "content": []}
@@ -144,7 +144,7 @@ class TestInputValidator:
         assert "Too many content elements" in str(exc_info.value)
         assert exc_info.value.reason == "too_many_elements"
 
-    def test_text_element_validation(self, input_validator) -> None:
+    def test_text_element_validation(self, input_validator: InputValidator) -> None:
         """Test text element validation."""
         # Missing text field
         template = {"version": "1.0.0", "content": [{"type": "text"}]}
@@ -163,7 +163,7 @@ class TestInputValidator:
 
         assert "text must be string" in str(exc_info.value)
 
-    def test_text_content_too_large(self, input_validator) -> None:
+    def test_text_content_too_large(self, input_validator: InputValidator) -> None:
         """Test text content size limits."""
         large_text = "x" * 60000  # Exceeds limit
 
@@ -177,7 +177,7 @@ class TestInputValidator:
 
         assert "Text content too large" in str(exc_info.value)
 
-    def test_placeholder_element_validation(self, input_validator) -> None:
+    def test_placeholder_element_validation(self, input_validator: InputValidator) -> None:
         """Test placeholder element validation."""
         # Missing instructionType
         template = {
@@ -212,7 +212,7 @@ class TestInputValidator:
 
         assert "missing description" in str(exc_info.value)
 
-    def test_conditional_element_validation(self, input_validator) -> None:
+    def test_conditional_element_validation(self, input_validator: InputValidator) -> None:
         """Test conditional element validation."""
         # Missing condition
         template = {
@@ -254,7 +254,7 @@ class TestInputValidator:
 
         assert "else must be an array" in str(exc_info.value)
 
-    def test_unknown_element_type(self, input_validator) -> None:
+    def test_unknown_element_type(self, input_validator: InputValidator) -> None:
         """Test detection of unknown element types."""
         template = {"version": "1.0.0", "content": [{"type": "unknown_type"}]}
 
@@ -264,7 +264,7 @@ class TestInputValidator:
         assert "Unknown content element type: unknown_type" in str(exc_info.value)
         assert exc_info.value.reason == "unknown_type"
 
-    def test_malicious_content_detection(self, input_validator) -> None:
+    def test_malicious_content_detection(self, input_validator: InputValidator) -> None:
         """Test detection of malicious content patterns."""
         malicious_patterns = [
             "<script>alert('xss')</script>",
@@ -289,7 +289,7 @@ class TestInputValidator:
             assert "Malicious content detected" in str(exc_info.value)
             assert exc_info.value.reason == "malicious_content"
 
-    def test_suspicious_encoding_detection(self, input_validator) -> None:
+    def test_suspicious_encoding_detection(self, input_validator: InputValidator) -> None:
         """Test detection of suspicious encoding patterns."""
         suspicious_content = [
             "\\x61\\x6c\\x65\\x72\\x74",  # Hex encoding
@@ -309,7 +309,7 @@ class TestInputValidator:
             assert "Suspicious encoding detected" in str(exc_info.value)
             assert exc_info.value.reason == "suspicious_encoding"
 
-    def test_variables_validation(self, input_validator) -> None:
+    def test_variables_validation(self, input_validator: InputValidator) -> None:
         """Test variables object validation."""
         # Variables not an object
         template = {
@@ -324,7 +324,7 @@ class TestInputValidator:
         assert "Variables must be an object" in str(exc_info.value)
         assert exc_info.value.reason == "invalid_type"
 
-    def test_variable_name_validation(self, input_validator) -> None:
+    def test_variable_name_validation(self, input_validator: InputValidator) -> None:
         """Test variable name validation."""
         invalid_names = [
             "123invalid",  # Starts with number
@@ -347,7 +347,7 @@ class TestInputValidator:
 
             assert exc_info.value.reason in ["invalid_chars", "dangerous_name"]
 
-    def test_variable_name_too_long(self, input_validator) -> None:
+    def test_variable_name_too_long(self, input_validator: InputValidator) -> None:
         """Test variable name length limit."""
         long_name = "a" * 200  # Exceeds limit
 
@@ -363,7 +363,7 @@ class TestInputValidator:
         assert "Variable name too long" in str(exc_info.value)
         assert exc_info.value.reason == "name_too_long"
 
-    def test_variable_value_validation(self, input_validator) -> None:
+    def test_variable_value_validation(self, input_validator: InputValidator) -> None:
         """Test variable value validation."""
         # String too long
         long_string = "x" * 15000
@@ -379,7 +379,7 @@ class TestInputValidator:
 
         assert "String value too long" in str(exc_info.value)
 
-    def test_large_array_variable(self, input_validator) -> None:
+    def test_large_array_variable(self, input_validator: InputValidator) -> None:
         """Test large array variable validation."""
         large_array = list(range(2000))  # Very large array
 
@@ -395,7 +395,7 @@ class TestInputValidator:
         assert "Array too large" in str(exc_info.value)
         assert exc_info.value.reason == "array_too_large"
 
-    def test_object_nesting_depth(self, input_validator) -> None:
+    def test_object_nesting_depth(self, input_validator: InputValidator) -> None:
         """Test object nesting depth validation."""
         # Create deeply nested object
         nested_obj: Dict[str, any] = {}
@@ -416,7 +416,7 @@ class TestInputValidator:
         assert "Object nesting too deep" in str(exc_info.value)
         assert exc_info.value.reason == "nesting_too_deep"
 
-    def test_extensions_validation(self, input_validator) -> None:
+    def test_extensions_validation(self, input_validator: InputValidator) -> None:
         """Test extensions array validation."""
         # Extensions not an array
         template = {
@@ -444,7 +444,7 @@ class TestInputValidator:
 
         assert "Too many extensions" in str(exc_info.value)
 
-    def test_invalid_extension_url(self, input_validator) -> None:
+    def test_invalid_extension_url(self, input_validator: InputValidator) -> None:
         """Test invalid extension URL detection."""
         template = {
             "version": "1.0.0",
@@ -458,7 +458,7 @@ class TestInputValidator:
         assert "Invalid extension URL" in str(exc_info.value)
         assert exc_info.value.reason == "invalid_extension_url"
 
-    def test_custom_instruction_types_validation(self, input_validator) -> None:
+    def test_custom_instruction_types_validation(self, input_validator: InputValidator) -> None:
         """Test custom instruction types validation."""
         # Too many custom types
         many_types = {f"type{i}": {"template": "test"} for i in range(60)}
@@ -475,7 +475,7 @@ class TestInputValidator:
         assert "Too many custom instruction types" in str(exc_info.value)
         assert exc_info.value.reason == "too_many_types"
 
-    def test_custom_type_definition_validation(self, input_validator) -> None:
+    def test_custom_type_definition_validation(self, input_validator: InputValidator) -> None:
         """Test custom instruction type definition validation."""
         # Missing template field
         template = {
@@ -490,7 +490,7 @@ class TestInputValidator:
         assert "missing template field" in str(exc_info.value)
         assert exc_info.value.reason == "missing_template"
 
-    def test_identifier_validation(self, input_validator) -> None:
+    def test_identifier_validation(self, input_validator: InputValidator) -> None:
         """Test identifier validation."""
         # Invalid instruction type name
         template = {
@@ -505,7 +505,7 @@ class TestInputValidator:
         assert "Invalid identifier" in str(exc_info.value)
         assert exc_info.value.reason == "invalid_format"
 
-    def test_identifier_too_long(self, input_validator) -> None:
+    def test_identifier_too_long(self, input_validator: InputValidator) -> None:
         """Test identifier length validation."""
         long_name = "a" * 150
 
@@ -521,7 +521,7 @@ class TestInputValidator:
         assert "Identifier too long" in str(exc_info.value)
         assert exc_info.value.reason == "too_long"
 
-    def test_nested_content_validation(self, input_validator) -> None:
+    def test_nested_content_validation(self, input_validator: InputValidator) -> None:
         """Test nested content validation in conditionals."""
         # Invalid nested content
         template = {
@@ -540,7 +540,7 @@ class TestInputValidator:
 
         assert "Unknown content element type: invalid_type" in str(exc_info.value)
 
-    def test_sanitise_filename(self, input_validator) -> None:
+    def test_sanitise_filename(self, input_validator: InputValidator) -> None:
         """Test filename sanitisation."""
         dangerous_filenames = [
             "../../../etc/passwd",
@@ -560,7 +560,7 @@ class TestInputValidator:
             # Should not contain path traversal
             assert ".." not in sanitised
 
-    def test_dangerous_file_extension_sanitisation(self, input_validator) -> None:
+    def test_dangerous_file_extension_sanitisation(self, input_validator: InputValidator) -> None:
         """Test dangerous file extension handling."""
         dangerous_extensions = [
             "malware.exe",
@@ -575,7 +575,7 @@ class TestInputValidator:
             # Should be converted to .txt
             assert sanitised.endswith(".txt")
 
-    def test_filename_length_limit(self, input_validator) -> None:
+    def test_filename_length_limit(self, input_validator: InputValidator) -> None:
         """Test filename length limiting."""
         long_filename = "a" * 300 + ".json"
 
@@ -584,7 +584,7 @@ class TestInputValidator:
         # Should be truncated
         assert len(sanitised) <= 255
 
-    def test_get_validation_stats(self, input_validator) -> None:
+    def test_get_validation_stats(self, input_validator: InputValidator) -> None:
         """Test getting validation statistics."""
         stats = input_validator.get_validation_stats()
 
@@ -599,7 +599,7 @@ class TestInputValidator:
             assert key in stats
             assert isinstance(stats[key], int)
 
-    def test_config_object_validation(self, input_validator) -> None:
+    def test_config_object_validation(self, input_validator: InputValidator) -> None:
         """Test config object validation."""
         # Test nested config validation
         template = {
@@ -621,7 +621,7 @@ class TestInputValidator:
 
         assert "Malicious content detected" in str(exc_info.value)
 
-    def test_content_element_not_object(self, input_validator) -> None:
+    def test_content_element_not_object(self, input_validator: InputValidator) -> None:
         """Test content element that is not an object."""
         template = {"version": "1.0.0", "content": ["not an object"]}
 
@@ -630,7 +630,7 @@ class TestInputValidator:
 
         assert "Content element 0 must be an object" in str(exc_info.value)
 
-    def test_template_not_object(self, input_validator) -> None:
+    def test_template_not_object(self, input_validator: InputValidator) -> None:
         """Test template that is not an object."""
         with pytest.raises(InputSecurityError) as exc_info:
             input_validator.validate_template("not an object")

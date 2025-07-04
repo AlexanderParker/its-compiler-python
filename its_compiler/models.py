@@ -209,9 +209,7 @@ class InstructionTypeDefinition:
     security_validated: bool = False
     validation_time: Optional[datetime] = None
 
-    def format_instruction(
-        self, config: Dict[str, Any], user_content_wrapper: str
-    ) -> str:
+    def format_instruction(self, config: Dict[str, Any], user_content_wrapper: str) -> str:
         """Format the instruction template with config values."""
         description = config.get("description", "")
 
@@ -260,9 +258,7 @@ class InstructionTypeDefinition:
             "has_config_schema": self.config_schema is not None,
             "template_length": len(self.template),
             "security_validated": self.security_validated,
-            "validation_time": (
-                self.validation_time.isoformat() if self.validation_time else None
-            ),
+            "validation_time": (self.validation_time.isoformat() if self.validation_time else None),
         }
 
 

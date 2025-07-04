@@ -19,9 +19,7 @@ class NetworkSecurityConfig:
     block_data_urls: bool = True
 
     # Domain controls
-    domain_allowlist: List[str] = field(
-        default_factory=lambda: ["alexanderparker.github.io"]
-    )
+    domain_allowlist: List[str] = field(default_factory=lambda: ["alexanderparker.github.io"])
     enforce_domain_allowlist: bool = True
 
     # SSRF protection
@@ -63,9 +61,7 @@ class ProcessingSecurityConfig:
     max_variable_name_length: int = 100
     max_property_chain_depth: int = 10
     max_array_index: int = 1000
-    allowed_variable_chars: str = (
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-    )
+    allowed_variable_chars: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
     # Conditional expressions
     max_expression_length: int = 500
@@ -129,9 +125,7 @@ class SecurityConfig:
 
     # Component configurations
     network: NetworkSecurityConfig = field(default_factory=NetworkSecurityConfig)
-    processing: ProcessingSecurityConfig = field(
-        default_factory=ProcessingSecurityConfig
-    )
+    processing: ProcessingSecurityConfig = field(default_factory=ProcessingSecurityConfig)
     allowlist: AllowlistConfig = field(default_factory=AllowlistConfig)
 
     # Feature toggles
@@ -232,18 +226,12 @@ class SecurityConfig:
 
     def is_development(self) -> bool:
         """Check if running in development mode based on settings."""
-        return (
-            self.network.allow_http
-            and not self.network.block_localhost
-            and self.allowlist.interactive_mode
-        )
+        return self.network.allow_http and not self.network.block_localhost and self.allowlist.interactive_mode
 
     def is_production(self) -> bool:
         """Check if running in production mode based on settings."""
         return (
-            not self.network.allow_http
-            and self.network.block_private_networks
-            and not self.allowlist.interactive_mode
+            not self.network.allow_http and self.network.block_private_networks and not self.allowlist.interactive_mode
         )
 
     def validate(self) -> List[str]:

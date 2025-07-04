@@ -6,7 +6,7 @@ import json
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -47,15 +47,14 @@ class TestAllowlistManager:
         assert allowlist_manager.entries == {}
         assert allowlist_manager.session_allowed == set()
 
-    def test_builtin_trusted_patterns(self, allowlist_manager) -> None:
+    def test_builtin_trusted_patterns(self, allowlist_manager: AllowlistManager) -> None:
         """Test built-in trusted schema patterns."""
         official_schema = (
             "https://alexanderparker.github.io/instruction-template-specification/"
             "schema/v1.0/its-base-schema-v1.json"
         )
         github_schema = (
-            "https://raw.githubusercontent.com/alexanderparker/"
-            "instruction-template-specification/main/schema.json"
+            "https://raw.githubusercontent.com/alexanderparker/" "instruction-template-specification/main/schema.json"
         )
         untrusted_schema = "https://evil.com/malicious.json"
 
@@ -63,7 +62,7 @@ class TestAllowlistManager:
         assert allowlist_manager._is_builtin_trusted(github_schema)
         assert not allowlist_manager._is_builtin_trusted(untrusted_schema)
 
-    def test_add_trusted_url_permanent(self, allowlist_manager) -> None:
+    def test_add_trusted_url_permanent(self, allowlist_manager: AllowlistManager) -> None:
         """Test adding permanently trusted URL."""
         url = "https://company.com/schemas/types.json"
         notes = "Company schema"
@@ -76,7 +75,7 @@ class TestAllowlistManager:
         assert entry.notes == notes
         assert entry.use_count == 0
 
-    def test_add_trusted_url_session(self, allowlist_manager) -> None:
+    def test_add_trusted_url_session(self, allowlist_manager: AllowlistManager) -> None:
         """Test adding session-only trusted URL."""
         url = "https://test.com/temp.json"
 
@@ -86,7 +85,7 @@ class TestAllowlistManager:
         assert url not in allowlist_manager.entries
         assert url in allowlist_manager.session_allowed
 
-    def test_remove_url_from_entries(self, allowlist_manager) -> None:
+    def test_remove_url_from_entries(self, allowlist_manager: AllowlistManager) -> None:
         """Test removing URL from permanent entries."""
         url = "https://company.com/schema.json"
         allowlist_manager.add_trusted_url(url, TrustLevel.PERMANENT)
@@ -94,7 +93,7 @@ class TestAllowlistManager:
         assert allowlist_manager.remove_url(url)
         assert url not in allowlist_manager.entries
 
-    def test_remove_url_from_session(self, allowlist_manager) -> None:
+    def test_remove_url_from_session(self, allowlist_manager: AllowlistManager) -> None:
         """Test removing URL from session allowlist."""
         url = "https://test.com/temp.json"
         allowlist_manager.session_allowed.add(url)
@@ -102,11 +101,11 @@ class TestAllowlistManager:
         assert allowlist_manager.remove_url(url)
         assert url not in allowlist_manager.session_allowed
 
-    def test_remove_nonexistent_url(self, allowlist_manager) -> None:
+    def test_remove_nonexistent_url(self, allowlist_manager: AllowlistManager) -> None:
         """Test removing URL that doesn't exist."""
         assert not allowlist_manager.remove_url("https://nonexistent.com/schema.json")
 
-    def test_is_allowed_permanent(self, allowlist_manager) -> None:
+    def test_is_allowed_permanent(self, allowlist_manager: AllowlistManager) -> None:
         """Test URL allowed via permanent entry."""
         url = "https://trusted.com/schema.json"
         allowlist_manager.add_trusted_url(url, TrustLevel.PERMANENT)
@@ -117,28 +116,28 @@ class TestAllowlistManager:
         entry = allowlist_manager.entries[url]
         assert entry.use_count == 1
 
-    def test_is_allowed_never(self, allowlist_manager) -> None:
+    def test_is_allowed_never(self, allowlist_manager: AllowlistManager) -> None:
         """Test URL blocked via never entry."""
         url = "https://blocked.com/schema.json"
         allowlist_manager.add_trusted_url(url, TrustLevel.NEVER)
 
         assert not allowlist_manager.is_allowed(url)
 
-    def test_is_allowed_session(self, allowlist_manager) -> None:
+    def test_is_allowed_session(self, allowlist_manager: AllowlistManager) -> None:
         """Test URL allowed via session entry."""
         url = "https://session.com/schema.json"
         allowlist_manager.session_allowed.add(url)
 
         assert allowlist_manager.is_allowed(url)
 
-    def test_is_allowed_builtin_trusted(self, allowlist_manager) -> None:
+    def test_is_allowed_builtin_trusted(self, allowlist_manager: AllowlistManager) -> None:
         """Test built-in trusted URLs are allowed."""
         url = "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json"
 
         assert allowlist_manager.is_allowed(url)
 
     @patch("builtins.input", return_value="1")
-    def test_interactive_prompt_permanent(self, mock_input, allowlist_manager) -> None:
+    def test_interactive_prompt_permanent(self, mock_input: MagicMock, allowlist_manager: AllowlistManager) -> None:
         """Test interactive prompt choosing permanent trust."""
         url = "https://new.com/schema.json"
 
@@ -153,7 +152,7 @@ class TestAllowlistManager:
         assert allowlist_manager.entries[url].trust_level == TrustLevel.PERMANENT
 
     @patch("builtins.input", return_value="2")
-    def test_interactive_prompt_session(self, mock_input, allowlist_manager) -> None:
+    def test_interactive_prompt_session(self, mock_input: MagicMock, allowlist_manager: AllowlistManager) -> None:
         """Test interactive prompt choosing session trust."""
         url = "https://new.com/schema.json"
 
@@ -167,7 +166,7 @@ class TestAllowlistManager:
         assert url in allowlist_manager.session_allowed
 
     @patch("builtins.input", return_value="3")
-    def test_interactive_prompt_deny(self, mock_input, allowlist_manager) -> None:
+    def test_interactive_prompt_deny(self, mock_input: MagicMock, allowlist_manager: AllowlistManager) -> None:
         """Test interactive prompt choosing deny."""
         url = "https://new.com/schema.json"
 
@@ -180,7 +179,7 @@ class TestAllowlistManager:
         assert url in allowlist_manager.entries
         assert allowlist_manager.entries[url].trust_level == TrustLevel.NEVER
 
-    def test_non_interactive_mode(self, allowlist_manager) -> None:
+    def test_non_interactive_mode(self, allowlist_manager: AllowlistManager) -> None:
         """Test non-interactive mode blocks unknown URLs."""
         url = "https://unknown.com/schema.json"
 
@@ -190,7 +189,7 @@ class TestAllowlistManager:
 
         assert not result
 
-    def test_ci_auto_approve_mode(self, allowlist_manager) -> None:
+    def test_ci_auto_approve_mode(self, allowlist_manager: AllowlistManager) -> None:
         """Test CI auto-approve mode allows unknown URLs as session."""
         url = "https://unknown.com/schema.json"
 
@@ -202,7 +201,7 @@ class TestAllowlistManager:
         assert result
         assert url in allowlist_manager.session_allowed
 
-    def test_update_fingerprint(self, allowlist_manager) -> None:
+    def test_update_fingerprint(self, allowlist_manager: AllowlistManager) -> None:
         """Test updating schema fingerprint."""
         url = "https://company.com/schema.json"
         content = '{"instructionTypes": {"test": {"template": "test"}}}'
@@ -214,7 +213,7 @@ class TestAllowlistManager:
         assert entry.fingerprint is not None
         assert len(entry.fingerprint) == 16  # SHA256 first 16 chars
 
-    def test_fingerprint_change_detection(self, allowlist_manager) -> None:
+    def test_fingerprint_change_detection(self, allowlist_manager: AllowlistManager) -> None:
         """Test detection of fingerprint changes."""
         url = "https://company.com/schema.json"
         old_content = '{"version": "1.0"}'
@@ -226,15 +225,11 @@ class TestAllowlistManager:
         # Update with different content
         allowlist_manager.update_fingerprint(url, new_content)
 
-    def test_get_stats(self, allowlist_manager) -> None:
+    def test_get_stats(self, allowlist_manager: AllowlistManager) -> None:
         """Test getting allowlist statistics."""
         # Add various entries
-        allowlist_manager.add_trusted_url(
-            "https://perm1.com/s.json", TrustLevel.PERMANENT
-        )
-        allowlist_manager.add_trusted_url(
-            "https://perm2.com/s.json", TrustLevel.PERMANENT
-        )
+        allowlist_manager.add_trusted_url("https://perm1.com/s.json", TrustLevel.PERMANENT)
+        allowlist_manager.add_trusted_url("https://perm2.com/s.json", TrustLevel.PERMANENT)
         allowlist_manager.add_trusted_url("https://never.com/s.json", TrustLevel.NEVER)
         allowlist_manager.session_allowed.add("https://session.com/s.json")
 
@@ -245,7 +240,7 @@ class TestAllowlistManager:
         assert stats["denied"] == 1
         assert stats["session_allowed"] == 1
 
-    def test_cleanup_old_entries(self, allowlist_manager) -> None:
+    def test_cleanup_old_entries(self, allowlist_manager: AllowlistManager) -> None:
         """Test cleanup of old unused entries."""
         now = datetime.now(timezone.utc)
         old_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -276,9 +271,7 @@ class TestAllowlistManager:
         assert old_entry.url not in allowlist_manager.entries
         assert recent_entry.url in allowlist_manager.entries
 
-    def test_persistence_save_and_load(
-        self, allowlist_manager, temp_config_dir
-    ) -> None:
+    def test_persistence_save_and_load(self, allowlist_manager: AllowlistManager, temp_config_dir: Path) -> None:
         """Test saving and loading allowlist to/from file."""
         url = "https://company.com/schema.json"
         allowlist_manager.add_trusted_url(url, TrustLevel.PERMANENT, "Test schema")
@@ -295,9 +288,7 @@ class TestAllowlistManager:
         assert entry.trust_level == TrustLevel.PERMANENT
         assert entry.notes == "Test schema"
 
-    def test_persistence_backup_on_change(
-        self, allowlist_manager, temp_config_dir
-    ) -> None:
+    def test_persistence_backup_on_change(self, allowlist_manager: AllowlistManager, temp_config_dir: Path) -> None:
         """Test backup creation on changes."""
         allowlist_manager.config.allowlist.backup_on_change = True
 
@@ -313,15 +304,11 @@ class TestAllowlistManager:
 
         assert backup_file.exists()
 
-    def test_export_import_allowlist(self, allowlist_manager, temp_config_dir) -> None:
+    def test_export_import_allowlist(self, allowlist_manager: AllowlistManager, temp_config_dir: Path) -> None:
         """Test exporting and importing allowlist."""
         # Add some entries
-        allowlist_manager.add_trusted_url(
-            "https://export1.com/s.json", TrustLevel.PERMANENT
-        )
-        allowlist_manager.add_trusted_url(
-            "https://export2.com/s.json", TrustLevel.NEVER
-        )
+        allowlist_manager.add_trusted_url("https://export1.com/s.json", TrustLevel.PERMANENT)
+        allowlist_manager.add_trusted_url("https://export2.com/s.json", TrustLevel.NEVER)
 
         # Export
         export_path = temp_config_dir / "exported.json"
@@ -331,9 +318,7 @@ class TestAllowlistManager:
 
         # Create new manager and import
         new_config = SecurityConfig.for_development()
-        new_config.allowlist.allowlist_file = str(
-            temp_config_dir / "new_allowlist.json"
-        )
+        new_config.allowlist.allowlist_file = str(temp_config_dir / "new_allowlist.json")
         new_manager = AllowlistManager(new_config)
 
         imported_count = new_manager.import_allowlist(export_path)
@@ -342,7 +327,7 @@ class TestAllowlistManager:
         assert "https://export1.com/s.json" in new_manager.entries
         assert "https://export2.com/s.json" in new_manager.entries
 
-    def test_import_merge_mode(self, allowlist_manager, temp_config_dir) -> None:
+    def test_import_merge_mode(self, allowlist_manager: AllowlistManager, temp_config_dir: Path) -> None:
         """Test importing with merge mode."""
         # Add existing entry
         existing_url = "https://existing.com/s.json"
@@ -380,7 +365,7 @@ class TestAllowlistManager:
         assert allowlist_manager.entries[existing_url].trust_level == TrustLevel.NEVER
         assert allowlist_manager.entries[existing_url].use_count == 5
 
-    def test_import_no_merge_mode(self, allowlist_manager, temp_config_dir) -> None:
+    def test_import_no_merge_mode(self, allowlist_manager: AllowlistManager, temp_config_dir: Path) -> None:
         """Test importing without merge mode."""
         # Add existing entry
         existing_url = "https://existing.com/s.json"
@@ -416,14 +401,10 @@ class TestAllowlistManager:
 
         assert imported_count == 1  # Only new entry
         # Existing entry should be unchanged
-        assert (
-            allowlist_manager.entries[existing_url].trust_level == TrustLevel.PERMANENT
-        )
+        assert allowlist_manager.entries[existing_url].trust_level == TrustLevel.PERMANENT
         assert allowlist_manager.entries[existing_url].use_count == original_use_count
 
-    def test_error_handling_corrupted_file(
-        self, security_config, temp_config_dir
-    ) -> None:
+    def test_error_handling_corrupted_file(self, security_config: SecurityConfig, temp_config_dir: Path) -> None:
         """Test handling of corrupted allowlist file."""
         # Create corrupted file
         allowlist_file = temp_config_dir / "test_allowlist.json"
@@ -434,10 +415,8 @@ class TestAllowlistManager:
         manager = AllowlistManager(security_config)
         assert manager.entries == {}
 
-    def test_file_permission_error_handling(self, allowlist_manager) -> None:
+    def test_file_permission_error_handling(self, allowlist_manager: AllowlistManager) -> None:
         """Test handling of file permission errors."""
         # Try to save to read-only location (simulated by mocking)
         with patch("builtins.open", side_effect=PermissionError("Access denied")):
-            allowlist_manager.add_trusted_url(
-                "https://test.com/s.json", TrustLevel.PERMANENT
-            )
+            allowlist_manager.add_trusted_url("https://test.com/s.json", TrustLevel.PERMANENT)

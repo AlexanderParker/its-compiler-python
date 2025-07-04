@@ -46,6 +46,7 @@ repos:
         additional_dependencies:
           - types-requests
           - types-python-dateutil
+          - types-click
           - pytest
         args: ["--ignore-missing-imports"]
   # Security scanning (focused approach)

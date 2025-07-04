@@ -79,16 +79,12 @@ class URLValidator:
 
         # Check allowed protocols
         if scheme not in self.network_config.allowed_protocols:
-            self._log_and_raise(
-                url, f"Protocol '{scheme}' not allowed", "disallowed_protocol"
-            )
+            self._log_and_raise(url, f"Protocol '{scheme}' not allowed", "disallowed_protocol")
 
         # Block dangerous protocols
         dangerous_protocols = {"file", "ftp", "gopher", "ldap", "dict", "sftp"}
         if self.network_config.block_file_urls and scheme in dangerous_protocols:
-            self._log_and_raise(
-                url, f"Protocol '{scheme}' is blocked", "blocked_protocol"
-            )
+            self._log_and_raise(url, f"Protocol '{scheme}' is blocked", "blocked_protocol")
 
         # Block data URLs
         if self.network_config.block_data_urls and scheme == "data":
@@ -115,9 +111,7 @@ class URLValidator:
         # Check domain allowlist
         if self.network_config.enforce_domain_allowlist:
             if not self._is_domain_allowed(hostname):
-                self._log_and_raise(
-                    url, f"Domain '{hostname}' not in allowlist", "domain_not_allowed"
-                )
+                self._log_and_raise(url, f"Domain '{hostname}' not in allowlist", "domain_not_allowed")
 
     def _validate_ssrf_protection(self, parsed: Any, url: str) -> None:
         """Validate against SSRF attacks."""
@@ -220,9 +214,7 @@ class URLValidator:
     def _ssrf_blocked(self, url: str, reason: str) -> None:
         """Log SSRF attempt and raise error."""
         print(f"SSRF protection: {reason}")
-        raise URLSecurityError(
-            f"SSRF protection: {reason}", url=url, reason="ssrf_blocked"
-        )
+        raise URLSecurityError(f"SSRF protection: {reason}", url=url, reason="ssrf_blocked")
 
     def _log_and_raise(self, url: str, message: str, reason: str) -> None:
         """Log security violation and raise error."""

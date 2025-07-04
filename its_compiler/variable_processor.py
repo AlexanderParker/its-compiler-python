@@ -21,23 +21,15 @@ class VariableProcessor:
         self.security_config = security_config or SecurityConfig.from_environment()
 
         self.input_validator = (
-            InputValidator(self.security_config)
-            if self.security_config.enable_input_validation
-            else None
+            InputValidator(self.security_config) if self.security_config.enable_input_validation else None
         )
 
         # Processing limits
         self.max_recursion_depth = self.security_config.processing.max_nesting_depth
-        self.max_variable_references = (
-            self.security_config.processing.max_variable_references
-        )
-        self.max_variable_name_length = (
-            self.security_config.processing.max_variable_name_length
-        )
+        self.max_variable_references = self.security_config.processing.max_variable_references
+        self.max_variable_name_length = self.security_config.processing.max_variable_name_length
 
-    def process_content(
-        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def process_content(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Process variable references in content elements with security validation."""
 
         # Validate variables first
@@ -69,9 +61,7 @@ class VariableProcessor:
         # Check total variable count
         total_vars = self._count_total_variables(variables)
         if total_vars > self.max_variable_references:
-            raise ITSVariableError(
-                f"Too many variables: {total_vars} (max: {self.max_variable_references})"
-            )
+            raise ITSVariableError(f"Too many variables: {total_vars} (max: {self.max_variable_references})")
 
         # Validate each variable recursively
         self._validate_variable_object(variables, "", 0)
@@ -103,9 +93,7 @@ class VariableProcessor:
             for key, value in obj.items():
                 self._validate_variable_name(key, f"{path}.{key}" if path else key)
                 self._validate_variable_value(value, f"{path}.{key}" if path else key)
-                self._validate_variable_object(
-                    value, f"{path}.{key}" if path else key, depth + 1
-                )
+                self._validate_variable_object(value, f"{path}.{key}" if path else key, depth + 1)
 
         elif isinstance(obj, list):
             if len(obj) > 1000:  # Reasonable limit for arrays
@@ -121,9 +109,7 @@ class VariableProcessor:
             raise ITSVariableError(f"Variable name must be string at {path}")
 
         if len(name) > self.max_variable_name_length:
-            raise ITSVariableError(
-                f"Variable name too long at {path}: {len(name)} chars"
-            )
+            raise ITSVariableError(f"Variable name too long at {path}: {len(name)} chars")
 
         # Check for valid identifier pattern
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
@@ -159,9 +145,7 @@ class VariableProcessor:
         if isinstance(value, str):
             # Check string length
             if len(value) > 10000:  # Reasonable limit
-                raise ITSVariableError(
-                    f"String value too long at {path}: {len(value)} chars"
-                )
+                raise ITSVariableError(f"String value too long at {path}: {len(value)} chars")
 
             # Check for dangerous content patterns
             dangerous_patterns = [
@@ -176,18 +160,14 @@ class VariableProcessor:
 
             for pattern in dangerous_patterns:
                 if re.search(pattern, value, re.IGNORECASE):
-                    raise ITSVariableError(
-                        f"Dangerous content detected in variable at {path}"
-                    )
+                    raise ITSVariableError(f"Dangerous content detected in variable at {path}")
 
         elif isinstance(value, (int, float)):
             # Check for reasonable numeric ranges
             if isinstance(value, (int, float)) and abs(value) > 1e15:
                 raise ITSVariableError(f"Numeric value too large at {path}: {value}")
 
-    def _process_element(
-        self, element: Dict[str, Any], variables: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _process_element(self, element: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
         """Process variables in a single content element."""
         element_copy = element.copy()
 
@@ -201,23 +181,17 @@ class VariableProcessor:
 
         elif element["type"] == "conditional":
             # Process variables in condition expression
-            element_copy["condition"] = self._process_string(
-                element["condition"], variables
-            )
+            element_copy["condition"] = self._process_string(element["condition"], variables)
 
             # Recursively process nested content
-            element_copy["content"] = self.process_content(
-                element["content"], variables
-            )
+            element_copy["content"] = self.process_content(element["content"], variables)
 
             if "else" in element:
                 element_copy["else"] = self.process_content(element["else"], variables)
 
         return element_copy
 
-    def _process_dict(
-        self, data: Dict[str, Any], variables: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _process_dict(self, data: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
         """Process variables in a dictionary."""
         processed: Dict[str, Any] = {}
 
@@ -255,18 +229,14 @@ class VariableProcessor:
         # Check for too many variable references in a single string
         var_refs = self.variable_pattern.findall(text)
         if len(var_refs) > 50:  # Reasonable limit per string
-            raise ITSVariableError(
-                f"Too many variable references in string: {len(var_refs)}"
-            )
+            raise ITSVariableError(f"Too many variable references in string: {len(var_refs)}")
 
         def replace_variable(match: re.Match[str]) -> str:
             var_ref = match.group(1)
 
             # Validate variable reference syntax
             if len(var_ref) > 200:  # Reasonable limit for reference length
-                raise ITSVariableError(
-                    f"Variable reference too long: {var_ref[:50]}..."
-                )
+                raise ITSVariableError(f"Variable reference too long: {var_ref[:50]}...")
 
             # Check for dangerous patterns in variable reference
             if ".." in var_ref or var_ref.startswith("_") or "__" in var_ref:
@@ -312,9 +282,7 @@ class VariableProcessor:
                 str_value = str_value[:1000] + "... [TRUNCATED]"
             return str_value
 
-    def resolve_variable_reference(
-        self, var_ref: str, variables: Dict[str, Any]
-    ) -> Any:
+    def resolve_variable_reference(self, var_ref: str, variables: Dict[str, Any]) -> Any:
         """Resolve a variable reference with enhanced security validation."""
 
         # Validate reference syntax
@@ -367,9 +335,7 @@ class VariableProcessor:
                     raise ITSVariableError(
                         f"Variable '{array_name}' not found in {'.'.join(parts[:i])}",
                         variable_path=var_ref,
-                        available_variables=(
-                            list(current.keys()) if isinstance(current, dict) else []
-                        ),
+                        available_variables=(list(current.keys()) if isinstance(current, dict) else []),
                     )
 
                 array_value = current[array_name]
@@ -415,9 +381,7 @@ class VariableProcessor:
         matches = self.variable_pattern.findall(content_str)
         return list(set(matches))  # Remove duplicates
 
-    def validate_variables(
-        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
-    ) -> List[str]:
+    def validate_variables(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[str]:
         """Validate that all variable references can be resolved."""
         errors = []
         variable_refs = self.find_variable_references(content)

@@ -7,7 +7,7 @@ import json
 import platform
 import sys
 import time
-from pathlib import Path
+from pathlib import Path as PathType
 from typing import Any, Dict, Optional, Tuple
 
 import click
@@ -40,9 +40,7 @@ def setup_safe_console() -> Tuple[Console, bool]:
     return console, not is_windows
 
 
-def safe_print(
-    message: Any, style: Optional[str] = None, highlight: Optional[bool] = None
-) -> None:
+def safe_print(message: Any, style: Optional[str] = None, highlight: Optional[bool] = None) -> None:
     """Print message safely, handling Unicode encoding errors."""
     try:
         console.print(message, style=style, highlight=highlight)
@@ -60,9 +58,7 @@ def safe_print(
         print(safe_message)
 
 
-def create_safe_progress_context(
-    description: str, disable_on_windows: bool = True
-) -> Any:
+def create_safe_progress_context(description: str, disable_on_windows: bool = True) -> Any:
     """Create a progress context that's safe for Windows."""
     if platform.system() == "Windows" and disable_on_windows:
         # On Windows, use a simple context manager that just prints status
@@ -136,7 +132,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
         verbose: bool,
         security_config: SecurityConfig,
     ):
-        self.template_path = Path(template_path)
+        self.template_path = PathType(template_path)
         self.output_path = output_path
         self.variables_path = variables_path
         self.verbose = verbose
@@ -146,7 +142,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        changed_path = Path(event.src_path)
+        changed_path = PathType(event.src_path)
         if changed_path.name == self.template_path.name:
             safe_print(f"[yellow]File changed: {changed_path}[/yellow]")
             try:
@@ -164,13 +160,9 @@ class TemplateChangeHandler(FileSystemEventHandler):
                 )
 
                 if success:
-                    safe_print(
-                        f"[green]{SYMBOLS['ok']} Watch compilation successful[/green]"
-                    )
+                    safe_print(f"[green]{SYMBOLS['ok']} Watch compilation successful[/green]")
                 else:
-                    safe_print(
-                        f"[blue]{SYMBOLS['info']} Waiting for fixes... (Ctrl+C to stop)[/blue]"
-                    )
+                    safe_print(f"[blue]{SYMBOLS['info']} Waiting for fixes... (Ctrl+C to stop)[/blue]")
             except (
                 ITSSecurityError,
                 ITSValidationError,
@@ -184,9 +176,7 @@ class TemplateChangeHandler(FileSystemEventHandler):
                         safe_print(f"[red]Details: {e.details}[/red]")
                     if hasattr(e, "path") and e.path:
                         safe_print(f"[red]Path: {e.path}[/red]")
-                safe_print(
-                    f"[blue]{SYMBOLS['info']} Continuing to watch for changes...[/blue]"
-                )
+                safe_print(f"[blue]{SYMBOLS['info']} Continuing to watch for changes...[/blue]")
             except Exception as e:
                 # Handle any other unexpected errors
                 safe_print(f"[red]{SYMBOLS['fail']} Unexpected error: {e}[/red]")
@@ -196,15 +186,13 @@ class TemplateChangeHandler(FileSystemEventHandler):
                     safe_print("[red]Error details:[/red]")
                     for line in traceback.format_exc().splitlines():
                         safe_print(f"[red]  {line}[/red]")
-                safe_print(
-                    f"[blue]{SYMBOLS['info']} Continuing to watch for changes...[/blue]"
-                )
+                safe_print(f"[blue]{SYMBOLS['info']} Continuing to watch for changes...[/blue]")
 
 
 def load_variables(variables_path: str) -> Dict[str, Any]:
     """Load variables from JSON file with security validation."""
     try:
-        variables_file = Path(variables_path)
+        variables_file = PathType(variables_path)
 
         # Basic security checks on variables file
         if variables_file.stat().st_size > 10 * 1024 * 1024:  # 10MB limit
@@ -225,9 +213,7 @@ def load_variables(variables_path: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         raise click.ClickException(f"Invalid JSON in variables file: {e}")
     except PermissionError:
-        raise click.ClickException(
-            f"Permission denied accessing variables file: {variables_path}"
-        )
+        raise click.ClickException(f"Permission denied accessing variables file: {variables_path}")
 
 
 def create_security_config(
@@ -261,8 +247,8 @@ def handle_allowlist_commands(
     security_config: SecurityConfig,
     add_trusted_schema: Optional[str],
     remove_schema: Optional[str],
-    export_allowlist: Optional[Path],
-    import_allowlist: Optional[Path],
+    export_allowlist: Optional[PathType],
+    import_allowlist: Optional[PathType],
     merge_allowlist: bool,
     cleanup_allowlist: bool,
     older_than: int,
@@ -308,38 +294,24 @@ def handle_allowlist_commands(
             if stats.get("most_used"):
                 safe_print("\nMost Used Schemas:")
                 for schema in stats["most_used"]:
-                    safe_print(
-                        f"  {SYMBOLS['bullet']} {schema['url']} (used {schema['use_count']} times)"
-                    )
+                    safe_print(f"  {SYMBOLS['bullet']} {schema['url']} (used {schema['use_count']} times)")
 
         if add_trusted_schema:
-            allowlist_manager.add_trusted_url(
-                add_trusted_schema, TrustLevel.PERMANENT, "Added via CLI"
-            )
-            safe_print(
-                f"[green]{SYMBOLS['ok']} Added trusted schema: {add_trusted_schema}[/green]"
-            )
+            allowlist_manager.add_trusted_url(add_trusted_schema, TrustLevel.PERMANENT, "Added via CLI")
+            safe_print(f"[green]{SYMBOLS['ok']} Added trusted schema: {add_trusted_schema}[/green]")
 
         if remove_schema:
             if allowlist_manager.remove_url(remove_schema):
-                safe_print(
-                    f"[green]{SYMBOLS['ok']} Removed schema: {remove_schema}[/green]"
-                )
+                safe_print(f"[green]{SYMBOLS['ok']} Removed schema: {remove_schema}[/green]")
             else:
-                safe_print(
-                    f"[yellow]Schema not found in allowlist: {remove_schema}[/yellow]"
-                )
+                safe_print(f"[yellow]Schema not found in allowlist: {remove_schema}[/yellow]")
 
         if export_allowlist:
             allowlist_manager.export_allowlist(export_allowlist)
-            safe_print(
-                f"[green]{SYMBOLS['ok']} Exported allowlist to: {export_allowlist}[/green]"
-            )
+            safe_print(f"[green]{SYMBOLS['ok']} Exported allowlist to: {export_allowlist}[/green]")
 
         if import_allowlist:
-            imported_count = allowlist_manager.import_allowlist(
-                import_allowlist, merge=merge_allowlist
-            )
+            imported_count = allowlist_manager.import_allowlist(import_allowlist, merge=merge_allowlist)
             mode = "merged" if merge_allowlist else "imported"
             safe_print(
                 f"[green]{SYMBOLS['ok']} {mode.title()} {imported_count} entries from: {import_allowlist}[/green]"
@@ -378,9 +350,7 @@ def compile_template(
         try:
             variables = load_variables(variables_path)
             if verbose:
-                safe_print(
-                    f"[blue]Loaded {len(variables)} variables from {variables_path}[/blue]"
-                )
+                safe_print(f"[blue]Loaded {len(variables)} variables from {variables_path}[/blue]")
         except Exception as e:
             error_msg = f"Failed to load variables: {e}"
             safe_print(f"[red]{error_msg}[/red]")
@@ -399,16 +369,12 @@ def compile_template(
             security_status = compiler.get_security_status()
             safe_print("[blue]Security Configuration:[/blue]")
             safe_print(f"  HTTP allowed: {security_config.network.allow_http}")
-            safe_print(
-                "  Interactive allowlist: {security_config.allowlist.interactive_mode}"
-            )
+            safe_print("  Interactive allowlist: {security_config.allowlist.interactive_mode}")
             safe_print(f"  Block localhost: {security_config.network.block_localhost}")
 
             enabled_features = [k for k, v in security_status["features"].items() if v]
             if enabled_features:
-                safe_print(
-                    f"[blue]Security Features: {', '.join(enabled_features)}[/blue]"
-                )
+                safe_print(f"[blue]Security Features: {', '.join(enabled_features)}[/blue]")
 
         start_time = time.time()
 
@@ -423,14 +389,10 @@ def compile_template(
                 safe_print(f"[green]{SYMBOLS['ok']} Template is valid[/green]")
                 if validation_result.warnings and verbose:
                     for warning in validation_result.warnings:
-                        safe_print(
-                            f"[yellow]{SYMBOLS['warn']} Warning: {warning}[/yellow]"
-                        )
+                        safe_print(f"[yellow]{SYMBOLS['warn']} Warning: {warning}[/yellow]")
                 if validation_result.security_issues and verbose:
                     for issue in validation_result.security_issues:
-                        safe_print(
-                            f"[orange]{SYMBOLS['warn']} Security: {issue}[/orange]"
-                        )
+                        safe_print(f"[orange]{SYMBOLS['warn']} Security: {issue}[/orange]")
                 return True
             else:
                 safe_print(f"[red]{SYMBOLS['fail']} Template validation failed[/red]")
@@ -450,9 +412,7 @@ def compile_template(
 
             # Show compilation success
             compilation_time = time.time() - start_time
-            safe_print(
-                f"[green]{SYMBOLS['ok']} Template compiled successfully ({compilation_time:.2f}s)[/green]"
-            )
+            safe_print(f"[green]{SYMBOLS['ok']} Template compiled successfully ({compilation_time:.2f}s)[/green]")
 
             # Show security metrics, overrides, warnings, etc.
             if verbose:
@@ -474,7 +434,7 @@ def compile_template(
 
             # Output result
             if output_path:
-                output_file = Path(output_path)
+                output_file = PathType(output_path)
 
                 # Security check on output path
                 if not _is_safe_output_path(output_file):
@@ -506,9 +466,7 @@ def compile_template(
                 report = compiler.generate_security_report(template_path)
                 with open(security_report_path, "w", encoding="utf-8") as f:
                     json.dump(report.to_dict(), f, indent=2)
-                safe_print(
-                    f"[blue]Security report written to: {security_report_path}[/blue]"
-                )
+                safe_print(f"[blue]Security report written to: {security_report_path}[/blue]")
             except Exception as e:
                 safe_print(f"[yellow]Failed to generate security report: {e}[/yellow]")
 
@@ -559,7 +517,7 @@ def compile_template(
         return False
 
 
-def _is_safe_output_path(output_path: Path) -> bool:
+def _is_safe_output_path(output_path: PathType) -> bool:
     """Check if output path is safe to write to."""
     try:
         # Resolve to absolute path
@@ -590,28 +548,22 @@ def _is_safe_output_path(output_path: Path) -> bool:
 
 
 @click.command()
-@click.argument(
-    "template_file", type=click.Path(exists=True, path_type=Path), required=False
-)
+@click.argument("template_file", type=click.Path(exists=True), required=False)
 @click.option(
     "-o",
     "--output",
-    type=click.Path(path_type=Path),
+    type=click.Path(),
     help="Output file (default: stdout)",
 )
 @click.option(
     "-v",
     "--variables",
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=True),
     help="JSON file with variable values",
 )
 @click.option("-w", "--watch", is_flag=True, help="Watch template file for changes")
-@click.option(
-    "--validate-only", is_flag=True, help="Validate template without compiling"
-)
-@click.option(
-    "--verbose", is_flag=True, help="Show detailed output including security metrics"
-)
+@click.option("--validate-only", is_flag=True, help="Validate template without compiling")
+@click.option("--verbose", is_flag=True, help="Show detailed output including security metrics")
 @click.option("--strict", is_flag=True, help="Enable strict validation mode")
 @click.option("--no-cache", is_flag=True, help="Disable schema caching")
 @click.option("--timeout", type=int, default=30, help="Network timeout in seconds")
@@ -627,7 +579,7 @@ def _is_safe_output_path(output_path: Path) -> bool:
 )
 @click.option(
     "--security-report",
-    type=click.Path(path_type=Path),
+    type=click.Path(),
     help="Generate security analysis report to specified file",
 )
 # Allowlist management options
@@ -637,17 +589,15 @@ def _is_safe_output_path(output_path: Path) -> bool:
     type=str,
     help="Add a schema URL to the permanent allowlist and exit",
 )
-@click.option(
-    "--remove-schema", type=str, help="Remove a schema URL from the allowlist and exit"
-)
+@click.option("--remove-schema", type=str, help="Remove a schema URL from the allowlist and exit")
 @click.option(
     "--export-allowlist",
-    type=click.Path(path_type=Path),
+    type=click.Path(),
     help="Export allowlist to specified file and exit",
 )
 @click.option(
     "--import-allowlist",
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=True),
     help="Import allowlist from specified file and exit",
 )
 @click.option(
@@ -668,9 +618,9 @@ def _is_safe_output_path(output_path: Path) -> bool:
 )
 @click.version_option()
 def main(
-    template_file: Optional[Path],
-    output: Optional[Path],
-    variables: Optional[Path],
+    template_file: Optional[PathType],
+    output: Optional[PathType],
+    variables: Optional[PathType],
     watch: bool,
     validate_only: bool,
     verbose: bool,
@@ -679,12 +629,12 @@ def main(
     timeout: int,
     allow_http: bool,
     interactive_allowlist: Optional[bool],
-    security_report: Optional[Path],
+    security_report: Optional[PathType],
     allowlist_status: bool,
     add_trusted_schema: Optional[str],
     remove_schema: Optional[str],
-    export_allowlist: Optional[Path],
-    import_allowlist: Optional[Path],
+    export_allowlist: Optional[PathType],
+    import_allowlist: Optional[PathType],
     merge_allowlist: bool,
     cleanup_allowlist: bool,
     older_than: int,
@@ -742,9 +692,7 @@ def main(
 
     # Watch mode
     if watch:
-        safe_print(
-            f"\n[blue]Watching {template_file} for changes... (Press Ctrl+C to stop)[/blue]"
-        )
+        safe_print(f"\n[blue]Watching {template_file} for changes... (Press Ctrl+C to stop)[/blue]")
 
         event_handler = TemplateChangeHandler(
             str(template_file),
@@ -770,11 +718,11 @@ def main(
 @click.command()
 @click.option(
     "--export-config",
-    type=click.Path(path_type=Path),
+    type=click.Path(),
     help="Export security configuration to file",
 )
 def validate_security_config(
-    export_config: Optional[Path],
+    export_config: Optional[PathType],
 ) -> None:
     """Validate security configuration and settings."""
 
@@ -789,9 +737,7 @@ def validate_security_config(
             for warning in warnings:
                 safe_print(f"  {SYMBOLS['bullet']} {warning}")
         else:
-            safe_print(
-                f"[green]{SYMBOLS['ok']} Security configuration is valid[/green]"
-            )
+            safe_print(f"[green]{SYMBOLS['ok']} Security configuration is valid[/green]")
 
         # Show configuration summary
         try:
@@ -801,26 +747,18 @@ def validate_security_config(
 
             table.add_row("HTTP Allowed", str(security_config.network.allow_http))
             table.add_row("Allowlist Enabled", str(security_config.enable_allowlist))
-            table.add_row(
-                "Input Validation", str(security_config.enable_input_validation)
-            )
+            table.add_row("Input Validation", str(security_config.enable_input_validation))
             table.add_row(
                 "Expression Sanitisation",
                 str(security_config.enable_expression_sanitisation),
             )
-            table.add_row(
-                "Interactive Allowlist", str(security_config.allowlist.interactive_mode)
-            )
-            table.add_row(
-                "Block Localhost", str(security_config.network.block_localhost)
-            )
+            table.add_row("Interactive Allowlist", str(security_config.allowlist.interactive_mode))
+            table.add_row("Block Localhost", str(security_config.network.block_localhost))
             table.add_row(
                 "Max Template Size",
                 f"{security_config.processing.max_template_size // 1024} KB",
             )
-            table.add_row(
-                "Request Timeout", f"{security_config.network.request_timeout}s"
-            )
+            table.add_row("Request Timeout", f"{security_config.network.request_timeout}s")
 
             console.print(table)
         except Exception:
@@ -828,16 +766,10 @@ def validate_security_config(
             safe_print(f"  HTTP Allowed: {security_config.network.allow_http}")
             safe_print(f"  Allowlist Enabled: {security_config.enable_allowlist}")
             safe_print(f"  Input Validation: {security_config.enable_input_validation}")
-            safe_print(
-                f"  Expression Sanitisation: {security_config.enable_expression_sanitisation}"
-            )
-            safe_print(
-                f"  Interactive Allowlist: {security_config.allowlist.interactive_mode}"
-            )
+            safe_print(f"  Expression Sanitisation: {security_config.enable_expression_sanitisation}")
+            safe_print(f"  Interactive Allowlist: {security_config.allowlist.interactive_mode}")
             safe_print(f"  Block Localhost: {security_config.network.block_localhost}")
-            safe_print(
-                f"  Max Template Size: {security_config.processing.max_template_size // 1024} KB"
-            )
+            safe_print(f"  Max Template Size: {security_config.processing.max_template_size // 1024} KB")
             safe_print(f"  Request Timeout: {security_config.network.request_timeout}s")
 
         # Export configuration if requested
@@ -863,9 +795,7 @@ def validate_security_config(
             with open(export_config, "w") as f:
                 json.dump(config_dict, f, indent=2)
 
-            safe_print(
-                f"[green]{SYMBOLS['ok']} Configuration exported to: {export_config}[/green]"
-            )
+            safe_print(f"[green]{SYMBOLS['ok']} Configuration exported to: {export_config}[/green]")
 
     except Exception as e:
         safe_print(f"[red]Error validating security configuration: {e}[/red]")

@@ -64,7 +64,7 @@ def production_compiler(its_config: ITSConfig, production_config: SecurityConfig
 class TestSecurityIntegration:
     """Test end-to-end security integration."""
 
-    def test_valid_template_compilation(self, compiler) -> None:
+    def test_valid_template_compilation(self, compiler: ITSCompiler) -> None:
         """Test valid template compiles successfully."""
         template = {
             "version": "1.0.0",
@@ -83,7 +83,7 @@ class TestSecurityIntegration:
         assert result.prompt is not None
         assert len(result.prompt) > 0
 
-    def test_malicious_template_blocked(self, compiler) -> None:
+    def test_malicious_template_blocked(self, compiler: ITSCompiler) -> None:
         """Test malicious template content is blocked."""
         malicious_template = {
             "version": "1.0.0",
@@ -93,7 +93,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             compiler.compile(malicious_template)
 
-    def test_malicious_variables_blocked(self, compiler) -> None:
+    def test_malicious_variables_blocked(self, compiler: ITSCompiler) -> None:
         """Test malicious variable content is blocked."""
         template = {
             "version": "1.0.0",
@@ -105,7 +105,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             compiler.compile(template, malicious_variables)
 
-    def test_dangerous_expressions_blocked(self, compiler) -> None:
+    def test_dangerous_expressions_blocked(self, compiler: ITSCompiler) -> None:
         """Test dangerous conditional expressions are blocked."""
         dangerous_template = {
             "version": "1.0.0",
@@ -122,7 +122,7 @@ class TestSecurityIntegration:
             compiler.compile(dangerous_template)
 
     @patch("socket.getaddrinfo")
-    def test_ssrf_protection(self, mock_getaddrinfo, compiler) -> None:
+    def test_ssrf_protection(self, mock_getaddrinfo, compiler: ITSCompiler) -> None:
         """Test SSRF protection blocks private networks."""
         # Mock DNS to return private IP
         mock_getaddrinfo.return_value = [(2, 1, 6, "", ("192.168.1.100", 80))]
@@ -136,7 +136,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSCompilationError)):
             compiler.compile(template)
 
-    def test_schema_allowlist_protection(self, compiler) -> None:
+    def test_schema_allowlist_protection(self, compiler: ITSCompiler) -> None:
         """Test schema allowlist blocks unknown schemas."""
         template = {
             "version": "1.0.0",
@@ -151,7 +151,7 @@ class TestSecurityIntegration:
             compiler.compile(template)
 
     @patch("builtins.input", return_value="3")  # Deny
-    def test_interactive_allowlist_deny(self, mock_input, compiler) -> None:
+    def test_interactive_allowlist_deny(self, mock_input, compiler: ITSCompiler) -> None:
         """Test interactive allowlist denial blocks compilation."""
         template = {
             "version": "1.0.0",
@@ -167,7 +167,7 @@ class TestSecurityIntegration:
 
     @patch("builtins.input", return_value="2")  # Session allow
     @patch("urllib.request.urlopen")
-    def test_interactive_allowlist_allow(self, mock_urlopen, mock_input, compiler) -> None:
+    def test_interactive_allowlist_allow(self, mock_urlopen, mock_input, compiler: ITSCompiler) -> None:
         """Test interactive allowlist approval allows compilation."""
         # Mock HTTP response
         mock_response = MagicMock()
@@ -196,7 +196,7 @@ class TestSecurityIntegration:
         result = compiler.compile(template)
         assert result.prompt is not None
 
-    def test_template_size_limits(self, production_compiler) -> None:
+    def test_template_size_limits(self, production_compiler: ITSCompiler) -> None:
         """Test template size limits in production."""
         # Create oversized template
         large_text = "x" * (2 * 1024 * 1024)  # 2MB
@@ -208,7 +208,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             production_compiler.compile(large_template)
 
-    def test_variable_injection_prevention(self, compiler) -> None:
+    def test_variable_injection_prevention(self, compiler: ITSCompiler) -> None:
         """Test variable injection attacks are prevented."""
         template = {
             "version": "1.0.0",
@@ -234,7 +234,7 @@ class TestSecurityIntegration:
             # Blocking is also acceptable
             pass
 
-    def test_expression_complexity_limits(self, production_compiler) -> None:
+    def test_expression_complexity_limits(self, production_compiler: ITSCompiler) -> None:
         """Test expression complexity limits prevent DoS."""
         # Create deeply nested expression
         deep_condition = "test"
@@ -266,7 +266,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSCompilationError, FileNotFoundError)):
             compiler.compile_file(str(malicious_path))
 
-    def test_custom_instruction_type_security(self, compiler) -> None:
+    def test_custom_instruction_type_security(self, compiler: ITSCompiler) -> None:
         """Test custom instruction types are validated for security."""
         malicious_template = {
             "version": "1.0.0",
@@ -289,7 +289,7 @@ class TestSecurityIntegration:
             # Blocking is also acceptable
             pass
 
-    def test_concurrent_request_limits(self, compiler) -> None:
+    def test_concurrent_request_limits(self, compiler: ITSCompiler) -> None:
         """Test concurrent request limits prevent resource exhaustion."""
         import threading
         import time
@@ -320,7 +320,7 @@ class TestSecurityIntegration:
         # At least one should be blocked
         assert any("error" in result for result in results)
 
-    def test_security_status_reporting(self, compiler) -> None:
+    def test_security_status_reporting(self, compiler: ITSCompiler) -> None:
         """Test security status reporting works."""
         status = compiler.get_security_status()
 
@@ -329,14 +329,14 @@ class TestSecurityIntegration:
         assert "features" in status
         assert "components" in status
 
-    def test_audit_trail_generation(self, compiler) -> None:
+    def test_audit_trail_generation(self, compiler: ITSCompiler) -> None:
         """Test security events generate audit trail."""
         template = {"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}
 
         # Compile template to generate audit events
         compiler.compile(template)
 
-    def test_production_security_hardening(self, production_compiler) -> None:
+    def test_production_security_hardening(self, production_compiler: ITSCompiler) -> None:
         """Test production security settings are more restrictive."""
         # Production should have stricter limits
         prod_config = production_compiler.security_config
@@ -345,7 +345,7 @@ class TestSecurityIntegration:
         assert prod_config.processing.max_template_size <= dev_config.processing.max_template_size
         assert prod_config.processing.max_expression_depth <= dev_config.processing.max_expression_depth
 
-    def test_error_information_disclosure(self, production_compiler) -> None:
+    def test_error_information_disclosure(self, production_compiler: ITSCompiler) -> None:
         """Test error messages don't disclose sensitive information."""
         malicious_template = {
             "version": "1.0.0",
@@ -361,7 +361,7 @@ class TestSecurityIntegration:
             assert "internal" not in error_msg.lower()
             assert "debug" not in error_msg.lower()
 
-    def test_security_bypass_attempts(self, compiler) -> None:
+    def test_security_bypass_attempts(self, compiler: ITSCompiler) -> None:
         """Test various security bypass attempts are blocked."""
         bypass_attempts = [
             # Template with null bytes
@@ -392,7 +392,7 @@ class TestSecurityIntegration:
                 # Blocking is the preferred outcome
                 pass
 
-    def test_dos_prevention(self, production_compiler) -> None:
+    def test_dos_prevention(self, production_compiler: ITSCompiler) -> None:
         """Test denial of service prevention."""
         # Extremely complex template designed to consume resources
         dos_template = {"version": "1.0.0", "content": []}
@@ -416,7 +416,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             production_compiler.compile(dos_template, variables)
 
-    def test_input_sanitization_integration(self, compiler) -> None:
+    def test_input_sanitization_integration(self, compiler: ITSCompiler) -> None:
         """Test input sanitization across all components."""
         # Template with various types of potentially dangerous input
         mixed_template = {

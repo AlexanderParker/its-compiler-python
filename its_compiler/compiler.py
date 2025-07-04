@@ -36,9 +36,7 @@ class ITSCompiler:
 
         # Initialize security components
         self.input_validator = (
-            InputValidator(self.security_config)
-            if self.security_config.enable_input_validation
-            else None
+            InputValidator(self.security_config) if self.security_config.enable_input_validation else None
         )
 
         # Initialize core components with security
@@ -46,9 +44,7 @@ class ITSCompiler:
         self.variable_processor = VariableProcessor(self.security_config)
         self.conditional_evaluator = ConditionalEvaluator(self.security_config)
 
-    def compile_file(
-        self, template_path: str, variables: Optional[Dict[str, Any]] = None
-    ) -> CompilationResult:
+    def compile_file(self, template_path: str, variables: Optional[Dict[str, Any]] = None) -> CompilationResult:
         """Compile a template from a file with security validation."""
 
         template_path_obj = Path(template_path)
@@ -113,9 +109,7 @@ class ITSCompiler:
         # Validate template structure
         validation_result = self.validate(template, base_url)
         if not validation_result.is_valid:
-            raise ITSValidationError(
-                "Template validation failed", validation_errors=validation_result.errors
-            )
+            raise ITSValidationError("Template validation failed", validation_errors=validation_result.errors)
 
         # Merge template variables with provided variables
         template_variables = template.get("variables", {})
@@ -132,9 +126,7 @@ class ITSCompiler:
         instruction_types, overrides = self._load_instruction_types(template, base_url)
 
         # Process variables in content with security
-        processed_content = self._process_variables(
-            template["content"], merged_variables
-        )
+        processed_content = self._process_variables(template["content"], merged_variables)
 
         # Evaluate conditionals with security
         final_content = self._evaluate_conditionals(processed_content, merged_variables)
@@ -170,9 +162,7 @@ class ITSCompiler:
 
         for pattern in dangerous_patterns:
             if re.search(pattern, prompt, re.IGNORECASE):
-                print(
-                    f"Warning: Potentially dangerous pattern in final prompt: {pattern}"
-                )
+                print(f"Warning: Potentially dangerous pattern in final prompt: {pattern}")
 
     def validate_file(self, template_path: str) -> ValidationResult:
         """Validate a template file with security checks."""
@@ -214,16 +204,12 @@ class ITSCompiler:
             base_url = abs_path.parent.as_uri() + "/"
         except (ValueError, OSError) as e:
             # If we can't create a file URI, we'll skip relative URL resolution
-            print(
-                f"Warning: Could not create base URL for relative schema resolution: {e}"
-            )
+            print(f"Warning: Could not create base URL for relative schema resolution: {e}")
 
         result = self.validate(template, base_url)
         return result
 
-    def validate(
-        self, template: Dict[str, Any], base_url: Optional[str] = None
-    ) -> ValidationResult:
+    def validate(self, template: Dict[str, Any], base_url: Optional[str] = None) -> ValidationResult:
         """Validate a template dictionary with security validation."""
 
         errors: List[str] = []
@@ -235,9 +221,7 @@ class ITSCompiler:
                 self.input_validator.validate_template(template)
             except Exception as e:
                 errors.append(f"Input validation failed: {e}")
-                return ValidationResult(
-                    is_valid=False, errors=errors, warnings=warnings
-                )
+                return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
         # Required fields
         if "version" not in template:
@@ -263,14 +247,10 @@ class ITSCompiler:
         # Always validate variables - check references even if no variables defined
         template_variables = template.get("variables", {})
         if "content" in template:
-            var_errors = self._validate_variables(
-                template_variables, template["content"]
-            )
+            var_errors = self._validate_variables(template_variables, template["content"])
             errors.extend(var_errors)
 
-        return ValidationResult(
-            is_valid=len(errors) == 0, errors=errors, warnings=warnings
-        )
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
 
     def _validate_content(self, content: List[Dict[str, Any]]) -> List[str]:
         """Validate content elements with enhanced security checks."""
@@ -294,29 +274,19 @@ class ITSCompiler:
 
             elif element_type == "placeholder":
                 if "instructionType" not in element:
-                    errors.append(
-                        f"Placeholder element {i} missing required field: instructionType"
-                    )
+                    errors.append(f"Placeholder element {i} missing required field: instructionType")
                 if "config" not in element:
-                    errors.append(
-                        f"Placeholder element {i} missing required field: config"
-                    )
+                    errors.append(f"Placeholder element {i} missing required field: config")
                 elif not isinstance(element["config"], dict):
                     errors.append(f"Placeholder element {i} config must be an object")
                 elif "description" not in element["config"]:
-                    errors.append(
-                        f"Placeholder element {i} config missing required field: description"
-                    )
+                    errors.append(f"Placeholder element {i} config missing required field: description")
 
             elif element_type == "conditional":
                 if "condition" not in element:
-                    errors.append(
-                        f"Conditional element {i} missing required field: condition"
-                    )
+                    errors.append(f"Conditional element {i} missing required field: condition")
                 if "content" not in element:
-                    errors.append(
-                        f"Conditional element {i} missing required field: content"
-                    )
+                    errors.append(f"Conditional element {i} missing required field: content")
                 elif not isinstance(element["content"], list):
                     errors.append(f"Conditional element {i} content must be an array")
                 else:
@@ -335,9 +305,7 @@ class ITSCompiler:
 
         return errors
 
-    def _validate_variables(
-        self, variables: Dict[str, Any], content: List[Dict[str, Any]]
-    ) -> List[str]:
+    def _validate_variables(self, variables: Dict[str, Any], content: List[Dict[str, Any]]) -> List[str]:
         """Validate that all variable references can be resolved."""
         errors: List[str] = []
 
@@ -380,8 +348,7 @@ class ITSCompiler:
                         TypeOverride(
                             type_name=type_name,
                             override_source=schema_url,
-                            overridden_source=instruction_types[type_name].source
-                            or "unknown",
+                            overridden_source=instruction_types[type_name].source or "unknown",
                             override_type=OverrideType.SCHEMA_EXTENSION,
                         )
                     )
@@ -402,8 +369,7 @@ class ITSCompiler:
                     TypeOverride(
                         type_name=type_name,
                         override_source="customInstructionTypes",
-                        overridden_source=instruction_types[type_name].source
-                        or "unknown",
+                        overridden_source=instruction_types[type_name].source or "unknown",
                         override_type=OverrideType.CUSTOM,
                     )
                 )
@@ -418,15 +384,11 @@ class ITSCompiler:
 
         return instruction_types, overrides
 
-    def _process_variables(
-        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _process_variables(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Process variable references in content with security."""
         return self.variable_processor.process_content(content, variables)
 
-    def _evaluate_conditionals(
-        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _evaluate_conditionals(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Evaluate conditional elements with security."""
         return self.conditional_evaluator.evaluate_content(content, variables)
 
@@ -440,15 +402,9 @@ class ITSCompiler:
 
         # Get compiler configuration
         compiler_config = template.get("compilerConfig", {})
-        system_prompt = compiler_config.get(
-            "systemPrompt", self.config.default_system_prompt
-        )
-        user_content_wrapper = compiler_config.get(
-            "userContentWrapper", self.config.default_user_content_wrapper
-        )
-        instruction_wrapper = compiler_config.get(
-            "instructionWrapper", self.config.default_instruction_wrapper
-        )
+        system_prompt = compiler_config.get("systemPrompt", self.config.default_system_prompt)
+        user_content_wrapper = compiler_config.get("userContentWrapper", self.config.default_user_content_wrapper)
+        instruction_wrapper = compiler_config.get("instructionWrapper", self.config.default_instruction_wrapper)
         processing_instructions = compiler_config.get(
             "processingInstructions", self.config.default_processing_instructions
         )
@@ -460,9 +416,7 @@ class ITSCompiler:
             if element["type"] == "text":
                 processed_content.append(element["text"])
             elif element["type"] == "placeholder":
-                instruction = self._generate_instruction(
-                    element, instruction_types, user_content_wrapper
-                )
+                instruction = self._generate_instruction(element, instruction_types, user_content_wrapper)
 
                 # Check if the instruction already has wrapper brackets
                 if instruction.startswith("<<") and instruction.endswith(">>"):
@@ -470,9 +424,7 @@ class ITSCompiler:
                     processed_content.append(instruction)
                 else:
                     # Template doesn't have wrapper, apply it
-                    wrapped_instruction = instruction_wrapper.format(
-                        instruction=instruction
-                    )
+                    wrapped_instruction = instruction_wrapper.format(instruction=instruction)
                     processed_content.append(wrapped_instruction)
 
         # Assemble final prompt

@@ -18,9 +18,7 @@ class ConditionalEvaluator:
         self.security_config = security_config or SecurityConfig.from_environment()
 
         self.expression_sanitiser = (
-            ExpressionSanitiser(self.security_config)
-            if self.security_config.enable_expression_sanitisation
-            else None
+            ExpressionSanitiser(self.security_config) if self.security_config.enable_expression_sanitisation else None
         )
 
         # Allowed binary operators
@@ -44,24 +42,18 @@ class ConditionalEvaluator:
             ast.UAdd: operator.pos,
         }
 
-    def evaluate_content(
-        self, content: List[Dict[str, Any]], variables: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def evaluate_content(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Evaluate conditionals in content and return filtered content."""
         result = []
 
         for element in content:
             if element["type"] == "conditional":
                 # Evaluate the condition with security validation
-                condition_result = self.evaluate_condition(
-                    element["condition"], variables
-                )
+                condition_result = self.evaluate_condition(element["condition"], variables)
 
                 if condition_result:
                     # Include content from the 'content' array
-                    nested_content = self.evaluate_content(
-                        element["content"], variables
-                    )
+                    nested_content = self.evaluate_content(element["content"], variables)
                     result.extend(nested_content)
                 elif "else" in element:
                     # Include content from the 'else' array
@@ -79,9 +71,7 @@ class ConditionalEvaluator:
         # Security validation
         if self.expression_sanitiser:
             try:
-                sanitised_condition = self.expression_sanitiser.sanitise_expression(
-                    condition, variables
-                )
+                sanitised_condition = self.expression_sanitiser.sanitise_expression(condition, variables)
             except Exception as e:
                 raise ITSConditionalError(
                     f"Security validation failed for condition '{condition}': {e}",
@@ -110,9 +100,7 @@ class ConditionalEvaluator:
         except ITSConditionalError:
             raise
         except Exception as e:
-            raise ITSConditionalError(
-                f"Error evaluating condition '{condition}': {e}", condition=condition
-            )
+            raise ITSConditionalError(f"Error evaluating condition '{condition}': {e}", condition=condition)
 
     def _basic_security_check(self, node: ast.AST, condition: str) -> None:
         """Basic security check when full sanitiser is disabled."""
@@ -221,20 +209,13 @@ class ConditionalEvaluator:
                 index = self._evaluate_node(node.slice, variables)
 
             # Security check for large indices
-            if (
-                isinstance(index, int)
-                and abs(index) > self.security_config.processing.max_array_index
-            ):
-                raise ITSConditionalError(
-                    f"Array index too large: {index}", condition=f"subscript: {index}"
-                )
+            if isinstance(index, int) and abs(index) > self.security_config.processing.max_array_index:
+                raise ITSConditionalError(f"Array index too large: {index}", condition=f"subscript: {index}")
 
             try:
                 return obj[index]
             except (KeyError, IndexError, TypeError) as e:
-                raise ITSConditionalError(
-                    f"Subscript access error: {e}", condition=f"subscript: {index}"
-                )
+                raise ITSConditionalError(f"Subscript access error: {e}", condition=f"subscript: {index}")
 
         elif isinstance(node, ast.List):
             # List literal
@@ -351,9 +332,7 @@ class ConditionalEvaluator:
         }
         return attr in dangerous_attrs or attr.startswith("_")
 
-    def validate_condition(
-        self, condition: str, variables: Dict[str, Any]
-    ) -> List[str]:
+    def validate_condition(self, condition: str, variables: Dict[str, Any]) -> List[str]:
         """Validate a condition expression and return any errors."""
         errors = []
 

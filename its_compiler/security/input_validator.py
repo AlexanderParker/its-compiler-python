@@ -69,13 +69,9 @@ class InputValidator:
         self.processing_config = config.processing
 
         # Compile patterns
-        self.malicious_regex = re.compile(
-            "|".join(self.MALICIOUS_PATTERNS), re.IGNORECASE
-        )
+        self.malicious_regex = re.compile("|".join(self.MALICIOUS_PATTERNS), re.IGNORECASE)
 
-    def validate_template(
-        self, template: Dict[str, Any], template_path: Optional[str] = None
-    ) -> None:
+    def validate_template(self, template: Dict[str, Any], template_path: Optional[str] = None) -> None:
         """Validate complete template structure and content."""
 
         # Size validation
@@ -107,9 +103,7 @@ class InputValidator:
         size = len(template_json.encode("utf-8"))
 
         if size > self.processing_config.max_template_size:
-            self._security_violation(
-                f"Template too large: {size} bytes", "template", "size_exceeded"
-            )
+            self._security_violation(f"Template too large: {size} bytes", "template", "size_exceeded")
 
     def _validate_template_structure(self, template: Dict[str, Any]) -> None:
         """Validate basic template structure."""
@@ -127,13 +121,9 @@ class InputValidator:
         # Validate version format
         version = template.get("version")
         if not isinstance(version, str) or not re.match(r"^\d+\.\d+\.\d+$", version):
-            self._security_violation(
-                f"Invalid version format: {version}", "template", "invalid_version"
-            )
+            self._security_violation(f"Invalid version format: {version}", "template", "invalid_version")
 
-    def _validate_content_array(
-        self, content: List[Dict[str, Any]], template_path: Optional[str] = None
-    ) -> None:
+    def _validate_content_array(self, content: List[Dict[str, Any]], template_path: Optional[str] = None) -> None:
         """Validate content array and elements."""
 
         if len(content) > self.processing_config.max_content_elements:
@@ -144,9 +134,7 @@ class InputValidator:
             )
 
         if len(content) == 0:
-            self._security_violation(
-                "Content array cannot be empty", "content", "empty_content"
-            )
+            self._security_violation("Content array cannot be empty", "content", "empty_content")
 
         for i, element in enumerate(content):
             self._validate_content_element(element, i, template_path)
@@ -206,9 +194,7 @@ class InputValidator:
         # Check for malicious content
         self._validate_text_content(text_content, f"text_element_{index}")
 
-    def _validate_placeholder_element(
-        self, element: Dict[str, Any], index: int
-    ) -> None:
+    def _validate_placeholder_element(self, element: Dict[str, Any], index: int) -> None:
         """Validate placeholder content element."""
 
         required_fields = ["instructionType", "config"]
@@ -302,9 +288,7 @@ class InputValidator:
         """Validate variables object."""
 
         if not isinstance(variables, dict):
-            self._security_violation(
-                "Variables must be an object", "variables", "invalid_type"
-            )
+            self._security_violation("Variables must be an object", "variables", "invalid_type")
 
         self._validate_object_depth(variables, 0, "variables")
 
@@ -316,14 +300,10 @@ class InputValidator:
         """Validate variable name."""
 
         if len(name) > self.processing_config.max_variable_name_length:
-            self._security_violation(
-                f"Variable name too long: {name}", "variable_name", "name_too_long"
-            )
+            self._security_violation(f"Variable name too long: {name}", "variable_name", "name_too_long")
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
-            self._security_violation(
-                f"Invalid variable name: {name}", "variable_name", "invalid_chars"
-            )
+            self._security_violation(f"Invalid variable name: {name}", "variable_name", "invalid_chars")
 
         # Check for dangerous names
         dangerous_names = {
@@ -339,9 +319,7 @@ class InputValidator:
             "process",
         }
         if name.lower() in dangerous_names:
-            self._security_violation(
-                f"Dangerous variable name: {name}", "variable_name", "dangerous_name"
-            )
+            self._security_violation(f"Dangerous variable name: {name}", "variable_name", "dangerous_name")
 
     def _validate_variable_value(self, value: Any, path: str) -> None:
         """Validate variable value."""
@@ -367,14 +345,10 @@ class InputValidator:
         """Validate extends array."""
 
         if not isinstance(extends, list):
-            self._security_violation(
-                "Extends must be an array", "extends", "invalid_type"
-            )
+            self._security_violation("Extends must be an array", "extends", "invalid_type")
 
         if len(extends) > 10:  # Reasonable limit
-            self._security_violation(
-                f"Too many extensions: {len(extends)}", "extends", "too_many_extensions"
-            )
+            self._security_violation(f"Too many extensions: {len(extends)}", "extends", "too_many_extensions")
 
         for i, url in enumerate(extends):
             if not isinstance(url, str):
@@ -386,9 +360,7 @@ class InputValidator:
 
             # Basic URL validation (detailed validation done by URL validator)
             if not re.match(r"^https?://", url):
-                self._security_violation(
-                    f"Invalid extension URL: {url}", "extends", "invalid_extension_url"
-                )
+                self._security_violation(f"Invalid extension URL: {url}", "extends", "invalid_extension_url")
 
     def _validate_custom_types(self, custom_types: Dict[str, Any]) -> None:
         """Validate custom instruction types."""
@@ -411,9 +383,7 @@ class InputValidator:
             self._validate_identifier(type_name, f"custom_type_{type_name}")
             self._validate_custom_type_definition(type_def, type_name)
 
-    def _validate_custom_type_definition(
-        self, type_def: Dict[str, Any], type_name: str
-    ) -> None:
+    def _validate_custom_type_definition(self, type_def: Dict[str, Any], type_name: str) -> None:
         """Validate custom instruction type definition."""
 
         if not isinstance(type_def, dict):
@@ -460,9 +430,7 @@ class InputValidator:
 
         # Length check
         if len(text) > 10000:  # Reasonable limit for text content
-            self._security_violation(
-                f"Text content too long in {context}", "text_content", "text_too_long"
-            )
+            self._security_violation(f"Text content too long in {context}", "text_content", "text_too_long")
 
         # Check for malicious patterns
         if self.malicious_regex.search(text):
@@ -486,9 +454,7 @@ class InputValidator:
         """Validate identifier (type names, variable names, etc.)."""
 
         if not isinstance(identifier, str):
-            self._security_violation(
-                f"Identifier must be string in {context}", "identifier", "invalid_type"
-            )
+            self._security_violation(f"Identifier must be string in {context}", "identifier", "invalid_type")
 
         if len(identifier) > 100:
             self._security_violation(
@@ -504,9 +470,7 @@ class InputValidator:
                 "invalid_format",
             )
 
-    def _validate_object_depth(
-        self, obj: Union[Dict[str, Any], List[Any]], current_depth: int, context: str
-    ) -> None:
+    def _validate_object_depth(self, obj: Union[Dict[str, Any], List[Any]], current_depth: int, context: str) -> None:
         """Validate object nesting depth."""
 
         if current_depth > self.processing_config.max_nesting_depth:
@@ -519,19 +483,13 @@ class InputValidator:
         if isinstance(obj, dict):
             for key, value in obj.items():
                 if isinstance(value, (dict, list)):
-                    self._validate_object_depth(
-                        value, current_depth + 1, f"{context}.{key}"
-                    )
+                    self._validate_object_depth(value, current_depth + 1, f"{context}.{key}")
         elif isinstance(obj, list):
             for i, item in enumerate(obj):
                 if isinstance(item, (dict, list)):
-                    self._validate_object_depth(
-                        item, current_depth + 1, f"{context}[{i}]"
-                    )
+                    self._validate_object_depth(item, current_depth + 1, f"{context}[{i}]")
 
-    def _security_violation(
-        self, message: str, input_type: str, reason: str
-    ) -> NoReturn:
+    def _security_violation(self, message: str, input_type: str, reason: str) -> NoReturn:
         """Log security violation and raise error."""
         raise InputSecurityError(message, input_type=input_type, reason=reason)
 

@@ -117,9 +117,7 @@ class ITSCompilationError(ITSError):
         details: Optional[Dict[str, Any]] = None,
         error_code: Optional[str] = None,
     ):
-        super().__init__(
-            message, details, error_code=error_code or "COMPILATION_FAILED"
-        )
+        super().__init__(message, details, error_code=error_code or "COMPILATION_FAILED")
         self.element_id = element_id
         self.element_type = element_type
         self.compilation_stage = compilation_stage
@@ -238,9 +236,7 @@ class ITSVariableError(ITSError):
                 parts.append(f"Available variables: {available}")
             else:
                 sample = ", ".join(self.available_variables[:3])
-                parts.append(
-                    f"Available variables include: {sample}... ({len(self.available_variables)} total)"
-                )
+                parts.append(f"Available variables include: {sample}... ({len(self.available_variables)} total)")
 
         return " | ".join(parts)
 
@@ -263,9 +259,7 @@ class ITSConditionalError(ITSError):
         # Add conditional context to details
         if condition:
             # Limit condition length in logs for security
-            self.details["condition_preview"] = (
-                condition[:100] if len(condition) > 100 else condition
-            )
+            self.details["condition_preview"] = condition[:100] if len(condition) > 100 else condition
         if condition_context:
             self.details["condition_context"] = condition_context
 
@@ -326,9 +320,7 @@ class ITSConfigurationError(ITSError):
         details: Optional[Dict[str, Any]] = None,
         error_code: Optional[str] = None,
     ):
-        super().__init__(
-            message, details, error_code=error_code or "CONFIGURATION_ERROR"
-        )
+        super().__init__(message, details, error_code=error_code or "CONFIGURATION_ERROR")
         self.config_key = config_key
         self.config_value = config_value
         self.valid_values = valid_values or []
@@ -401,10 +393,6 @@ def create_validation_error(
     )
 
 
-def create_security_error(
-    message: str, threat_type: str, blocked_content: Optional[str] = None
-) -> ITSSecurityError:
+def create_security_error(message: str, threat_type: str, blocked_content: Optional[str] = None) -> ITSSecurityError:
     """Create a security error with threat classification."""
-    return ITSSecurityError(
-        message=message, threat_type=threat_type, blocked_content=blocked_content
-    )
+    return ITSSecurityError(message=message, threat_type=threat_type, blocked_content=blocked_content)

@@ -82,9 +82,7 @@ class ExpressionSanitiser:
         self.processing_config = config.processing
 
         # Compile dangerous patterns
-        self.dangerous_regex = re.compile(
-            "|".join(self.DANGEROUS_PATTERNS), re.IGNORECASE
-        )
+        self.dangerous_regex = re.compile("|".join(self.DANGEROUS_PATTERNS), re.IGNORECASE)
 
     def sanitise_expression(self, expression: str, variables: Dict[str, Any]) -> str:
         """Sanitise and validate a conditional expression."""
@@ -99,9 +97,7 @@ class ExpressionSanitiser:
         try:
             parsed = ast.parse(expression, mode="eval")
         except SyntaxError as e:
-            self._security_violation(
-                expression, f"Syntax error in expression: {e}", "syntax_error"
-            )
+            self._security_violation(expression, f"Syntax error in expression: {e}", "syntax_error")
 
         # Validate AST structure
         self._validate_ast_security(parsed.body, expression)
@@ -129,14 +125,10 @@ class ExpressionSanitiser:
 
         # Basic balance checks
         if expression.count("(") != expression.count(")"):
-            self._security_violation(
-                expression, "Unbalanced parentheses", "unbalanced_parentheses"
-            )
+            self._security_violation(expression, "Unbalanced parentheses", "unbalanced_parentheses")
 
         if expression.count("[") != expression.count("]"):
-            self._security_violation(
-                expression, "Unbalanced brackets", "unbalanced_brackets"
-            )
+            self._security_violation(expression, "Unbalanced brackets", "unbalanced_brackets")
 
     def _check_dangerous_patterns(self, expression: str) -> None:
         """Check for dangerous patterns in the expression."""
@@ -157,16 +149,12 @@ class ExpressionSanitiser:
                 "suspicious_characters",
             )
 
-    def _validate_ast_security(
-        self, node: ast.AST, expression: str, depth: int = 0
-    ) -> None:
+    def _validate_ast_security(self, node: ast.AST, expression: str, depth: int = 0) -> None:
         """Validate AST node structure for security."""
 
         # Depth check to prevent stack overflow
         if depth > self.processing_config.max_expression_depth:
-            self._security_violation(
-                expression, f"Expression nesting too deep: {depth}", "nesting_too_deep"
-            )
+            self._security_violation(expression, f"Expression nesting too deep: {depth}", "nesting_too_deep")
 
         # Node type validation
         node_type = type(node)
@@ -199,9 +187,7 @@ class ExpressionSanitiser:
 
         # Length check
         if len(name) > self.processing_config.max_variable_name_length:
-            self._security_violation(
-                expression, f"Variable name too long: {name}", "variable_name_too_long"
-            )
+            self._security_violation(expression, f"Variable name too long: {name}", "variable_name_too_long")
 
         # Character validation
         allowed_chars = set(self.processing_config.allowed_variable_chars)
@@ -276,11 +262,7 @@ class ExpressionSanitiser:
 
         # If it's a constant, validate the index
         if isinstance(slice_node, (ast.Constant, ast.Num)):
-            index_value = (
-                slice_node.value
-                if isinstance(slice_node, ast.Constant)
-                else slice_node.n
-            )
+            index_value = slice_node.value if isinstance(slice_node, ast.Constant) else slice_node.n
 
             if isinstance(index_value, int):
                 if index_value > self.processing_config.max_array_index:
@@ -308,9 +290,7 @@ class ExpressionSanitiser:
                     "literal_too_large",
                 )
 
-    def _validate_variable_references(
-        self, parsed: ast.Expression, expression: str, variables: Dict[str, Any]
-    ) -> None:
+    def _validate_variable_references(self, parsed: ast.Expression, expression: str, variables: Dict[str, Any]) -> None:
         """Validate that variable references are safe."""
 
         # Extract all variable names from the AST
@@ -357,12 +337,8 @@ class ExpressionSanitiser:
                 "length": len(expression),
                 "node_count": len(list(ast.walk(parsed))),
                 "max_depth": self._calculate_ast_depth(parsed.body),
-                "variable_count": len(
-                    [n for n in ast.walk(parsed) if isinstance(n, ast.Name)]
-                ),
-                "operator_count": len(
-                    [n for n in ast.walk(parsed) if isinstance(n, ast.operator)]
-                ),
+                "variable_count": len([n for n in ast.walk(parsed) if isinstance(n, ast.Name)]),
+                "operator_count": len([n for n in ast.walk(parsed) if isinstance(n, ast.operator)]),
             }
 
             return complexity
