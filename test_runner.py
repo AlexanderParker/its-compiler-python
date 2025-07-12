@@ -494,9 +494,9 @@ class TestRunner:
             # Add more helpful error info
             if "cannot find the file specified" in str(e).lower() or "no such file" in str(e).lower():
                 print(f"💡 Hint: Command '{self.compiler_command}' not found. Try:")
-                print(f"  - Install: pip install its-compiler-python")
-                print(f"  - Use full path: --compiler /path/to/its-compile")
-                print(f"  - Use python module: --compiler 'python -m its_compiler.cli'")
+                print("  - Install: pip install its-compiler-python")
+                print("  - Use full path: --compiler /path/to/its-compile")
+                print("  - Use python module: --compiler 'python -m its_compiler.cli'")
 
             return TestResult(
                 test_case=test_case,
@@ -533,10 +533,10 @@ class TestRunner:
         if not self.check_compiler_available():
             print(f"❌ Compiler '{self.compiler_command}' is not available or not working properly.")
             print("\n💡 Try one of these solutions:")
-            print(f"  1. Install the compiler: pip install its-compiler-python")
-            print(f"  2. Use full path: --compiler /path/to/its-compile")
-            print(f"  3. Use Python module: --compiler 'python -m its_compiler.cli'")
-            print(f"  4. Check your PATH environment variable")
+            print("  1. Install the compiler: pip install its-compiler-python")
+            print("  2. Use full path: --compiler /path/to/its-compile")
+            print("  3. Use Python module: --compiler 'python -m its_compiler.cli'")
+            print("  4. Check your PATH environment variable")
             return False
 
         test_cases = self.get_test_cases()
