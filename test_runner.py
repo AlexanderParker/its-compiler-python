@@ -745,9 +745,9 @@ def main() -> int:
             if not runner.check_compiler_available():
                 print(f"❌ Compiler '{args.compiler}' is not available or not working properly.")
                 print("\n💡 Try one of these solutions:")
-                print(f"  1. Install the compiler: pip install its-compiler-python")
-                print(f"  2. Use full path: --compiler /path/to/its-compile")
-                print(f"  3. Use Python module: --compiler 'python -m its_compiler.cli'")
+                print("  1. Install the compiler: pip install its-compiler-python")
+                print("  2. Use full path: --compiler /path/to/its-compile")
+                print("  3. Use Python module: --compiler 'python -m its_compiler.cli'")
                 return 1
 
             # Run specific test
