@@ -196,7 +196,7 @@ except ITSCompilationError as e:
 
 ### Developer Tools
 
-- Comprehensive error messages with line numbers
+- Error messages with line numbers
 - Override reporting shows which types are being replaced
 - Watch mode for rapid development iteration
 - Validation with detailed feedback
@@ -346,7 +346,7 @@ ITSVariableError: Undefined variable reference at content[1].config.description:
 
 The test suite automatically downloads test templates from the [ITS Example Templates repository](https://github.com/AlexanderParker/its-example-templates) when you run tests.
 
-Run the comprehensive test suite:
+Run the test suite:
 
 ```bash
 # Run all tests (automatically downloads test templates from GitHub)
