@@ -1,10 +1,10 @@
 # ITS Compiler Python
 
 [![PyPI version](https://badge.fury.io/py/its-compiler-python.svg)](https://badge.fury.io/py/its-compiler-python)
-[![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Falexanderparker%2Fits-compiler-python%2Fmain%2Fpyproject.toml)](https://python.org)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/its-compiler-python.svg)](https://pypi.org/project/its-compiler-python/)
+[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
 
-Reference Python compiler for the [Instruction Template Specification (ITS)](https://github.com/alexanderparker/instruction-template-specification) that converts content templates with placeholders into structured AI prompts.
+Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
 
 > **New to ITS?** See the [specification documentation](https://alexanderparker.github.io/instruction-template-specification/) for complete details on the template format and concepts.
 
@@ -17,7 +17,7 @@ Reference Python compiler for the [Instruction Template Specification (ITS)](htt
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
   "version": "1.0.0",
   "extends": [
-    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"
+    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json"
   ],
   "variables": {
     "topic": "sustainable technology",
@@ -52,7 +52,7 @@ Reference Python compiler for the [Instruction Template Specification (ITS)](htt
     },
     {
       "type": "conditional",
-      "condition": "includeExamples == True",
+      "condition": "includeExamples == true",
       "content": [
         {
           "type": "text",
@@ -121,7 +121,7 @@ pip install its-compiler-python
 
 ```bash
 # Clone and setup
-git clone https://github.com/alexanderparker/its-compiler-python.git
+git clone https://github.com/AlexanderParker/its-compiler-python.git
 cd its-compiler-python
 
 # Create virtual environment
@@ -223,7 +223,7 @@ The compiler includes security features to help protect against common attack ve
     { "type": "text", "text": "# ${product.name}\nPrice: ${product.price}\n" },
     {
       "type": "conditional",
-      "condition": "showSpecs == True and product.price > 200",
+      "condition": "showSpecs == true and product.price > 200",
       "content": [{ "type": "text", "text": "Premium features included" }]
     }
   ]
@@ -291,7 +291,7 @@ When `ITS_INTERACTIVE_ALLOWLIST` is enabled, you'll be prompted for unknown sche
 
 ```
 SCHEMA ALLOWLIST DECISION REQUIRED
-URL: https://example.com/custom-types.json
+URL: https://example.com/schema.json
 
 1. Allow permanently (saved to allowlist)
 2. Allow for this session only
@@ -344,10 +344,12 @@ ITSVariableError: Undefined variable reference at content[1].config.description:
 
 ## Testing
 
+The test suite automatically downloads test templates from the [ITS Example Templates repository](https://github.com/AlexanderParker/its-example-templates) when you run tests.
+
 Run the comprehensive test suite:
 
 ```bash
-# Run all tests
+# Run all tests (automatically downloads test templates from GitHub)
 python test_runner.py
 
 # Run specific categories
@@ -359,6 +361,18 @@ python test_runner.py --verbose
 
 # Generate JUnit XML for CI
 python test_runner.py --junit-xml test-results.xml
+
+# Run specific test by name
+python test_runner.py --test "Simple Variables"
+
+# List available test categories
+python test_runner.py --list-categories
+
+# Run only security tests
+python test_runner.py --security-only
+
+# Use specific test version
+python test_runner.py --test-version v1.0
 ```
 
 **Test Coverage:**
@@ -366,6 +380,17 @@ python test_runner.py --junit-xml test-results.xml
 - **24 integration tests** - All ITS features and error cases
 - **8 security tests** - Malicious content detection and blocking
 - **9 error handling tests** - Invalid templates and edge cases
+
+The test runner will:
+1. Download test templates directly from GitHub (no git required)
+2. Use temporary files for each test run
+3. Automatically clean up after completion
+4. Work offline after initial downloads (browser cache)
+
+**Requirements:**
+- Internet connection for downloading test templates
+- No git installation required
+- Works in any environment with Python and urllib
 
 ## API Reference
 
@@ -407,7 +432,7 @@ class CompilationResult:
 
 ```bash
 # Clone and setup
-git clone https://github.com/alexanderparker/its-compiler-python.git
+git clone https://github.com/AlexanderParker/its-compiler-python.git
 cd its-compiler-python
 
 # Create and activate virtual environment
@@ -423,8 +448,8 @@ python test_runner.py
 
 ## Related Projects
 
-- **[Instruction Template Specification](https://github.com/alexanderparker/instruction-template-specification)** - The official ITS specification and schema
-- **[ITS Documentation](https://alexanderparker.github.io/instruction-template-specification/)** - Complete specification documentation and examples
+- **[Instruction Template Specification](https://alexanderparker.github.io/instruction-template-specification/)** - The official ITS specification and schema
+- **[ITS Example Templates](https://github.com/AlexanderParker/its-example-templates)** - Test templates and examples for the ITS compiler
 
 ## License
 

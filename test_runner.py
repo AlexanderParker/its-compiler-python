@@ -8,6 +8,9 @@ import argparse
 import html
 import subprocess
 import time
+import tempfile
+import urllib.request
+import urllib.error
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -18,12 +21,12 @@ class TestCase:
     """Represents a single test case."""
 
     name: str
-    file_path: str
+    file_url: str
     description: str
     should_pass: bool = True
     expected_errors: Optional[List[str]] = None
     test_validation_only: bool = False
-    variables_file: Optional[str] = None
+    variables_url: Optional[str] = None
     test_category: str = "integration"
     extra_args: Optional[List[str]] = None
 
@@ -43,128 +46,182 @@ class TestResult:
 class TestRunner:
     """Runs integration and security tests for the ITS compiler."""
 
-    def __init__(self: "TestRunner", compiler_command: str = "its-compile", verbose: bool = False):
+    def __init__(
+        self: "TestRunner", compiler_command: str = "its-compile", verbose: bool = False, test_version: str = "v1.0"
+    ):
         self.compiler_command = compiler_command
         self.verbose = verbose
+        self.test_version = test_version
         self.results: List[TestResult] = []
+        self.base_url = f"https://raw.githubusercontent.com/AlexanderParker/its-example-templates/main/{test_version}"
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="its_tests_"))
+
+    def check_compiler_available(self: "TestRunner") -> bool:
+        """Check if the compiler command is available."""
+        try:
+            result = subprocess.run([self.compiler_command, "--help"], capture_output=True, timeout=10, check=False)
+            return result.returncode == 0
+        except FileNotFoundError:
+            return False
+        except subprocess.TimeoutExpired:
+            # If it times out but responds, it's probably available
+            return True
+        except Exception:
+            return False
+
+    def download_file(self, url: str, description: str = "file") -> Optional[Path]:
+        """Download a file from URL to temporary directory."""
+        try:
+            if self.verbose:
+                print(f"Downloading {description} from {url}")
+
+            response = urllib.request.urlopen(url, timeout=30)
+            content = response.read()
+
+            # Create a filename from the URL
+            filename = url.split("/")[-1]
+            file_path = self.temp_dir / filename
+
+            # Ensure directory exists
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(file_path, "wb") as f:
+                f.write(content)
+
+            if self.verbose:
+                print(f"Downloaded {description} to {file_path}")
+
+            return file_path
+
+        except urllib.error.HTTPError as e:
+            print(f"HTTP error downloading {description}: {e.code} {e.reason}")
+            return None
+        except urllib.error.URLError as e:
+            print(f"URL error downloading {description}: {e.reason}")
+            return None
+        except Exception as e:
+            print(f"Error downloading {description}: {e}")
+            return None
 
     def get_test_cases(self: "TestRunner") -> List[TestCase]:
         """Define all test cases including security tests."""
+        base = self.base_url
+
         return [
             # Integration Tests
             TestCase(
                 name="Text Only",
-                file_path="test/templates/01-text-only.json",
+                file_url=f"{base}/templates/01-text-only.json",
                 description="Basic template with no placeholders",
                 test_category="integration",
             ),
             TestCase(
                 name="Single Placeholder",
-                file_path="test/templates/02-single-placeholder.json",
+                file_url=f"{base}/templates/02-single-placeholder.json",
                 description="Single placeholder with schema loading",
                 test_category="integration",
             ),
             TestCase(
                 name="Multiple Placeholders",
-                file_path="test/templates/03-multiple-placeholders.json",
+                file_url=f"{base}/templates/03-multiple-placeholders.json",
                 description="Multiple instruction types",
                 test_category="integration",
             ),
             TestCase(
                 name="Simple Variables (Default)",
-                file_path="test/templates/04-simple-variables.json",
+                file_url=f"{base}/templates/04-simple-variables.json",
                 description="Variable substitution using template defaults",
                 test_category="integration",
             ),
             TestCase(
                 name="Simple Variables (Custom)",
-                file_path="test/templates/04-simple-variables.json",
+                file_url=f"{base}/templates/04-simple-variables.json",
                 description="Variable substitution with custom variables file",
-                variables_file="test/variables/custom-variables.json",
+                variables_url=f"{base}/variables/custom-variables.json",
                 test_category="integration",
             ),
             TestCase(
                 name="Complex Variables (Default)",
-                file_path="test/templates/05-complex-variables.json",
+                file_url=f"{base}/templates/05-complex-variables.json",
                 description="Object properties and array access with defaults",
                 test_category="integration",
             ),
             TestCase(
                 name="Complex Variables (Custom)",
-                file_path="test/templates/05-complex-variables.json",
+                file_url=f"{base}/templates/05-complex-variables.json",
                 description="Object properties and array access with custom variables",
-                variables_file="test/variables/custom-variables.json",
+                variables_url=f"{base}/variables/custom-variables.json",
                 test_category="integration",
             ),
             TestCase(
                 name="Simple Conditionals (Default)",
-                file_path="test/templates/06-simple-conditionals.json",
+                file_url=f"{base}/templates/06-simple-conditionals.json",
                 description="Basic conditional logic with default variables",
                 test_category="integration",
             ),
             TestCase(
                 name="Simple Conditionals (Inverted)",
-                file_path="test/templates/06-simple-conditionals.json",
+                file_url=f"{base}/templates/06-simple-conditionals.json",
                 description="Conditional logic with opposite boolean values",
-                variables_file="test/variables/conditional-test-variables.json",
+                variables_url=f"{base}/variables/conditional-test-variables.json",
                 test_category="integration",
             ),
             TestCase(
                 name="Simple Conditionals (All False)",
-                file_path="test/templates/06-simple-conditionals.json",
+                file_url=f"{base}/templates/06-simple-conditionals.json",
                 description="Conditional logic with all conditions false",
-                variables_file="test/variables/conditional-minimal-variables.json",
+                variables_url=f"{base}/variables/conditional-minimal-variables.json",
                 test_category="integration",
             ),
             TestCase(
                 name="Complex Conditionals (Default)",
-                file_path="test/templates/07-complex-conditionals.json",
+                file_url=f"{base}/templates/07-complex-conditionals.json",
                 description="Complex conditional expressions with default variables",
                 test_category="integration",
             ),
             TestCase(
                 name="Complex Conditionals (Beginner)",
-                file_path="test/templates/07-complex-conditionals.json",
+                file_url=f"{base}/templates/07-complex-conditionals.json",
                 description="Complex conditionals for beginner audience with lower price",
-                variables_file="test/variables/complex-conditional-variables.json",
+                variables_url=f"{base}/variables/complex-conditional-variables.json",
                 test_category="integration",
             ),
             TestCase(
                 name="Comprehensive Conditional Operators",
-                file_path="test/templates/10-comprehensive-conditionals.json",
+                file_url=f"{base}/templates/10-comprehensive-conditionals.json",
                 description="Test all conditional operators: unary, binary, in/not in, chained comparisons",
                 test_category="integration",
             ),
             TestCase(
                 name="Custom Types",
-                file_path="test/templates/08-custom-types.json",
+                file_url=f"{base}/templates/08-custom-types.json",
                 description="Custom instruction type definitions",
                 test_category="integration",
             ),
             TestCase(
                 name="Array Usage (Default)",
-                file_path="test/templates/09-array-usage.json",
+                file_url=f"{base}/templates/09-array-usage.json",
                 description="Using full arrays and array properties in templates",
                 test_category="integration",
             ),
             TestCase(
                 name="Array Usage (Custom)",
-                file_path="test/templates/09-array-usage.json",
+                file_url=f"{base}/templates/09-array-usage.json",
                 description="Using full arrays with custom variable values",
-                variables_file="test/variables/custom-variables.json",
+                variables_url=f"{base}/variables/custom-variables.json",
                 test_category="integration",
             ),
             # Validation-only tests
             TestCase(
                 name="Validate Text Only",
-                file_path="test/templates/01-text-only.json",
+                file_url=f"{base}/templates/01-text-only.json",
                 description="Validation of basic template",
                 test_validation_only=True,
                 test_category="validation",
             ),
             TestCase(
                 name="Validate Custom Types",
-                file_path="test/templates/08-custom-types.json",
+                file_url=f"{base}/templates/08-custom-types.json",
                 description="Validation of custom instruction types",
                 test_validation_only=True,
                 test_category="validation",
@@ -172,7 +229,7 @@ class TestRunner:
             # Error case tests - these should fail
             TestCase(
                 name="Invalid JSON",
-                file_path="test/templates/invalid/01-invalid-json.json",
+                file_url=f"{base}/templates/invalid/01-invalid-json.json",
                 description="Template with invalid JSON syntax",
                 should_pass=False,
                 expected_errors=["Invalid JSON"],
@@ -180,7 +237,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Missing Required Fields",
-                file_path="test/templates/invalid/02-missing-required-fields.json",
+                file_url=f"{base}/templates/invalid/02-missing-required-fields.json",
                 description="Template missing required version and content fields",
                 should_pass=False,
                 expected_errors=["Missing required field"],
@@ -189,7 +246,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Undefined Variables",
-                file_path="test/templates/invalid/03-undefined-variables.json",
+                file_url=f"{base}/templates/invalid/03-undefined-variables.json",
                 description="Template with undefined variable references",
                 should_pass=False,
                 expected_errors=["Undefined variable reference"],
@@ -198,7 +255,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Unknown Instruction Type",
-                file_path="test/templates/invalid/04-unknown-instruction-type.json",
+                file_url=f"{base}/templates/invalid/04-unknown-instruction-type.json",
                 description="Template with non-existent instruction type",
                 should_pass=False,
                 expected_errors=["Unknown instruction type"],
@@ -206,7 +263,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Invalid Conditional Syntax",
-                file_path="test/templates/invalid/05-invalid-conditional.json",
+                file_url=f"{base}/templates/invalid/05-invalid-conditional.json",
                 description="Template with invalid conditional expression",
                 should_pass=False,
                 expected_errors=["Security validation failed", "Syntax error"],
@@ -214,7 +271,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Missing Placeholder Config",
-                file_path="test/templates/invalid/06-missing-placeholder-config.json",
+                file_url=f"{base}/templates/invalid/06-missing-placeholder-config.json",
                 description="Placeholder missing required description config",
                 should_pass=False,
                 expected_errors=["missing required field", "description"],
@@ -223,7 +280,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Empty Content Array",
-                file_path="test/templates/invalid/07-empty-content.json",
+                file_url=f"{base}/templates/invalid/07-empty-content.json",
                 description="Template with empty content array",
                 should_pass=False,
                 expected_errors=["Content array cannot be empty"],
@@ -233,7 +290,7 @@ class TestRunner:
             # Security Tests - Malicious content that should be blocked
             TestCase(
                 name="Security: Malicious Injection Attempts",
-                file_path="test/templates/security/malicious_injection.json",
+                file_url=f"{base}/templates/security/malicious_injection.json",
                 description="Template with various XSS and injection attempts",
                 should_pass=False,
                 expected_errors=[
@@ -248,7 +305,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Security: Dangerous Expression Injection",
-                file_path="test/templates/security/malicious_expressions.json",
+                file_url=f"{base}/templates/security/malicious_expressions.json",
                 description="Conditional expressions with code injection attempts",
                 should_pass=False,
                 expected_errors=["Malicious content detected", "condition", "Security"],
@@ -257,7 +314,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Security: Malicious Variable Content",
-                file_path="test/templates/security/malicious_variables.json",
+                file_url=f"{base}/templates/security/malicious_variables.json",
                 description="Variables with prototype pollution and XSS attempts",
                 should_pass=False,
                 expected_errors=["Security", "Variable", "validation", "Malicious"],
@@ -266,7 +323,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Security: SSRF Schema Attempts",
-                file_path="test/templates/security/malicious_schema.json",
+                file_url=f"{base}/templates/security/malicious_schema.json",
                 description="Schema URLs attempting SSRF and file access",
                 should_pass=False,
                 expected_errors=[
@@ -281,7 +338,7 @@ class TestRunner:
             # Security Tests with Different Settings
             TestCase(
                 name="Security: Basic Template with Strict Mode",
-                file_path="test/templates/01-text-only.json",
+                file_url=f"{base}/templates/01-text-only.json",
                 description="Basic template should pass even with strict validation",
                 should_pass=True,
                 test_category="security",
@@ -289,7 +346,7 @@ class TestRunner:
             ),
             TestCase(
                 name="Security: HTTP Blocking Test",
-                file_path="test/templates/01-text-only.json",
+                file_url=f"{base}/templates/01-text-only.json",
                 description="Basic template should pass with HTTP blocking enabled",
                 should_pass=True,
                 test_category="security",
@@ -323,46 +380,53 @@ class TestRunner:
         print(f"\n{'='*60}")
         print(f"Running: {test_case.name}")
         print(f"Category: {test_case.test_category}")
-        print(f"File: {test_case.file_path}")
+        print(f"Template URL: {test_case.file_url}")
         print(f"Description: {test_case.description}")
-        if test_case.variables_file:
-            print(f"Variables: {test_case.variables_file}")
+        if test_case.variables_url:
+            print(f"Variables URL: {test_case.variables_url}")
         if test_case.extra_args:
             print(f"Extra Args: {' '.join(test_case.extra_args)}")
         print(f"{'='*60}")
 
-        # Check if template file exists
-        if not Path(test_case.file_path).exists():
+        # Download template file
+        template_file = self.download_file(test_case.file_url, "template")
+        if not template_file:
             return TestResult(
                 test_case=test_case,
                 passed=False,
                 output="",
-                error_output=f"Test file not found: {test_case.file_path}",
+                error_output=f"Failed to download template from: {test_case.file_url}",
                 execution_time=0.0,
                 exit_code=-1,
             )
 
-        # Check if variables file exists (if specified)
-        if test_case.variables_file and not Path(test_case.variables_file).exists():
-            return TestResult(
-                test_case=test_case,
-                passed=False,
-                output="",
-                error_output=f"Variables file not found: {test_case.variables_file}",
-                execution_time=0.0,
-                exit_code=-1,
-            )
+        # Download variables file if specified
+        variables_file = None
+        if test_case.variables_url:
+            variables_file = self.download_file(test_case.variables_url, "variables")
+            if not variables_file:
+                return TestResult(
+                    test_case=test_case,
+                    passed=False,
+                    output="",
+                    error_output=f"Failed to download variables from: {test_case.variables_url}",
+                    execution_time=0.0,
+                    exit_code=-1,
+                )
 
         # Build command
-        cmd = [self.compiler_command, test_case.file_path]
+        cmd = [self.compiler_command, str(template_file)]
         if test_case.test_validation_only:
             cmd.append("--validate-only")
-        if test_case.variables_file:
-            cmd.extend(["--variables", test_case.variables_file])
+        if variables_file:
+            cmd.extend(["--variables", str(variables_file)])
         if test_case.extra_args:
             cmd.extend(test_case.extra_args)
         if self.verbose:
             cmd.append("--verbose")
+
+        if self.verbose:
+            print(f"Running command: {' '.join(cmd)}")
 
         # Run the command
         start_time = time.time()
@@ -424,7 +488,16 @@ class TestRunner:
             )
         except Exception as e:
             execution_time = time.time() - start_time
-            print(f"❌ FAIL - Exception: {e}")
+            error_msg = f"❌ FAIL - Exception: {e}"
+            print(error_msg)
+
+            # Add more helpful error info
+            if "cannot find the file specified" in str(e).lower() or "no such file" in str(e).lower():
+                print(f"💡 Hint: Command '{self.compiler_command}' not found. Try:")
+                print(f"  - Install: pip install its-compiler-python")
+                print(f"  - Use full path: --compiler /path/to/its-compile")
+                print(f"  - Use python module: --compiler 'python -m its_compiler.cli'")
+
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -456,6 +529,16 @@ class TestRunner:
 
     def run_all_tests(self: "TestRunner", stop_on_failure: bool = False, category_filter: Optional[str] = None) -> bool:
         """Run all test cases or filter by category."""
+        # Check if compiler is available first
+        if not self.check_compiler_available():
+            print(f"❌ Compiler '{self.compiler_command}' is not available or not working properly.")
+            print("\n💡 Try one of these solutions:")
+            print(f"  1. Install the compiler: pip install its-compiler-python")
+            print(f"  2. Use full path: --compiler /path/to/its-compile")
+            print(f"  3. Use Python module: --compiler 'python -m its_compiler.cli'")
+            print(f"  4. Check your PATH environment variable")
+            return False
+
         test_cases = self.get_test_cases()
 
         if category_filter:
@@ -464,10 +547,12 @@ class TestRunner:
                 print(f"No tests found for category: {category_filter}")
                 return True
 
+        print(f"✅ Compiler '{self.compiler_command}' is available")
         print(f"Running {len(test_cases)} tests...")
         if category_filter:
             print(f"Category filter: {category_filter}")
         print(f"Compiler command: {self.compiler_command}")
+        print(f"Test repository: {self.base_url} (version: {self.test_version})")
 
         for test_case in test_cases:
             result = self.run_test(test_case)
@@ -515,7 +600,7 @@ class TestRunner:
                 print(f"  {cat}: {stats['passed']}/{stats['total']} passed")
 
         if failed_tests:
-            print("\n🔴 FAILED TESTS:")
+            print("\n❌ FAILED TESTS:")
             for result in failed_tests:
                 print(f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}...")
 
@@ -528,14 +613,14 @@ class TestRunner:
         print(f"\nTotal execution time: {total_time:.2f}s")
 
         success = len(failed_tests) == 0
-        print(f"\nOverall result: {'✅ SUCCESS' if success else '🔴 FAILURE'}")
+        print(f"\nOverall result: {'✅ SUCCESS' if success else '❌ FAILURE'}")
 
         return success
 
     def generate_junit_xml(self: "TestRunner", output_file: str) -> None:
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
-            from xml.etree.ElementTree import Element, SubElement
+            from xml.etree.ElementTree import Element, SubElement, ElementTree
         except ImportError:
             print("Warning: Cannot generate JUnit XML (xml module not available)")
             return
@@ -543,7 +628,7 @@ class TestRunner:
         testsuites = Element("testsuites")
 
         # Group by category
-        categories: Dict[str, List[TestResult]] = {}  # Fixed type annotation
+        categories: Dict[str, List[TestResult]] = {}
         for result in self.results:
             cat = result.test_case.test_category
             if cat not in categories:
@@ -577,6 +662,11 @@ class TestRunner:
                     stderr = SubElement(testcase, "system-err")
                     stderr.text = self._safe_text_for_xml(result.error_output)
 
+        # Write the XML file
+        tree = ElementTree(testsuites)
+        tree.write(output_file, encoding="utf-8", xml_declaration=True)
+        print(f"JUnit XML report written to: {output_file}")
+
     def list_categories(self: "TestRunner") -> None:
         """List available test categories."""
         test_cases = self.get_test_cases()
@@ -591,6 +681,19 @@ class TestRunner:
         print("Available test categories:")
         for cat, count in sorted(categories.items()):
             print(f"  {cat}: {count} tests")
+
+    def cleanup(self: "TestRunner") -> None:
+        """Clean up temporary files."""
+        try:
+            import shutil
+
+            if self.temp_dir.exists():
+                shutil.rmtree(self.temp_dir)
+                if self.verbose:
+                    print(f"Cleaned up temporary directory: {self.temp_dir}")
+        except Exception as e:
+            if self.verbose:
+                print(f"Warning: Failed to clean up temporary directory: {e}")
 
 
 def main() -> int:
@@ -618,46 +721,67 @@ def main() -> int:
     )
     parser.add_argument("--list-categories", action="store_true", help="List available test categories")
     parser.add_argument("--security-only", action="store_true", help="Run only security tests")
+    parser.add_argument(
+        "--test-version",
+        default="v1.0",
+        choices=["v1.0"],
+        help="Test template version to use (default: v1.0)",
+    )
 
     args = parser.parse_args()
 
-    runner = TestRunner(compiler_command=args.compiler, verbose=args.verbose)
+    runner = TestRunner(compiler_command=args.compiler, verbose=args.verbose, test_version=args.test_version)
 
-    if args.list_categories:
-        runner.list_categories()
-        return 0
+    try:
+        if args.list_categories:
+            runner.list_categories()
+            return 0
 
-    if args.security_only:
-        args.category = "security"
+        if args.security_only:
+            args.category = "security"
 
-    if args.test:
-        # Run specific test
-        test_cases = runner.get_test_cases()
-        matching_tests = [tc for tc in test_cases if args.test.lower() in tc.name.lower()]
+        if args.test:
+            # Check compiler for specific tests too
+            if not runner.check_compiler_available():
+                print(f"❌ Compiler '{args.compiler}' is not available or not working properly.")
+                print("\n💡 Try one of these solutions:")
+                print(f"  1. Install the compiler: pip install its-compiler-python")
+                print(f"  2. Use full path: --compiler /path/to/its-compile")
+                print(f"  3. Use Python module: --compiler 'python -m its_compiler.cli'")
+                return 1
 
-        if not matching_tests:
-            print(f"No tests found matching: {args.test}")
-            print("Available tests:")
-            for tc in test_cases:
-                print(f"  - {tc.name} ({tc.test_category})")
-            return 1
+            # Run specific test
+            test_cases = runner.get_test_cases()
+            matching_tests = [tc for tc in test_cases if args.test.lower() in tc.name.lower()]
 
-        for test_case in matching_tests:
-            result = runner.run_test(test_case)
-            runner.results.append(result)
+            if not matching_tests:
+                print(f"No tests found matching: {args.test}")
+                print("Available tests:")
+                for tc in test_cases:
+                    print(f"  - {tc.name} ({tc.test_category})")
+                return 1
 
-        success = runner.print_summary()
-    elif args.category:
-        # Run tests from specific category
-        success = runner.run_all_tests(stop_on_failure=args.stop_on_failure, category_filter=args.category)
-    else:
-        # Run all tests
-        success = runner.run_all_tests(stop_on_failure=args.stop_on_failure)
+            print(f"✅ Compiler '{args.compiler}' is available")
+            for test_case in matching_tests:
+                result = runner.run_test(test_case)
+                runner.results.append(result)
 
-    if args.junit_xml:
-        runner.generate_junit_xml(args.junit_xml)
+            success = runner.print_summary()
+        elif args.category:
+            # Run tests from specific category
+            success = runner.run_all_tests(stop_on_failure=args.stop_on_failure, category_filter=args.category)
+        else:
+            # Run all tests
+            success = runner.run_all_tests(stop_on_failure=args.stop_on_failure)
 
-    return 0 if success else 1
+        if args.junit_xml:
+            runner.generate_junit_xml(args.junit_xml)
+
+        return 0 if success else 1
+
+    finally:
+        # Always clean up temporary files
+        runner.cleanup()
 
 
 if __name__ == "__main__":
