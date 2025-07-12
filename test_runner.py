@@ -7,10 +7,10 @@ Runs a suite of test templates to validate compiler functionality and security.
 import argparse
 import html
 import subprocess
-import time
 import tempfile
-import urllib.request
+import time
 import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -620,7 +620,7 @@ class TestRunner:
     def generate_junit_xml(self: "TestRunner", output_file: str) -> None:
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
-            from xml.etree.ElementTree import Element, SubElement, ElementTree
+            from xml.etree.ElementTree import Element, ElementTree, SubElement
         except ImportError:
             print("Warning: Cannot generate JUnit XML (xml module not available)")
             return
