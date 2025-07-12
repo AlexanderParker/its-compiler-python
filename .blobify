@@ -1,4 +1,4 @@
-# .blobify configuration (https://github.com/AlexanderParker/blobify) to include some files it usually excludes by default 
+# .blobify configuration (https://github.com/AlexanderParker/blobify) to include some files it usually excludes by default
 
 # include specific configuration files
 +.pre-commit-config.yaml
