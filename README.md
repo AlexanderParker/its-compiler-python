@@ -16,9 +16,7 @@ Reference Python compiler for the [Instruction Template Specification (ITS)](htt
 {
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
   "version": "1.0.0",
-  "extends": [
-    "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json"
-  ],
+  "extends": ["https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"],
   "variables": {
     "topic": "sustainable technology",
     "includeExamples": true
@@ -157,6 +155,9 @@ its-compile template.json --validate-only
 
 # Strict validation
 its-compile template.json --strict
+
+# Check supported schema version
+its-compile --supported-schema-version
 ```
 
 ### Python Library
@@ -255,6 +256,7 @@ Options:
   --validate-only           Validate template without compiling
   --verbose                 Show detailed output
   --strict                  Enable strict validation mode
+  --supported-schema-version Show supported ITS specification version
   --allowlist-status        Show schema allowlist status
   --help                    Show this message and exit
 ```
@@ -344,12 +346,10 @@ ITSVariableError: Undefined variable reference at content[1].config.description:
 
 ## Testing
 
-The test suite automatically downloads test templates from the [ITS Example Templates repository](https://github.com/AlexanderParker/its-example-templates) when you run tests.
-
-Run the test suite:
+The test suite automatically uses templates that match your compiler's supported schema version:
 
 ```bash
-# Run all tests (automatically downloads test templates from GitHub)
+# Run all tests (automatically detects schema version from compiler)
 python test_runner.py
 
 # Run specific categories
@@ -370,9 +370,6 @@ python test_runner.py --list-categories
 
 # Run only security tests
 python test_runner.py --security-only
-
-# Use specific test version
-python test_runner.py --test-version v1.0
 ```
 
 **Test Coverage:**
@@ -382,12 +379,22 @@ python test_runner.py --test-version v1.0
 - **9 error handling tests** - Invalid templates and edge cases
 
 The test runner will:
-1. Download test templates directly from GitHub (no git required)
-2. Use temporary files for each test run
-3. Automatically clean up after completion
-4. Work offline after initial downloads (browser cache)
+
+1. Query your compiler for its supported schema version
+2. Download test templates for that specific version
+3. Run comprehensive tests to ensure compatibility
+4. Fail fast if it can't determine the compiler's schema version
+
+**Schema Version Detection:**
+
+```bash
+# Test runner automatically detects:
+✓ Compiler 'its-compile' supports ITS schema version: 1.0
+Using test templates for schema version: 1.0
+```
 
 **Requirements:**
+
 - Internet connection for downloading test templates
 - No git installation required
 - Works in any environment with Python and urllib
