@@ -19,12 +19,7 @@ from watchdog.observers import Observer
 
 from . import __supported_schema_version__, __version__
 from .compiler import ITSCompiler
-from .exceptions import (
-    ITSCompilationError,
-    ITSError,
-    ITSSecurityError,
-    ITSValidationError,
-)
+from .exceptions import ITSCompilationError, ITSError, ITSSecurityError, ITSValidationError
 from .models import ITSConfig
 from .security import AllowlistManager, SecurityConfig, TrustLevel
 

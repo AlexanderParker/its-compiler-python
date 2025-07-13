@@ -39,14 +39,7 @@ from .models import (
 )
 
 # Security components for advanced usage
-from .security import (
-    AllowlistManager,
-    ExpressionSanitiser,
-    InputValidator,
-    SecurityConfig,
-    TrustLevel,
-    URLValidator,
-)
+from .security import AllowlistManager, ExpressionSanitiser, InputValidator, SecurityConfig, TrustLevel, URLValidator
 
 __all__ = [
     # Core compiler
