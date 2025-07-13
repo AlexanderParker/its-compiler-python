@@ -589,7 +589,7 @@ class TestRunner:
         if schema_version:
             print(f"✅ Compiler '{self.compiler_command}' supports ITS schema version: {schema_version}")
         else:
-            print(f"⚠️ Warning: Could not determine compiler schema version")
+            print("⚠️ Warning: Could not determine compiler schema version")
 
         test_cases = self.get_test_cases()
 
