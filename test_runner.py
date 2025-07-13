@@ -6,6 +6,7 @@ Runs a suite of test templates to validate compiler functionality and security.
 
 import argparse
 import html
+import re
 import subprocess
 import tempfile
 import time
@@ -53,11 +54,16 @@ class TestRunner:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="its_tests_"))
         self.base_url = self._get_test_base_url()
 
+    def _strip_ansi_codes(self, text: str) -> str:
+        """Remove ANSI escape sequences from text."""
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        return ansi_escape.sub("", text)
+
     def _get_test_base_url(self) -> str:
         """Get the base URL for test templates based on compiler's supported schema version."""
         schema_version = self.get_compiler_schema_version()
         if not schema_version:
-            print(f"✗ Error: Could not determine supported schema version from compiler '{self.compiler_command}'")
+            print(f"❌ Error: Could not determine supported schema version from compiler '{self.compiler_command}'")
             print("This could mean:")
             print("  - The compiler doesn't support --supported-schema-version flag")
             print("  - The compiler is too old")
@@ -95,11 +101,15 @@ class TestRunner:
                 check=False,
             )
             if result.returncode == 0:
-                # Parse output to extract version
-                lines = result.stdout.strip().split("\n")
+                # Strip ANSI codes first, then parse output to extract version
+                clean_output = self._strip_ansi_codes(result.stdout.strip())
+                lines = clean_output.split("\n")
                 for line in lines:
                     if "Supported ITS Specification Version:" in line:
-                        return line.split(":")[-1].strip()
+                        version = line.split(":")[-1].strip()
+                        # Additional cleanup to ensure we only get the version number
+                        version = re.sub(r"[^\d\.]", "", version)
+                        return version
             return None
         except Exception:
             return None
@@ -493,7 +503,7 @@ class TestRunner:
 
             print(f"Exit code: {result.returncode}")
             print(f"Execution time: {execution_time:.2f}s")
-            print(f"Status: {'✓ PASS' if passed else '✗ FAIL'}")
+            print(f"Status: {'✅ PASS' if passed else '❌ FAIL'}")
 
             if self.verbose or not passed:
                 if result.stdout:
@@ -512,7 +522,7 @@ class TestRunner:
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
-            print("✗ FAIL - Test timed out after 30 seconds")
+            print("❌ FAIL - Test timed out after 30 seconds")
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -523,7 +533,7 @@ class TestRunner:
             )
         except Exception as e:
             execution_time = time.time() - start_time
-            error_msg = f"✗ FAIL - Exception: {e}"
+            error_msg = f"❌ FAIL - Exception: {e}"
             print(error_msg)
 
             # Add more helpful error info
@@ -566,7 +576,7 @@ class TestRunner:
         """Run all test cases or filter by category."""
         # Check if compiler is available first
         if not self.check_compiler_available():
-            print(f"✗ Compiler '{self.compiler_command}' is not available or not working properly.")
+            print(f"❌ Compiler '{self.compiler_command}' is not available or not working properly.")
             print("\n💡 Try one of these solutions:")
             print("  1. Install the compiler: pip install its-compiler-python")
             print("  2. Use full path: --compiler /path/to/its-compile")
@@ -577,9 +587,9 @@ class TestRunner:
         # Get and display compiler schema version
         schema_version = self.get_compiler_schema_version()
         if schema_version:
-            print(f"✓ Compiler '{self.compiler_command}' supports ITS schema version: {schema_version}")
+            print(f"✅ Compiler '{self.compiler_command}' supports ITS schema version: {schema_version}")
         else:
-            print(f"⚠ Warning: Could not determine compiler schema version")
+            print(f"⚠️ Warning: Could not determine compiler schema version")
 
         test_cases = self.get_test_cases()
 
@@ -589,7 +599,7 @@ class TestRunner:
                 print(f"No tests found for category: {category_filter}")
                 return True
 
-        print(f"✓ Compiler '{self.compiler_command}' is available")
+        print(f"✅ Compiler '{self.compiler_command}' is available")
         print(f"Running {len(test_cases)} tests...")
         if category_filter:
             print(f"Category filter: {category_filter}")
@@ -644,12 +654,12 @@ class TestRunner:
                 print(f"  {cat}: {stats['passed']}/{stats['total']} passed")
 
         if failed_tests:
-            print("\n✗ FAILED TESTS:")
+            print("\n❌ FAILED TESTS:")
             for result in failed_tests:
                 print(f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}...")
 
         if passed_tests:
-            print("\n✓ PASSED TESTS:")
+            print("\n✅ PASSED TESTS:")
             for result in passed_tests:
                 print(f"  - {result.test_case.name} ({result.test_case.test_category}) ({result.execution_time:.2f}s)")
 
@@ -657,7 +667,7 @@ class TestRunner:
         print(f"\nTotal execution time: {total_time:.2f}s")
 
         success = len(failed_tests) == 0
-        print(f"\nOverall result: {'✓ SUCCESS' if success else '✗ FAILURE'}")
+        print(f"\nOverall result: {'✅ SUCCESS' if success else '❌ FAILURE'}")
 
         return success
 
@@ -781,7 +791,7 @@ def main() -> int:
         if args.test:
             # Check compiler for specific tests too
             if not runner.check_compiler_available():
-                print(f"✗ Compiler '{args.compiler}' is not available or not working properly.")
+                print(f"❌ Compiler '{args.compiler}' is not available or not working properly.")
                 print("\n💡 Try one of these solutions:")
                 print("  1. Install the compiler: pip install its-compiler-python")
                 print("  2. Use full path: --compiler /path/to/its-compile")
@@ -799,7 +809,7 @@ def main() -> int:
                     print(f"  - {tc.name} ({tc.test_category})")
                 return 1
 
-            print(f"✓ Compiler '{args.compiler}' is available")
+            print(f"✅ Compiler '{args.compiler}' is available")
             for test_case in matching_tests:
                 result = runner.run_test(test_case)
                 runner.results.append(result)
