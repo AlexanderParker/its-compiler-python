@@ -2,5 +2,9 @@
 
 # include specific configuration files
 +.pre-commit-config.yaml
+
+# include github automations
 +.github/**
+
+# include project configuration
 +pyproject.toml
