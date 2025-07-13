@@ -9,9 +9,12 @@ Includes comprehensive security features for safe template processing.
 
 from typing import Any, Dict
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Alexander Parker"
-__email__ = "your-email@example.com"
+__email__ = "its-compiler@parker.im"
+
+# Supported ITS specification version
+__supported_schema_version__ = "1.0"
 
 from .compiler import ITSCompiler
 from .exceptions import (
@@ -82,10 +85,16 @@ def get_version() -> str:
     return __version__
 
 
+def get_supported_schema_version() -> str:
+    """Get the supported ITS specification version."""
+    return __supported_schema_version__
+
+
 def get_security_info() -> Dict[str, Any]:
     """Get information about available security features."""
     return {
         "version": __version__,
+        "supported_schema_version": __supported_schema_version__,
         "security_features": [
             "Interactive schema allowlist",
             "SSRF protection",

@@ -46,17 +46,32 @@ class TestResult:
 class TestRunner:
     """Runs integration and security tests for the ITS compiler."""
 
-    def __init__(
-        self: "TestRunner", compiler_command: str = "its-compile", verbose: bool = False, test_version: str = "v1.0"
-    ):
+    def __init__(self, compiler_command: str = "its-compile", verbose: bool = False):
         self.compiler_command = compiler_command
         self.verbose = verbose
-        self.test_version = test_version
         self.results: List[TestResult] = []
-        self.base_url = f"https://raw.githubusercontent.com/AlexanderParker/its-example-templates/main/{test_version}"
         self.temp_dir = Path(tempfile.mkdtemp(prefix="its_tests_"))
+        self.base_url = self._get_test_base_url()
 
-    def check_compiler_available(self: "TestRunner") -> bool:
+    def _get_test_base_url(self) -> str:
+        """Get the base URL for test templates based on compiler's supported schema version."""
+        schema_version = self.get_compiler_schema_version()
+        if not schema_version:
+            print(f"✗ Error: Could not determine supported schema version from compiler '{self.compiler_command}'")
+            print("This could mean:")
+            print("  - The compiler doesn't support --supported-schema-version flag")
+            print("  - The compiler is too old")
+            print("  - The compiler command is incorrect")
+            print("\n💡 Try:")
+            print("  - Update to latest compiler version: pip install --upgrade its-compiler-python")
+            print("  - Check compiler command: --compiler /path/to/its-compile")
+            raise SystemExit(1)
+
+        # Schema versions are always two digits like "1.0", "1.1", etc.
+        # Just prefix with 'v' for the URL path
+        return f"https://raw.githubusercontent.com/AlexanderParker/its-example-templates/main/v{schema_version}"
+
+    def check_compiler_available(self) -> bool:
         """Check if the compiler command is available."""
         try:
             result = subprocess.run([self.compiler_command, "--help"], capture_output=True, timeout=10, check=False)
@@ -68,6 +83,26 @@ class TestRunner:
             return True
         except Exception:
             return False
+
+    def get_compiler_schema_version(self) -> Optional[str]:
+        """Get the supported schema version from the compiler."""
+        try:
+            result = subprocess.run(
+                [self.compiler_command, "--supported-schema-version"],
+                capture_output=True,
+                timeout=10,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                # Parse output to extract version
+                lines = result.stdout.strip().split("\n")
+                for line in lines:
+                    if "Supported ITS Specification Version:" in line:
+                        return line.split(":")[-1].strip()
+            return None
+        except Exception:
+            return None
 
     def download_file(self, url: str, description: str = "file") -> Optional[Path]:
         """Download a file from URL to temporary directory."""
@@ -103,7 +138,7 @@ class TestRunner:
             print(f"Error downloading {description}: {e}")
             return None
 
-    def get_test_cases(self: "TestRunner") -> List[TestCase]:
+    def get_test_cases(self) -> List[TestCase]:
         """Define all test cases including security tests."""
         base = self.base_url
 
@@ -354,7 +389,7 @@ class TestRunner:
             ),
         ]
 
-    def _safe_text_for_xml(self: "TestRunner", text: str) -> str:
+    def _safe_text_for_xml(self, text: str) -> str:
         """Safely escape text for XML, handling Unicode and control characters."""
         if not text:
             return ""
@@ -375,7 +410,7 @@ class TestRunner:
 
         return text
 
-    def run_test(self: "TestRunner", test_case: TestCase) -> TestResult:
+    def run_test(self, test_case: TestCase) -> TestResult:
         """Run a single test case."""
         print(f"\n{'='*60}")
         print(f"Running: {test_case.name}")
@@ -458,7 +493,7 @@ class TestRunner:
 
             print(f"Exit code: {result.returncode}")
             print(f"Execution time: {execution_time:.2f}s")
-            print(f"Status: {'✅ PASS' if passed else '❌ FAIL'}")
+            print(f"Status: {'✓ PASS' if passed else '✗ FAIL'}")
 
             if self.verbose or not passed:
                 if result.stdout:
@@ -477,7 +512,7 @@ class TestRunner:
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
-            print("❌ FAIL - Test timed out after 30 seconds")
+            print("✗ FAIL - Test timed out after 30 seconds")
             return TestResult(
                 test_case=test_case,
                 passed=False,
@@ -488,7 +523,7 @@ class TestRunner:
             )
         except Exception as e:
             execution_time = time.time() - start_time
-            error_msg = f"❌ FAIL - Exception: {e}"
+            error_msg = f"✗ FAIL - Exception: {e}"
             print(error_msg)
 
             # Add more helpful error info
@@ -507,7 +542,7 @@ class TestRunner:
                 exit_code=-3,
             )
 
-    def run_tests_by_category(self: "TestRunner", category: str, stop_on_failure: bool = False) -> bool:
+    def run_tests_by_category(self, category: str, stop_on_failure: bool = False) -> bool:
         """Run tests filtered by category."""
         test_cases = [tc for tc in self.get_test_cases() if tc.test_category == category]
 
@@ -527,17 +562,24 @@ class TestRunner:
 
         return all(r.passed for r in self.results if r.test_case.test_category == category)
 
-    def run_all_tests(self: "TestRunner", stop_on_failure: bool = False, category_filter: Optional[str] = None) -> bool:
+    def run_all_tests(self, stop_on_failure: bool = False, category_filter: Optional[str] = None) -> bool:
         """Run all test cases or filter by category."""
         # Check if compiler is available first
         if not self.check_compiler_available():
-            print(f"❌ Compiler '{self.compiler_command}' is not available or not working properly.")
+            print(f"✗ Compiler '{self.compiler_command}' is not available or not working properly.")
             print("\n💡 Try one of these solutions:")
             print("  1. Install the compiler: pip install its-compiler-python")
             print("  2. Use full path: --compiler /path/to/its-compile")
             print("  3. Use Python module: --compiler 'python -m its_compiler.cli'")
             print("  4. Check your PATH environment variable")
             return False
+
+        # Get and display compiler schema version
+        schema_version = self.get_compiler_schema_version()
+        if schema_version:
+            print(f"✓ Compiler '{self.compiler_command}' supports ITS schema version: {schema_version}")
+        else:
+            print(f"⚠ Warning: Could not determine compiler schema version")
 
         test_cases = self.get_test_cases()
 
@@ -547,12 +589,14 @@ class TestRunner:
                 print(f"No tests found for category: {category_filter}")
                 return True
 
-        print(f"✅ Compiler '{self.compiler_command}' is available")
+        print(f"✓ Compiler '{self.compiler_command}' is available")
         print(f"Running {len(test_cases)} tests...")
         if category_filter:
             print(f"Category filter: {category_filter}")
         print(f"Compiler command: {self.compiler_command}")
-        print(f"Test repository: {self.base_url} (version: {self.test_version})")
+        print(f"Test repository: {self.base_url}")
+        if schema_version:
+            print(f"Using test templates for schema version: {schema_version}")
 
         for test_case in test_cases:
             result = self.run_test(test_case)
@@ -564,7 +608,7 @@ class TestRunner:
 
         return self.print_summary(category_filter)
 
-    def print_summary(self: "TestRunner", category_filter: Optional[str] = None) -> bool:
+    def print_summary(self, category_filter: Optional[str] = None) -> bool:
         """Print test summary and return overall success."""
         print(f"\n{'='*60}")
         print("TEST SUMMARY")
@@ -600,12 +644,12 @@ class TestRunner:
                 print(f"  {cat}: {stats['passed']}/{stats['total']} passed")
 
         if failed_tests:
-            print("\n❌ FAILED TESTS:")
+            print("\n✗ FAILED TESTS:")
             for result in failed_tests:
                 print(f"  - {result.test_case.name} ({result.test_case.test_category}): {result.error_output[:100]}...")
 
         if passed_tests:
-            print("\n✅ PASSED TESTS:")
+            print("\n✓ PASSED TESTS:")
             for result in passed_tests:
                 print(f"  - {result.test_case.name} ({result.test_case.test_category}) ({result.execution_time:.2f}s)")
 
@@ -613,11 +657,11 @@ class TestRunner:
         print(f"\nTotal execution time: {total_time:.2f}s")
 
         success = len(failed_tests) == 0
-        print(f"\nOverall result: {'✅ SUCCESS' if success else '❌ FAILURE'}")
+        print(f"\nOverall result: {'✓ SUCCESS' if success else '✗ FAILURE'}")
 
         return success
 
-    def generate_junit_xml(self: "TestRunner", output_file: str) -> None:
+    def generate_junit_xml(self, output_file: str) -> None:
         """Generate JUnit XML for CI systems with proper escaping."""
         try:
             from xml.etree.ElementTree import Element, ElementTree, SubElement
@@ -667,7 +711,7 @@ class TestRunner:
         tree.write(output_file, encoding="utf-8", xml_declaration=True)
         print(f"JUnit XML report written to: {output_file}")
 
-    def list_categories(self: "TestRunner") -> None:
+    def list_categories(self) -> None:
         """List available test categories."""
         test_cases = self.get_test_cases()
         categories = {}
@@ -682,7 +726,7 @@ class TestRunner:
         for cat, count in sorted(categories.items()):
             print(f"  {cat}: {count} tests")
 
-    def cleanup(self: "TestRunner") -> None:
+    def cleanup(self) -> None:
         """Clean up temporary files."""
         try:
             import shutil
@@ -721,16 +765,10 @@ def main() -> int:
     )
     parser.add_argument("--list-categories", action="store_true", help="List available test categories")
     parser.add_argument("--security-only", action="store_true", help="Run only security tests")
-    parser.add_argument(
-        "--test-version",
-        default="v1.0",
-        choices=["v1.0"],
-        help="Test template version to use (default: v1.0)",
-    )
 
     args = parser.parse_args()
 
-    runner = TestRunner(compiler_command=args.compiler, verbose=args.verbose, test_version=args.test_version)
+    runner = TestRunner(compiler_command=args.compiler, verbose=args.verbose)
 
     try:
         if args.list_categories:
@@ -743,7 +781,7 @@ def main() -> int:
         if args.test:
             # Check compiler for specific tests too
             if not runner.check_compiler_available():
-                print(f"❌ Compiler '{args.compiler}' is not available or not working properly.")
+                print(f"✗ Compiler '{args.compiler}' is not available or not working properly.")
                 print("\n💡 Try one of these solutions:")
                 print("  1. Install the compiler: pip install its-compiler-python")
                 print("  2. Use full path: --compiler /path/to/its-compile")
@@ -761,7 +799,7 @@ def main() -> int:
                     print(f"  - {tc.name} ({tc.test_category})")
                 return 1
 
-            print(f"✅ Compiler '{args.compiler}' is available")
+            print(f"✓ Compiler '{args.compiler}' is available")
             for test_case in matching_tests:
                 result = runner.run_test(test_case)
                 runner.results.append(result)

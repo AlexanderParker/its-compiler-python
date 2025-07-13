@@ -17,6 +17,7 @@ from rich.table import Table
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from . import __supported_schema_version__, __version__
 from .compiler import ITSCompiler
 from .exceptions import (
     ITSCompilationError,
@@ -369,7 +370,7 @@ def compile_template(
             security_status = compiler.get_security_status()
             safe_print("[blue]Security Configuration:[/blue]")
             safe_print(f"  HTTP allowed: {security_config.network.allow_http}")
-            safe_print("  Interactive allowlist: {security_config.allowlist.interactive_mode}")
+            safe_print(f"  Interactive allowlist: {security_config.allowlist.interactive_mode}")
             safe_print(f"  Block localhost: {security_config.network.block_localhost}")
 
             enabled_features = [k for k, v in security_status["features"].items() if v]
@@ -582,6 +583,11 @@ def _is_safe_output_path(output_path: PathType) -> bool:
     type=click.Path(),
     help="Generate security analysis report to specified file",
 )
+@click.option(
+    "--supported-schema-version",
+    is_flag=True,
+    help="Show the supported ITS specification version and exit",
+)
 # Allowlist management options
 @click.option("--allowlist-status", is_flag=True, help="Show allowlist status and exit")
 @click.option(
@@ -616,7 +622,7 @@ def _is_safe_output_path(output_path: PathType) -> bool:
     default=90,
     help="Days threshold for cleanup (default: 90)",
 )
-@click.version_option()
+@click.version_option(version=__version__)
 def main(
     template_file: Optional[PathType],
     output: Optional[PathType],
@@ -630,6 +636,7 @@ def main(
     allow_http: bool,
     interactive_allowlist: Optional[bool],
     security_report: Optional[PathType],
+    supported_schema_version: bool,
     allowlist_status: bool,
     add_trusted_schema: Optional[str],
     remove_schema: Optional[str],
@@ -644,6 +651,12 @@ def main(
 
     TEMPLATE_FILE: Path to the ITS template JSON file to compile (required for compilation).
     """
+
+    # Handle --supported-schema-version flag
+    if supported_schema_version:
+        safe_print(f"ITS Compiler Python v{__version__}")
+        safe_print(f"Supported ITS Specification Version: {__supported_schema_version__}")
+        return
 
     # Create security configuration
     security_config = create_security_config(allow_http, interactive_allowlist, strict)
