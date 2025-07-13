@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
+from ..security import InputValidator, SecurityConfig
 from .conditional_evaluator import ConditionalEvaluator
 from .exceptions import ITSCompilationError, ITSValidationError, ITSVariableError
 from .models import (
@@ -19,7 +20,6 @@ from .models import (
     ValidationResult,
 )
 from .schema_loader import SchemaLoader
-from .security import InputValidator, SecurityConfig
 from .variable_processor import VariableProcessor
 
 

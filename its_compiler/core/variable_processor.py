@@ -6,8 +6,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
+from ..security import InputValidator, SecurityConfig
 from .exceptions import ITSVariableError
-from .security import InputValidator, SecurityConfig
 
 
 class VariableProcessor:

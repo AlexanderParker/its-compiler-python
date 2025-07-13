@@ -100,7 +100,7 @@ Changelog = "https://github.com/alexanderparker/its-compiler-python/blob/main/CH
 "Security Policy" = "https://github.com/alexanderparker/its-compiler-python/security/policy"
 
 [project.scripts]
-its-compile = "its_compiler.cli:main"
+its-compile = "its_compiler.cli.main:main"
 
 [tool.setuptools]
 package-dir = { "" = "." }

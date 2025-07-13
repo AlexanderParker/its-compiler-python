@@ -6,7 +6,7 @@ import ast
 import re
 from typing import Any, Dict, List
 
-from ..exceptions import ITSConditionalError
+from ..core.exceptions import ITSConditionalError
 from .config import SecurityConfig
 
 

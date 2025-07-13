@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, NoReturn, Optional, Union
 
-from ..exceptions import ITSValidationError
+from ..core.exceptions import ITSValidationError
 from .config import SecurityConfig
 
 

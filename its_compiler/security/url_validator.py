@@ -7,7 +7,7 @@ import socket
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-from ..exceptions import ITSSchemaError
+from ..core.exceptions import ITSSchemaError
 from .config import SecurityConfig
 
 

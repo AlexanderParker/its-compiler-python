@@ -17,11 +17,11 @@ from rich.table import Table
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from . import __supported_schema_version__, __version__
-from .compiler import ITSCompiler
-from .exceptions import ITSCompilationError, ITSError, ITSSecurityError, ITSValidationError
-from .models import ITSConfig
-from .security import AllowlistManager, SecurityConfig, TrustLevel
+from .. import __supported_schema_version__, __version__
+from ..core.compiler import ITSCompiler
+from ..core.exceptions import ITSCompilationError, ITSError, ITSSecurityError, ITSValidationError
+from ..core.models import ITSConfig
+from ..security import AllowlistManager, SecurityConfig, TrustLevel
 
 
 def setup_safe_console() -> Tuple[Console, bool]:
@@ -721,93 +721,6 @@ def main(
             safe_print(f"\n[yellow]{SYMBOLS['warn']} Stopping watch mode...[/yellow]")
             observer.stop()
         observer.join()
-
-
-@click.command()
-@click.option(
-    "--export-config",
-    type=click.Path(),
-    help="Export security configuration to file",
-)
-def validate_security_config(
-    export_config: Optional[PathType],
-) -> None:
-    """Validate security configuration and settings."""
-
-    try:
-        security_config = SecurityConfig.from_environment()
-
-        # Validate configuration
-        warnings = security_config.validate()
-
-        if warnings:
-            safe_print(f"[yellow]{SYMBOLS['warn']} Configuration Warnings:[/yellow]")
-            for warning in warnings:
-                safe_print(f"  {SYMBOLS['bullet']} {warning}")
-        else:
-            safe_print(f"[green]{SYMBOLS['ok']} Security configuration is valid[/green]")
-
-        # Show configuration summary
-        try:
-            table = Table(title="Security Configuration", show_header=True)
-            table.add_column("Setting", style="cyan")
-            table.add_column("Value", style="green")
-
-            table.add_row("HTTP Allowed", str(security_config.network.allow_http))
-            table.add_row("Allowlist Enabled", str(security_config.enable_allowlist))
-            table.add_row("Input Validation", str(security_config.enable_input_validation))
-            table.add_row(
-                "Expression Sanitisation",
-                str(security_config.enable_expression_sanitisation),
-            )
-            table.add_row("Interactive Allowlist", str(security_config.allowlist.interactive_mode))
-            table.add_row("Block Localhost", str(security_config.network.block_localhost))
-            table.add_row(
-                "Max Template Size",
-                f"{security_config.processing.max_template_size // 1024} KB",
-            )
-            table.add_row("Request Timeout", f"{security_config.network.request_timeout}s")
-
-            console.print(table)
-        except Exception:
-            safe_print("Security Configuration:")
-            safe_print(f"  HTTP Allowed: {security_config.network.allow_http}")
-            safe_print(f"  Allowlist Enabled: {security_config.enable_allowlist}")
-            safe_print(f"  Input Validation: {security_config.enable_input_validation}")
-            safe_print(f"  Expression Sanitisation: {security_config.enable_expression_sanitisation}")
-            safe_print(f"  Interactive Allowlist: {security_config.allowlist.interactive_mode}")
-            safe_print(f"  Block Localhost: {security_config.network.block_localhost}")
-            safe_print(f"  Max Template Size: {security_config.processing.max_template_size // 1024} KB")
-            safe_print(f"  Request Timeout: {security_config.network.request_timeout}s")
-
-        # Export configuration if requested
-        if export_config:
-            config_dict = {
-                "features": {
-                    "allowlist": security_config.enable_allowlist,
-                    "input_validation": security_config.enable_input_validation,
-                    "expression_sanitisation": security_config.enable_expression_sanitisation,
-                },
-                "network": {
-                    "allow_http": security_config.network.allow_http,
-                    "request_timeout": security_config.network.request_timeout,
-                    "max_response_size": security_config.network.max_response_size,
-                },
-                "processing": {
-                    "max_template_size": security_config.processing.max_template_size,
-                    "max_expression_length": security_config.processing.max_expression_length,
-                    "max_nesting_depth": security_config.processing.max_nesting_depth,
-                },
-            }
-
-            with open(export_config, "w") as f:
-                json.dump(config_dict, f, indent=2)
-
-            safe_print(f"[green]{SYMBOLS['ok']} Configuration exported to: {export_config}[/green]")
-
-    except Exception as e:
-        safe_print(f"[red]Error validating security configuration: {e}[/red]")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

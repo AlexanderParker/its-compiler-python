@@ -12,9 +12,9 @@ from typing import Any, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from ..security import AllowlistManager, SecurityConfig, URLValidator
 from .exceptions import ITSSchemaError
 from .models import ITSConfig
-from .security import AllowlistManager, SecurityConfig, URLValidator
 
 
 class SchemaLoader:

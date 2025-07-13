@@ -16,8 +16,9 @@ __email__ = "its-compiler@parker.im"
 # Supported ITS specification version
 __supported_schema_version__ = "1.0"
 
-from .compiler import ITSCompiler
-from .exceptions import (
+# Core exports
+from .core.compiler import ITSCompiler
+from .core.exceptions import (
     ITSCompilationError,
     ITSConditionalError,
     ITSConfigurationError,
@@ -28,7 +29,7 @@ from .exceptions import (
     ITSValidationError,
     ITSVariableError,
 )
-from .models import (
+from .core.models import (
     CompilationResult,
     InstructionTypeDefinition,
     ITSConfig,

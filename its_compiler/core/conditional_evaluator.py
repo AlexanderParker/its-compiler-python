@@ -6,8 +6,8 @@ import ast
 import operator
 from typing import Any, Callable, Dict, List, Optional
 
+from ..security import ExpressionSanitiser, SecurityConfig
 from .exceptions import ITSConditionalError
-from .security import ExpressionSanitiser, SecurityConfig
 
 
 class ConditionalEvaluator:
