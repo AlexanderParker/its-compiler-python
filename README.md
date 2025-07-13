@@ -393,6 +393,12 @@ The test runner will:
 Using test templates for schema version: 1.0
 ```
 
+You can also fetch the supported schema in code:
+
+```python
+schema_version = get_supported_schema_version()
+```
+
 **Requirements:**
 
 - Internet connection for downloading test templates
