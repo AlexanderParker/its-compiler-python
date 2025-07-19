@@ -262,24 +262,29 @@ class ExpressionSanitiser:
 
         # If it's a constant, validate the index
         if isinstance(slice_node, (ast.Constant, ast.Num)):
-            index_value = slice_node.value if isinstance(slice_node, ast.Constant) else slice_node.n
+            if isinstance(slice_node, ast.Constant):
+                index_value = slice_node.value
+            else:  # ast.Num for Python < 3.8
+                index_value = slice_node.n
 
             if isinstance(index_value, int):
                 # Check both positive and negative indices against the limit
                 max_index = self.processing_config.max_array_index
 
-                if index_value > max_index:
-                    self._security_violation(
-                        expression,
-                        f"Array index too large: {index_value}",
-                        "array_index_too_large",
-                    )
-                elif index_value < -max_index:
-                    self._security_violation(
-                        expression,
-                        f"Array index too negative: {index_value}",
-                        "array_index_too_negative",
-                    )
+                # Use absolute value to check both positive and negative indices
+                if abs(index_value) > max_index:
+                    if index_value > 0:
+                        self._security_violation(
+                            expression,
+                            f"Array index too large: {index_value}",
+                            "array_index_too_large",
+                        )
+                    else:
+                        self._security_violation(
+                            expression,
+                            f"Array index too negative: {index_value}",
+                            "array_index_too_negative",
+                        )
 
     def _validate_literal_size(self, node: ast.AST, expression: str) -> None:
         """Validate size of list/tuple literals."""

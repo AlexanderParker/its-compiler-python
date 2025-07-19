@@ -1,5 +1,6 @@
 """
 Main ITS compiler implementation with core security enhancements.
+Fixed to properly handle schema loading failures and security violations.
 """
 
 import json
@@ -367,7 +368,17 @@ class ITSCompiler:
                         source=schema_url,
                     )
             except Exception as e:
-                # Log error but continue - this allows compilation with custom types only
+                # Check if we should fail or continue based on the error type
+                error_msg = str(e)
+
+                # Fail for security-related blocks
+                if any(
+                    keyword in error_msg
+                    for keyword in ["not in allowlist", "SSRF protection", "Domain", "blocked", "denied access"]
+                ):
+                    raise ITSCompilationError(f"Schema blocked by security policy: {schema_url}: {e}")
+
+                # For other errors, log warning but continue - allows compilation with custom types only
                 print(f"Warning: Failed to load schema {schema_url}: {e}")
 
         # Apply custom instruction types (highest precedence)
