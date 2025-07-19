@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "its-compiler-python"
-version = "0.1.2"
-description = "Reference Python compiler for Instruction Template Specification (ITS) with comprehensive security features"
+version = "0.2.0"
+description = "Reference Python library for Instruction Template Specification (ITS) with comprehensive security features"
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "Alexander Parker", email = "your-email@example.com" }]
-maintainers = [{ name = "Alexander Parker", email = "your-email@example.com" }]
+authors = [{ name = "Alexander Parker", email = "its-compiler@parker.im" }]
+maintainers = [{ name = "Alexander Parker", email = "its-compiler@parker.im" }]
 keywords = [
     "its",
     "instruction",
@@ -21,6 +21,7 @@ keywords = [
     "nlp",
     "content-generation",
     "security",
+    "library",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -39,11 +40,8 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "click>=8.0.0",
-    "rich>=13.0.0",
     "requests>=2.28.0",
     "jsonschema>=4.17.0",
-    "watchdog>=3.0.0",
     "pydantic>=1.10.0",
     "python-dateutil>=2.8.0",
 ]
@@ -57,7 +55,7 @@ dev = [
     "pytest-mock>=3.10.0",
     "pytest-timeout>=2.1.0",
 
-    # Code quality (streamlined)
+    # Code quality
     "black>=22.0.0",
     "isort>=5.12.0",
     "flake8>=6.0.0",
@@ -99,15 +97,12 @@ Changelog = "https://github.com/alexanderparker/its-compiler-python/blob/main/CH
 "Bug Tracker" = "https://github.com/alexanderparker/its-compiler-python/issues"
 "Security Policy" = "https://github.com/alexanderparker/its-compiler-python/security/policy"
 
-[project.scripts]
-its-compile = "its_compiler.cli.main:main"
-
 [tool.setuptools]
 package-dir = { "" = "." }
 
 [tool.setuptools.packages.find]
 include = ["its_compiler*"]
-exclude = ["test*", "docs*", "examples*"]
+exclude = ["test*", "docs*", "examples*", "its_compiler.cli*"]
 
 [tool.setuptools.package-data]
 its_compiler = ["config/*.json", "security/*.json", "py.typed"]
@@ -187,7 +182,7 @@ warn_unreachable = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["rich.*", "watchdog.*", "requests.*"]
+module = ["requests.*"]
 ignore_missing_imports = true
 
 # Streamlined flake8 config
@@ -238,6 +233,7 @@ omit = [
     "*/__pycache__/*",
     "*/site-packages/*",
     "*/dist-packages/*",
+    "*/its_compiler/cli/*",
 ]
 
 [tool.coverage.report]

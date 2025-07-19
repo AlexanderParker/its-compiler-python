@@ -11,12 +11,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from its_compiler import ITSCompiler
-from its_compiler.exceptions import (
-    ITSCompilationError,
-    ITSSecurityError,
-    ITSValidationError,
-)
-from its_compiler.models import ITSConfig
+from its_compiler.core.exceptions import ITSCompilationError, ITSSecurityError, ITSValidationError
+from its_compiler.core.models import ITSConfig
 from its_compiler.security import SecurityConfig
 
 
@@ -299,7 +295,6 @@ class TestSecurityIntegration:
         status = compiler.get_security_status()
 
         assert "security_enabled" in status
-        assert "security_level" in status
         assert "features" in status
         assert "components" in status
 

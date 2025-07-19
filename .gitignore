@@ -137,3 +137,7 @@ cython_debug/
 
 # ITS specific
 .its-cache/
+
+# local files (personal todo lists etc)
+
+*.local
