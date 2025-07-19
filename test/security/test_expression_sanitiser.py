@@ -2,7 +2,6 @@
 Tests for ExpressionSanitiser AST injection prevention and expression validation.
 """
 
-from sys import exc_info
 from typing import Any, Dict
 
 import pytest
