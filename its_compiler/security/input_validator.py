@@ -74,6 +74,10 @@ class InputValidator:
     def validate_template(self, template: Dict[str, Any], template_path: Optional[str] = None) -> None:
         """Validate complete template structure and content."""
 
+        # First check if template is actually a dictionary/object
+        if not isinstance(template, dict):
+            self._security_violation("Template must be a JSON object", "template", "invalid_type")
+
         # Size validation
         self._validate_template_size(template)
 
@@ -431,6 +435,14 @@ class InputValidator:
         # Length check
         if len(text) > 10000:  # Reasonable limit for text content
             self._security_violation(f"Text content too long in {context}", "text_content", "text_too_long")
+
+        # Check for null bytes (security bypass attack)
+        if "\x00" in text:
+            self._security_violation(
+                f"Null byte detected in {context}",
+                "text_content",
+                "null_byte_detected",
+            )
 
         # Check for malicious patterns
         if self.malicious_regex.search(text):

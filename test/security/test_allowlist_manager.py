@@ -192,13 +192,10 @@ class TestAllowlistManager:
         url = "https://unknown.com/schema.json"
         allowlist_manager.config.allowlist.interactive_mode = False
         allowlist_manager.config.allowlist.auto_approve_in_ci = True
-        allowlist_manager.config.allowlist.require_confirmation = False
+        allowlist_manager.config.allowlist.require_confirmation = False  # Add this line
         result = allowlist_manager.is_allowed(url)
         assert result
-        # Check that URL was added to session_allowed or entries with session trust
-        assert url in allowlist_manager.session_allowed or (
-            url in allowlist_manager.entries and allowlist_manager.entries[url].trust_level == TrustLevel.SESSION
-        )
+        assert url in allowlist_manager.session_allowed
 
     def test_update_fingerprint(self, allowlist_manager: AllowlistManager) -> None:
         """Test updating schema fingerprint."""

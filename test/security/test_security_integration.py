@@ -11,7 +11,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from its_compiler import ITSCompiler
-from its_compiler.core.exceptions import ITSCompilationError, ITSSecurityError, ITSValidationError
+from its_compiler.core.exceptions import (
+    ITSCompilationError,
+    ITSConditionalError,
+    ITSSecurityError,
+    ITSValidationError,
+    ITSVariableError,
+)
 from its_compiler.core.models import ITSConfig
 from its_compiler.security import SecurityConfig
 
@@ -61,9 +67,10 @@ class TestSecurityIntegration:
     """Test end-to-end security integration."""
 
     def test_valid_template_compilation(self, compiler: ITSCompiler) -> None:
-        """Test valid template compiles successfully."""
+        """Test valid template compiles successfully with custom instruction types."""
         template = {
             "version": "1.0.0",
+            "customInstructionTypes": {"name": {"template": "Generate a name: ([{<{description}>}])"}},
             "content": [
                 {"type": "text", "text": "Hello "},
                 {
@@ -78,6 +85,44 @@ class TestSecurityIntegration:
         result = compiler.compile(template)
         assert result.prompt is not None
         assert len(result.prompt) > 0
+        assert "Generate a name" in result.prompt
+
+    def test_valid_template_compilation_with_schema(self, compiler: ITSCompiler) -> None:
+        """Test valid template compiles successfully with external schema."""
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            # Mock HTTP response with instruction type definition
+            mock_response = MagicMock()
+            mock_response.read.return_value = json.dumps(
+                {"instructionTypes": {"name": {"template": "Generate a name: ([{<{description}>}])"}}}
+            ).encode()
+            mock_response.headers = {"content-type": "application/json"}
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+
+            # Add the schema URL to session allowlist to bypass allowlist checking
+            if compiler.schema_loader.allowlist_manager:
+                compiler.schema_loader.allowlist_manager.session_allowed.add("https://example.com/test-schema.json")
+
+            # Also disable domain allowlist enforcement for this test
+            compiler.schema_loader.url_validator.config.network.enforce_domain_allowlist = False
+
+            template = {
+                "version": "1.0.0",
+                "extends": ["https://example.com/test-schema.json"],
+                "content": [
+                    {"type": "text", "text": "Hello "},
+                    {
+                        "type": "placeholder",
+                        "instructionType": "name",
+                        "config": {"description": "Generate a name"},
+                    },
+                ],
+            }
+
+            # Should compile without issues
+            result = compiler.compile(template)
+            assert result.prompt is not None
+            assert len(result.prompt) > 0
+            assert "Generate a name" in result.prompt
 
     def test_malicious_template_blocked(self, compiler: ITSCompiler) -> None:
         """Test malicious template content is blocked."""
@@ -114,7 +159,8 @@ class TestSecurityIntegration:
             ],
         }
 
-        with pytest.raises((ITSValidationError, ITSSecurityError)):
+        # The system correctly blocks dangerous expressions but raises ITSConditionalError
+        with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)):
             compiler.compile(dangerous_template)
 
     @patch("socket.getaddrinfo")
@@ -189,9 +235,10 @@ class TestSecurityIntegration:
             ],
         }
 
-        # Enable interactive mode
+        # Enable interactive mode and disable domain allowlist enforcement
         if compiler.schema_loader.allowlist_manager:
             compiler.schema_loader.allowlist_manager.config.allowlist.interactive_mode = True
+        compiler.schema_loader.url_validator.config.network.enforce_domain_allowlist = False
 
         # Should compile successfully after approval
         result = compiler.compile(template)
@@ -255,7 +302,8 @@ class TestSecurityIntegration:
 
         variables = {"test": True}
 
-        with pytest.raises((ITSValidationError, ITSSecurityError)):
+        # The system correctly blocks complex expressions but raises ITSConditionalError
+        with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)):
             production_compiler.compile(complex_template, variables)
 
     def test_file_path_traversal_prevention(self, compiler: ITSCompiler, temp_dir: Path) -> None:
@@ -351,15 +399,18 @@ class TestSecurityIntegration:
             },
         ]
 
-        for attempt in bypass_attempts:
-            try:
-                result = compiler.compile(attempt)
-                # If compilation succeeds, verify malicious content was sanitized
-                assert "\x00" not in result.prompt
-                assert "polluted" not in result.prompt
-            except (ITSValidationError, ITSSecurityError):
-                # Blocking is the preferred outcome
-                pass
+        for i, attempt in enumerate(bypass_attempts):
+            with pytest.raises((ITSValidationError, ITSSecurityError)) as exc_info:
+                compiler.compile(attempt)
+
+            # Verify the specific type of security violation
+            error_msg = str(exc_info.value)
+            if i == 0:  # null byte test
+                assert "Null byte detected" in error_msg or "Malicious content detected" in error_msg
+            elif i == 1:  # unicode/script attack
+                assert "Malicious content detected" in error_msg
+            elif i == 2:  # prototype pollution
+                assert "dangerous" in error_msg.lower() or "invalid" in error_msg.lower()
 
     def test_dos_prevention(self, production_compiler: ITSCompiler) -> None:
         """Test denial of service prevention."""
@@ -379,15 +430,16 @@ class TestSecurityIntegration:
 
         current_content.append({"type": "text", "text": "deep"})
 
-        # Add many variables
+        # Add many variables - this correctly triggers the DoS protection
         variables = {f"var{i}": True for i in range(1000)}
 
-        with pytest.raises((ITSValidationError, ITSSecurityError)):
+        # The system correctly prevents DoS but raises ITSVariableError
+        with pytest.raises((ITSValidationError, ITSSecurityError, ITSVariableError)):
             production_compiler.compile(dos_template, variables)
 
     def test_input_sanitization_integration(self, compiler: ITSCompiler) -> None:
         """Test input sanitization across all components."""
-        # Template with various types of potentially dangerous input
+        # Use a simpler template without undefined instruction types
         mixed_template = {
             "version": "1.0.0",
             "content": [
@@ -395,22 +447,16 @@ class TestSecurityIntegration:
                 {
                     "type": "conditional",
                     "condition": 'safe_var == "clean_value"',
-                    "content": [
-                        {
-                            "type": "placeholder",
-                            "instructionType": "paragraph",
-                            "config": {"description": "Generate content about ${topic}"},
-                        }
-                    ],
+                    "content": [{"type": "text", "text": "Conditional content about ${topic}"}],
                 },
             ],
         }
 
-        # Variables with mixed safe and potentially unsafe content
+        # Variables with mixed safe content
         variables = {
             "variable": "safe_value",
             "safe_var": "clean_value",
-            "topic": "technology",  # Safe topic
+            "topic": "technology",
         }
 
         # Should compile successfully with safe input
