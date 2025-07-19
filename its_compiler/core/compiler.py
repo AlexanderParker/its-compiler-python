@@ -105,7 +105,7 @@ class ITSCompiler:
             try:
                 self.input_validator.validate_template(template)
             except Exception as e:
-                raise ITSValidationError(f"Template input validation failed: {e}")
+                raise ITSValidationError(f"Template security validation failed: {e}")
 
         # Validate template structure
         validation_result = self.validate(template, base_url)
@@ -163,7 +163,7 @@ class ITSCompiler:
 
         for pattern in dangerous_patterns:
             if re.search(pattern, prompt, re.IGNORECASE):
-                print(f"Warning: Potentially dangerous pattern in final prompt: {pattern}")
+                raise ITSValidationError(f"Dangerous pattern detected in final prompt: {pattern}")
 
     def validate_file(self, template_path: str) -> ValidationResult:
         """Validate a template file with security checks."""
