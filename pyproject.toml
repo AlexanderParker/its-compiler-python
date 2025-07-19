@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "its-compiler-python"
-version = "0.2.0"
+version = "0.3.0"
 description = "Reference Python library for Instruction Template Specification (ITS) with comprehensive security features"
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Text Processing :: Markup",
     "Topic :: Security",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "requests>=2.28.0",
     "jsonschema>=4.17.0",
