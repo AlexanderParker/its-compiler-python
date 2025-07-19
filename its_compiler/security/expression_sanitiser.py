@@ -254,37 +254,40 @@ class ExpressionSanitiser:
     def _validate_subscript_access(self, node: ast.Subscript, expression: str) -> None:
         """Validate array/dict subscript access."""
 
-        # For Python < 3.9 compatibility
-        if hasattr(node.slice, "value"):
-            slice_node = node.slice.value
-        else:
-            slice_node = node.slice
+        # Extract the slice node - handle Python version differences
+        slice_node = node.slice
 
-        # If it's a constant, validate the index
-        if isinstance(slice_node, (ast.Constant, ast.Num)):
-            if isinstance(slice_node, ast.Constant):
-                index_value = slice_node.value
-            else:  # ast.Num for Python < 3.8
-                index_value = slice_node.n
+        # Extract the index value, handling different AST node types
+        index_value = None
 
-            if isinstance(index_value, int):
-                # Check both positive and negative indices against the limit
-                max_index = self.processing_config.max_array_index
+        # Handle direct constants
+        if isinstance(slice_node, ast.Constant):  # Python 3.8+
+            index_value = slice_node.value
+        elif isinstance(slice_node, ast.Num):  # Python < 3.8
+            index_value = slice_node.n
+        # Handle negative numbers (UnaryOp with USub)
+        elif isinstance(slice_node, ast.UnaryOp) and isinstance(slice_node.op, ast.USub):
+            if isinstance(slice_node.operand, ast.Constant):
+                index_value = -slice_node.operand.value
+            elif isinstance(slice_node.operand, ast.Num):
+                index_value = -slice_node.operand.n
 
-                # Use absolute value to check both positive and negative indices
-                if abs(index_value) > max_index:
-                    if index_value > 0:
-                        self._security_violation(
-                            expression,
-                            f"Array index too large: {index_value}",
-                            "array_index_too_large",
-                        )
-                    else:
-                        self._security_violation(
-                            expression,
-                            f"Array index too negative: {index_value}",
-                            "array_index_too_negative",
-                        )
+        # Validate the index if we successfully extracted a numeric value
+        if isinstance(index_value, int):
+            max_index = self.processing_config.max_array_index
+
+            if index_value > max_index:
+                self._security_violation(
+                    expression,
+                    f"Array index too large: {index_value}",
+                    "array_index_too_large",
+                )
+            elif index_value < 0 and abs(index_value) > max_index:
+                self._security_violation(
+                    expression,
+                    f"Array index too negative: {index_value}",
+                    "array_index_too_negative",
+                )
 
     def _validate_literal_size(self, node: ast.AST, expression: str) -> None:
         """Validate size of list/tuple literals."""

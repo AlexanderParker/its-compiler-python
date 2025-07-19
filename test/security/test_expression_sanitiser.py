@@ -37,6 +37,15 @@ def production_sanitiser(production_config: SecurityConfig) -> ExpressionSanitis
     return ExpressionSanitiser(production_config)
 
 
+@pytest.fixture
+def test_sanitiser_with_small_limits() -> ExpressionSanitiser:
+    """Create expression sanitiser with very small limits for testing."""
+    # Create a completely new config to avoid modifying shared objects
+    config = SecurityConfig.for_development()
+    config.processing.max_array_index = 10
+    return ExpressionSanitiser(config)
+
+
 class TestExpressionSanitiser:
     """Test ExpressionSanitiser security functionality."""
 
@@ -303,38 +312,38 @@ class TestExpressionSanitiser:
             error_msg = str(exc_info.value)
             assert "Dangerous attribute access" in error_msg or "Dangerous pattern detected" in error_msg
 
-    def test_array_index_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test array index validation."""
+    def test_array_index_validation(self, test_sanitiser_with_small_limits: ExpressionSanitiser) -> None:
+        """Test array index validation with small limits."""
         variables = {"items": [1, 2, 3, 4, 5]}
 
         # Valid indices should work
-        expression_sanitiser.sanitise_expression("items[0] == 1", variables)
-        expression_sanitiser.sanitise_expression("items[2] == 3", variables)
+        test_sanitiser_with_small_limits.sanitise_expression("items[0] == 1", variables)
+        test_sanitiser_with_small_limits.sanitise_expression("items[2] == 3", variables)
 
-        # Test with much larger index to ensure it exceeds the limit
-        max_index = expression_sanitiser.config.processing.max_array_index
-        large_index = max_index + 1000  # Much larger than the limit
+        # Test with index that exceeds the small limit (10)
+        large_index = 50  # Exceeds limit of 10
 
         with pytest.raises(ExpressionSecurityError) as exc_info:
-            expression_sanitiser.sanitise_expression(f"items[{large_index}] == 1", variables)
+            test_sanitiser_with_small_limits.sanitise_expression(f"items[{large_index}] == 1", variables)
 
         assert "Array index too large" in str(exc_info.value)
+        assert exc_info.value.reason == "array_index_too_large"
 
-    def test_negative_array_index_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test negative array index validation."""
+    def test_negative_array_index_validation(self, test_sanitiser_with_small_limits: ExpressionSanitiser) -> None:
+        """Test negative array index validation with small limits."""
         variables = {"items": [1, 2, 3]}
 
         # Reasonable negative indices should work
-        expression_sanitiser.sanitise_expression("items[-1] == 3", variables)
+        test_sanitiser_with_small_limits.sanitise_expression("items[-1] == 3", variables)
 
-        # Test with much larger negative index to ensure it exceeds the limit
-        max_index = expression_sanitiser.config.processing.max_array_index
-        large_negative = -(max_index + 1000)  # Much more negative than the limit
+        # Test with negative index that exceeds the small limit (10)
+        large_negative = -50  # Exceeds limit of 10
 
         with pytest.raises(ExpressionSecurityError) as exc_info:
-            expression_sanitiser.sanitise_expression(f"items[{large_negative}] == 1", variables)
+            test_sanitiser_with_small_limits.sanitise_expression(f"items[{large_negative}] == 1", variables)
 
         assert "Array index too negative" in str(exc_info.value)
+        assert exc_info.value.reason == "array_index_too_negative"
 
     def test_literal_size_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test literal size validation."""
