@@ -169,9 +169,16 @@ class URLValidator:
             # Check against blocked ranges first (most specific)
             for network in self._blocked_networks:
                 if ip in network:
-                    self._ssrf_blocked(url, f"IP {ip_str} in blocked range {network}")
+                    if network.network_address == ipaddress.ip_address("224.0.0.0"):
+                        self._ssrf_blocked(url, f"Multicast IP address blocked: {ip_str}")
+                    elif network.network_address == ipaddress.ip_address("::1"):
+                        self._ssrf_blocked(url, f"Loopback IP address blocked: {ip_str}")
+                    elif network.network_address == ipaddress.ip_address("169.254.0.0"):
+                        self._ssrf_blocked(url, f"Link-local IP address blocked: {ip_str}")
+                    else:
+                        self._ssrf_blocked(url, f"SSRF protection: IP {ip_str} in blocked range {network}")
 
-            # Check specific IP properties
+            # Additional property checks
             if self.network_config.block_private_networks and ip.is_private:
                 self._ssrf_blocked(url, f"Private IP address blocked: {ip_str}")
 
@@ -181,7 +188,6 @@ class URLValidator:
             if self.network_config.block_link_local and ip.is_link_local:
                 self._ssrf_blocked(url, f"Link-local IP address blocked: {ip_str}")
 
-            # Additional checks for suspicious IPs
             if ip.is_multicast:
                 self._ssrf_blocked(url, f"Multicast IP address blocked: {ip_str}")
 
@@ -189,7 +195,6 @@ class URLValidator:
                 self._ssrf_blocked(url, f"Reserved IP address blocked: {ip_str}")
 
         except ValueError:
-            # Invalid IP address format
             self._log_and_raise(url, f"Invalid IP address: {ip_str}", "invalid_ip")
 
     def _is_domain_allowed(self, hostname: str) -> bool:
