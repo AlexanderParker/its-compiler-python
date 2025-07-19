@@ -46,8 +46,9 @@ class URLValidator:
             # Protocol validation
             self._validate_protocol(parsed, url)
 
-            # Domain validation
-            self._validate_domain(parsed, url)
+            # Domain validation (only if enforced)
+            if self.network_config.enforce_domain_allowlist:
+                self._validate_domain(parsed, url)
 
             # SSRF protection
             self._validate_ssrf_protection(parsed, url)
@@ -108,7 +109,7 @@ class URLValidator:
         if not hostname:
             self._log_and_raise(url, "Invalid hostname", "invalid_hostname")
 
-        # Check domain allowlist
+        # Check domain allowlist only if enforcement is enabled
         if self.network_config.enforce_domain_allowlist:
             if not self._is_domain_allowed(hostname):
                 self._log_and_raise(url, f"Domain '{hostname}' not in allowlist", "domain_not_allowed")
@@ -138,9 +139,13 @@ class URLValidator:
             ip_addresses = self._resolve_hostname(hostname)
             for ip_str in ip_addresses:
                 self._validate_ip_address(str(ip_str), url)
-        except socket.gaierror:
-            # DNS resolution failed - could be suspicious
-            print(f"Warning: DNS resolution failed for {hostname}")
+        except socket.gaierror as e:
+            # Re-raise as URLSecurityError for consistent handling
+            raise URLSecurityError(
+                f"DNS resolution failed for {hostname}: {e}",
+                url=url,
+                reason="dns_resolution_failed",
+            )
 
     def _resolve_hostname(self, hostname: str) -> List[str]:
         """Resolve hostname to IP addresses."""
@@ -161,7 +166,7 @@ class URLValidator:
         try:
             ip = ipaddress.ip_address(ip_str)
 
-            # Check against blocked ranges
+            # Check against blocked ranges first (most specific)
             for network in self._blocked_networks:
                 if ip in network:
                     self._ssrf_blocked(url, f"IP {ip_str} in blocked range {network}")
