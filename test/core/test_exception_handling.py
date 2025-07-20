@@ -144,7 +144,7 @@ class TestExceptionHandling:
         )
 
         # Test URL sanitisation
-        sanitised_url = schema_error._sanitise_url(schema_error.schema_url)
+        sanitised_url = schema_error._sanitise_url(schema_error.schema_url or "")
         assert "secret=" not in sanitised_url
         assert "token=" not in sanitised_url
         assert "#fragment" not in sanitised_url

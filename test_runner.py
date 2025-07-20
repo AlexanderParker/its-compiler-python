@@ -8,9 +8,10 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
-def run_core_tests(verbose: bool = False, category: str = None) -> bool:
+def run_core_tests(verbose: bool = False, category: Optional[str] = None) -> bool:
     """Run core library tests using pytest."""
 
     # Construct pytest command

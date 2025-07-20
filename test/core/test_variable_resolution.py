@@ -3,6 +3,8 @@ Tests for variable resolution and processing edge cases.
 Tests complex variable scenarios, error conditions, and security validation.
 """
 
+from typing import Any, Dict
+
 import pytest
 
 from its_compiler.core.exceptions import ITSVariableError
@@ -105,7 +107,7 @@ class TestVariableResolution:
     def test_property_chain_depth_limits(self, strict_processor: VariableProcessor) -> None:
         """Test property chain depth limits."""
         # Create deeply nested object
-        variables = {"root": {}}
+        variables: Dict[str, Any] = {"root": {}}
         current = variables["root"]
         for i in range(20):  # Create very deep nesting
             current[f"level{i}"] = {}
@@ -254,10 +256,10 @@ class TestVariableResolution:
         content = [{"type": "text", "text": "Test ${dangerous_var}"}]
 
         for var_name, value in dangerous_variables.items():
-            variables = {var_name: value}
+            variables_with_dangerous = {var_name: value}
             # Should either block or handle safely
             try:
-                processor.process_content(content, variables)
+                processor.process_content(content, variables_with_dangerous)
             except ITSVariableError:
                 # Blocking dangerous variables is acceptable
                 pass
@@ -265,7 +267,7 @@ class TestVariableResolution:
     def test_extremely_deep_nesting_security(self, strict_processor: VariableProcessor) -> None:
         """Test security limits on extremely deep object nesting."""
         # Create object with extreme nesting
-        nested_obj = {}
+        nested_obj: Dict[str, Any] = {}
         current = nested_obj
         for i in range(50):  # Very deep
             current[f"level{i}"] = {}

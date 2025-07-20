@@ -6,6 +6,7 @@ Tests scenarios that are difficult to trigger through normal integration tests.
 import json
 import tempfile
 from pathlib import Path
+from typing import Generator
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +20,7 @@ class TestCompilerEdgeCases:
     """Test edge cases and error scenarios in the compiler."""
 
     @pytest.fixture
-    def temp_directory(self):
+    def temp_directory(self) -> Generator[Path, None, None]:
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             yield Path(temp_dir)

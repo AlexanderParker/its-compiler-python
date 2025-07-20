@@ -3,7 +3,7 @@ Tests for conditional expression evaluation and validation.
 Tests functional expression evaluation logic - security validation is handled in test_expression_sanitiser.py.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
 
@@ -176,7 +176,7 @@ class TestConditionalEvaluation:
         """Test evaluating content with conditional elements."""
         variables = {"show": True, "hide": False}
 
-        content = [
+        content: List[Dict[str, Any]] = [
             {"type": "text", "text": "Always visible"},
             {
                 "type": "conditional",
@@ -203,7 +203,7 @@ class TestConditionalEvaluation:
         """Test nested conditional content evaluation."""
         variables = {"outer": True, "inner": False}
 
-        content = [
+        content: List[Dict[str, Any]] = [
             {
                 "type": "conditional",
                 "condition": "outer == true",
