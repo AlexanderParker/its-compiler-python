@@ -27,11 +27,11 @@ def test_fetch_basic_template(template_fetcher: TemplateFetcher) -> None:
 
 
 def test_fetch_invalid_template(template_fetcher: TemplateFetcher) -> None:
-    """Test fetching an invalid template."""
-    template = template_fetcher.fetch_template("01-invalid-json.json", "templates/invalid")
-
-    # Note: This will likely skip due to invalid JSON, which is expected
-    assert isinstance(template, dict)
+    """Test fetching an invalid template (should skip due to invalid JSON)."""
+    # The TemplateFetcher should skip this test due to invalid JSON
+    # We expect this to raise pytest.skip.Exception
+    with pytest.raises(pytest.skip.Exception):
+        template_fetcher.fetch_template("01-invalid-json.json", "templates/invalid")
 
 
 def test_fetch_variables(template_fetcher: TemplateFetcher) -> None:

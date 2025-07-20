@@ -294,3 +294,54 @@ class TestSecurityIntegration:
             assert "debug" not in error_msg.lower()
             # Should not expose full template content
             assert len(error_msg) < 1000  # Reasonable error message length
+
+    def test_environment_variable_configuration_coverage(self) -> None:
+        """Test environment variable configuration paths to cover config.py missing lines."""
+        import os
+        from unittest.mock import patch
+
+        # Mock environment variables to cover all the missing lines in config.py (143-190)
+        env_vars = {
+            "ITS_ALLOW_HTTP": "true",
+            "ITS_BLOCK_PRIVATE_NETWORKS": "false",
+            "ITS_BLOCK_LOCALHOST": "false",
+            "ITS_REQUEST_TIMEOUT": "60",
+            "ITS_MAX_RESPONSE_SIZE": "20971520",
+            "ITS_DOMAIN_ALLOWLIST": "example.com,test.com",
+            "ITS_ALLOWLIST_FILE": "/tmp/test_allowlist.json",
+            "ITS_INTERACTIVE_ALLOWLIST": "false",
+            "ITS_AUTO_APPROVE_CI": "true",
+            "ITS_MAX_TEMPLATE_SIZE": "2097152",
+            "ITS_MAX_CONTENT_ELEMENTS": "1000",
+            "ITS_MAX_NESTING_DEPTH": "15",
+            "ITS_DISABLE_ALLOWLIST": "true",
+            "ITS_DISABLE_INPUT_VALIDATION": "true",
+            "ITS_DISABLE_EXPRESSION_SANITISATION": "true",
+        }
+
+        with patch.dict(os.environ, env_vars):
+            config = SecurityConfig.from_environment()
+
+            # Verify the environment variables were processed
+            assert config.network.allow_http is True
+            assert config.network.block_private_networks is False
+            assert config.network.block_localhost is False
+            assert config.network.request_timeout == 60
+            assert config.network.max_response_size == 20971520
+            assert "example.com" in config.network.domain_allowlist
+            assert "test.com" in config.network.domain_allowlist
+            assert config.allowlist.allowlist_file == "/tmp/test_allowlist.json"
+            assert config.allowlist.interactive_mode is False
+            assert config.allowlist.auto_approve_in_ci is True
+            assert config.processing.max_template_size == 2097152
+            assert config.processing.max_content_elements == 1000
+            assert config.processing.max_nesting_depth == 15
+            assert config.enable_allowlist is False
+            assert config.enable_input_validation is False
+            assert config.enable_expression_sanitisation is False
+
+            # Test validation warnings (lines 211-215, 239-259)
+            warnings = config.validate()
+            assert len(warnings) > 0  # Should generate warnings for the risky config
+            assert any("HTTP is enabled" in warning for warning in warnings)
+            assert any("Private network access is allowed" in warning for warning in warnings)

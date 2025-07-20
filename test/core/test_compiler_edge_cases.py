@@ -256,3 +256,116 @@ class TestCompilerEdgeCases:
         except (ITSValidationError, ITSCompilationError):
             # Acceptable if size limits are hit
             pass
+
+    def test_schema_loading_with_comprehensive_error_scenarios(
+        self, compiler: ITSCompiler, temp_directory: Path
+    ) -> None:
+        """Test schema loading with comprehensive error scenarios to cover validation and error paths."""
+
+        # Test template that extends multiple schemas with various error conditions
+        template = {
+            "version": "1.0.0",
+            "extends": [
+                "https://nonexistent.example.com/schema1.json",  # Will fail DNS/HTTP
+                "https://evil.internal.local/schema2.json",  # Will be blocked by SSRF
+                "https://alexanderparker.github.io/valid-schema.json",  # Valid but will also fail
+            ],
+            "variables": {"testVar": "value", "nested": {"prop": "test"}},
+            "content": [
+                {"type": "text", "text": "Test content"},
+                {
+                    "type": "placeholder",
+                    "instructionType": "unknownType",  # Type that won't exist
+                    "config": {"description": "This will fail after schema loading fails"},
+                },
+            ],
+        }
+
+        # This should trigger:
+        # 1. Schema loading error handling (lines 263-312 in compiler.py)
+        # 2. Variable validation paths (lines 171-211)
+        # 3. Error recovery and graceful degradation
+        # 4. Multiple exception handling paths
+
+        with pytest.raises((ITSCompilationError, ITSValidationError)) as exc_info:
+            compiler.compile(template)
+
+        # Should fail due to schema loading issues or unknown instruction type
+        error_msg = str(exc_info.value)
+        assert any(
+            keyword in error_msg.lower() for keyword in ["schema", "unknown", "instruction", "type", "failed", "load"]
+        )
+
+    def test_schema_loader_comprehensive_error_scenarios(self, compiler: ITSCompiler) -> None:
+        """Test schema loader with comprehensive HTTP and cache error scenarios."""
+        import gzip
+        import json
+        from unittest.mock import MagicMock, patch
+        from urllib.error import HTTPError, URLError
+
+        # Test template that tries to load an external schema
+        template = {
+            "version": "1.0.0",
+            "extends": ["https://example.com/test-schema.json"],
+            "content": [{"type": "text", "text": "test"}],
+        }
+
+        # Test 1: HTTP Error scenarios (covers lines 205-225)
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = MagicMock()
+            mock_urlopen.side_effect = HTTPError(
+                url="https://example.com/test-schema.json", code=404, msg="Not Found", hdrs={}, fp=None
+            )
+
+            with pytest.raises((ITSCompilationError, ITSValidationError)):
+                compiler.compile(template)
+
+        # Test 2: URL Error scenarios
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = URLError("Connection refused")
+
+            with pytest.raises((ITSCompilationError, ITSValidationError)):
+                compiler.compile(template)
+
+        # Test 3: Invalid content type response (covers lines 143-153)
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = MagicMock()
+            mock_response.headers = {"content-type": "text/html"}  # Invalid type
+            mock_response.read.return_value = b"<html>Not JSON</html>"
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+
+            with pytest.raises((ITSCompilationError, ITSValidationError)):
+                compiler.compile(template)
+
+        # Test 4: Gzip decompression error (covers lines 234, 239, 244)
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = MagicMock()
+            mock_response.headers = {"content-type": "application/json", "content-encoding": "gzip"}
+            mock_response.read.return_value = b"invalid gzip data"  # Bad gzip
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+
+            with pytest.raises((ITSCompilationError, ITSValidationError)):
+                compiler.compile(template)
+
+        # Test 5: Large response size error (covers lines 163-164, 171)
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = MagicMock()
+            mock_response.headers = {
+                "content-type": "application/json",
+                "content-length": str(50 * 1024 * 1024),  # 50MB - too large
+            }
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+
+            with pytest.raises((ITSCompilationError, ITSValidationError)):
+                compiler.compile(template)
+
+        # Test 6: Cache corruption scenarios (covers lines 331-343, 347-353)
+        if compiler.config.cache_enabled:
+            with patch("pathlib.Path.exists", return_value=True), patch(
+                "builtins.open", side_effect=json.JSONDecodeError("Invalid JSON", "", 0)
+            ):
+                # This should handle corrupted cache gracefully and try to load from URL
+                with patch("urllib.request.urlopen") as mock_urlopen:
+                    mock_urlopen.side_effect = URLError("Network error")
+                    with pytest.raises((ITSCompilationError, ITSValidationError)):
+                        compiler.compile(template)
