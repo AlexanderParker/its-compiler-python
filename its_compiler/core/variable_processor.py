@@ -251,7 +251,7 @@ class VariableProcessor:
 
                 return sanitised_value
 
-            except ITSVariableError as e:
+            except ITSVariableError:
                 # Re-raise with more context
                 raise ITSVariableError(
                     f"Undefined variable reference: ${{{var_ref}}}",
