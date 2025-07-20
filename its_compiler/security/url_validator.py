@@ -138,7 +138,7 @@ class URLValidator:
         try:
             ip_addresses = self._resolve_hostname(hostname)
             for ip_str in ip_addresses:
-                self._validate_ip_address(str(ip_str), url)
+                self._validate_ip_address(ip_str, url)
         except socket.gaierror as e:
             # Re-raise as URLSecurityError for consistent handling
             raise URLSecurityError(
@@ -152,8 +152,25 @@ class URLValidator:
         try:
             # Get all IP addresses for the hostname
             addr_info = socket.getaddrinfo(hostname, None)
-            ip_addresses = list(set(info[4][0] for info in addr_info))
-            return ip_addresses
+            # Extract IP addresses and ensure they are strings
+            ip_addresses = []
+            for info in addr_info:
+                # info[4] is the socket address tuple (IP, port, ...)
+                # info[4][0] is the IP address part
+                ip_addr = info[4][0]
+                # Ensure it's a string (it should be, but type checker needs assurance)
+                if isinstance(ip_addr, str):
+                    ip_addresses.append(ip_addr)
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_ips = []
+            for ip in ip_addresses:
+                if ip not in seen:
+                    seen.add(ip)
+                    unique_ips.append(ip)
+
+            return unique_ips
         except socket.gaierror as e:
             raise URLSecurityError(
                 f"DNS resolution failed for {hostname}: {e}",
