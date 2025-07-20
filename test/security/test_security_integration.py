@@ -5,7 +5,7 @@ Tests using real malicious templates from the its-example-templates repository.
 
 import tempfile
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -58,7 +58,7 @@ def production_compiler(its_config: ITSConfig, production_config: SecurityConfig
 
 
 @pytest.fixture
-def fetcher(template_fetcher):
+def fetcher(template_fetcher: Any) -> Any:
     """Use the shared template fetcher fixture."""
     return template_fetcher
 
@@ -66,7 +66,7 @@ def fetcher(template_fetcher):
 class TestSecurityIntegration:
     """Test end-to-end security integration using real templates."""
 
-    def test_valid_template_compilation_with_security(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_valid_template_compilation_with_security(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test valid templates compile successfully with security enabled."""
         # Use a known-good template to ensure security doesn't break legitimate functionality
         template = fetcher.fetch_template("01-text-only.json")
@@ -76,7 +76,7 @@ class TestSecurityIntegration:
         assert len(result.prompt) > 0
         assert "This is a simple template with no placeholders" in result.prompt
 
-    def test_comprehensive_attack_prevention(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_comprehensive_attack_prevention(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test that all categories of attacks are prevented using real malicious templates."""
         # Test all security templates from repository
         security_templates = [
@@ -99,7 +99,7 @@ class TestSecurityIntegration:
 
     @patch("socket.getaddrinfo")
     def test_ssrf_protection_with_real_templates(
-        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher: Any
     ) -> None:
         """Test SSRF protection using templates that extend schemas."""
         # Mock DNS to return private IP for any schema URL
@@ -111,7 +111,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSCompilationError)):
             compiler.compile(template)
 
-    def test_schema_allowlist_protection_with_real_templates(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_schema_allowlist_protection_with_real_templates(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test schema allowlist blocks unknown schemas using real templates."""
         # Use a template that extends schemas
         template = fetcher.fetch_template("02-single-placeholder.json")
@@ -129,7 +129,7 @@ class TestSecurityIntegration:
 
     @patch("builtins.input", return_value="3")  # Deny
     def test_interactive_allowlist_deny_with_real_templates(
-        self, mock_input: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_input: MagicMock, compiler: ITSCompiler, fetcher: Any
     ) -> None:
         """Test interactive allowlist denial blocks compilation."""
         template = fetcher.fetch_template("02-single-placeholder.json")
@@ -147,7 +147,7 @@ class TestSecurityIntegration:
 
     @patch("builtins.input", return_value="2")  # Session allow
     def test_interactive_allowlist_allow_with_real_templates(
-        self, mock_input: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_input: MagicMock, compiler: ITSCompiler, fetcher: Any
     ) -> None:
         """Test interactive allowlist approval allows compilation."""
         # Use a template with custom instruction types to avoid external schema issues
@@ -158,7 +158,7 @@ class TestSecurityIntegration:
         assert result.prompt is not None
         assert "Chocolate Chip Cookies Recipe" in result.prompt
 
-    def test_complex_templates_with_security_enabled(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_complex_templates_with_security_enabled(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test complex legitimate templates work with all security features enabled."""
         complex_templates = [
             "05-complex-variables.json",
@@ -175,7 +175,7 @@ class TestSecurityIntegration:
             assert result.prompt is not None
             assert len(result.prompt) > 0
 
-    def test_production_security_with_real_templates(self, production_compiler: ITSCompiler, fetcher) -> None:
+    def test_production_security_with_real_templates(self, production_compiler: ITSCompiler, fetcher: Any) -> None:
         """Test production security settings with real templates."""
         # Simple template should work in production
         simple_template = fetcher.fetch_template("01-text-only.json")
@@ -191,7 +191,7 @@ class TestSecurityIntegration:
             # Production might be more restrictive, which is acceptable
             pass
 
-    def test_security_with_variable_substitution(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_security_with_variable_substitution(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test security validation works with variable substitution."""
         template = fetcher.fetch_template("04-simple-variables.json")
 
@@ -210,7 +210,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             compiler.compile(template, variables=dangerous_variables)
 
-    def test_security_with_conditionals(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_security_with_conditionals(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test security validation works with conditional templates."""
         template = fetcher.fetch_template("06-simple-conditionals.json")
         variables = fetcher.fetch_variables("conditional-test-variables.json")
@@ -232,7 +232,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)):
             compiler.compile(template_modified, variables=variables)
 
-    def test_layered_security_defense_with_real_templates(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_layered_security_defense_with_real_templates(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test that multiple security layers work together with real template structures."""
         # Start with a legitimate template
         template = fetcher.fetch_template("05-complex-variables.json")
@@ -280,7 +280,7 @@ class TestSecurityIntegration:
         with pytest.raises((ITSValidationError, ITSCompilationError, FileNotFoundError)):
             compiler.compile_file(str(malicious_path))
 
-    def test_error_information_disclosure(self, production_compiler: ITSCompiler, fetcher) -> None:
+    def test_error_information_disclosure(self, production_compiler: ITSCompiler, fetcher: Any) -> None:
         """Test error messages don't disclose sensitive information."""
         template = fetcher.fetch_template("malicious_injection.json", category="templates/security")
 
