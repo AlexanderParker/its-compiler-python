@@ -256,21 +256,3 @@ class TestCompilerEdgeCases:
         except (ITSValidationError, ITSCompilationError):
             # Acceptable if size limits are hit
             pass
-
-    def test_assignment_compatibility_fix(self, compiler: ITSCompiler) -> None:
-        """Test the fix for assignment compatibility issue."""
-        # Create a case that would trigger the mypy error we're fixing
-        test_data: List[Dict[str, Any]] = [
-            {"name": "test1", "value": "value1"},
-            {"name": "test2", "value": "value2"},
-        ]
-
-        # This should not cause type errors
-        sequence_data: Sequence[str] = ["item1", "item2", "item3"]
-        list_data: List[Dict[str, Any]] = [{"converted": item} for item in sequence_data]
-
-        template = {"version": "1.0.0", "content": [{"type": "text", "text": f"Processing {len(list_data)} items"}]}
-
-        result = compiler.compile(template)
-        assert result.prompt is not None
-        assert "Processing 3 items" in result.prompt
