@@ -1,10 +1,11 @@
 """
-Variable processing for ITS Compiler with security enhancements and circular reference detection.
+Variable processing for ITS Compiler with security enhancements.
+Variables can only contain static values - no references to other variables.
 """
 
 import json
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from ..security import InputValidator, SecurityConfig
 from .exceptions import ITSVariableError
@@ -39,9 +40,6 @@ class VariableProcessor:
             except Exception as e:
                 raise ITSVariableError(f"Variable security validation failed: {e}")
 
-        # Pre-process variables to detect circular references early
-        self._detect_circular_references(variables)
-
         processed_content = []
 
         for element in content:
@@ -54,39 +52,6 @@ class VariableProcessor:
                 raise ITSVariableError(f"Error processing variables in element: {e}")
 
         return processed_content
-
-    def _detect_circular_references(
-        self, variables: Dict[str, Any], _visiting: Optional[Set[str]] = None, _visited: Optional[Set[str]] = None
-    ) -> None:
-        """Detect circular references in the variables dictionary."""
-        if _visiting is None:
-            _visiting = set()
-        if _visited is None:
-            _visited = set()
-
-        for var_name, var_value in variables.items():
-            if var_name in _visited:
-                continue
-
-            if var_name in _visiting:
-                raise ITSVariableError(f"Circular variable reference detected involving: {var_name}")
-
-            _visiting.add(var_name)
-
-            # Check if this variable references other variables
-            if isinstance(var_value, str):
-                referenced_vars = self.variable_pattern.findall(var_value)
-                for ref_var in referenced_vars:
-                    # Extract just the variable name (before any dots or brackets)
-                    base_var = ref_var.split(".")[0].split("[")[0]
-                    if base_var in variables:
-                        if base_var in _visiting:
-                            raise ITSVariableError(f"Circular variable reference detected: {var_name} -> {base_var}")
-                        # Recursively check the referenced variable
-                        self._detect_circular_references({base_var: variables[base_var]}, _visiting, _visited)
-
-            _visiting.remove(var_name)
-            _visited.add(var_name)
 
     def _validate_variables_security(self, variables: Dict[str, Any]) -> None:
         """Validate variables for security issues."""
@@ -259,14 +224,8 @@ class VariableProcessor:
 
         return processed
 
-    def _process_string(
-        self, text: str, variables: Dict[str, Any], _resolution_stack: Optional[Set[str]] = None
-    ) -> str:
-        """Process variable references in a string with security validation and circular reference detection."""
-
-        # Initialize resolution stack for circular reference detection
-        if _resolution_stack is None:
-            _resolution_stack = set()
+    def _process_string(self, text: str, variables: Dict[str, Any]) -> str:
+        """Process variable references in a string with security validation."""
 
         # Check for too many variable references in a single string
         var_refs = self.variable_pattern.findall(text)
@@ -280,26 +239,12 @@ class VariableProcessor:
             if len(var_ref) > 200:  # Reasonable limit for reference length
                 raise ITSVariableError(f"Variable reference too long: {var_ref[:50]}...")
 
-            # Check for circular reference
-            if var_ref in _resolution_stack:
-                raise ITSVariableError(f"Circular variable reference detected: {var_ref}")
-
             # Check for dangerous patterns in variable reference
             if ".." in var_ref or var_ref.startswith("_") or "__" in var_ref:
                 raise ITSVariableError(f"Suspicious variable reference: ${{{var_ref}}}")
 
             try:
-                # Add to resolution stack
-                _resolution_stack.add(var_ref)
-
                 value = self.resolve_variable_reference(var_ref, variables)
-
-                # If the resolved value is a string with more variable references, process recursively
-                if isinstance(value, str) and "${" in value:
-                    value = self._process_string(value, variables, _resolution_stack)
-
-                # Remove from resolution stack after successful resolution
-                _resolution_stack.discard(var_ref)
 
                 # Sanitise the resolved value
                 sanitised_value = self._sanitise_resolved_value(value, var_ref)
@@ -307,12 +252,7 @@ class VariableProcessor:
                 return sanitised_value
 
             except ITSVariableError as e:
-                # Remove from resolution stack on error
-                _resolution_stack.discard(var_ref)
-                # Re-raise the original error if it's already a circular reference error
-                if "Circular variable reference detected" in str(e):
-                    raise e
-                # Otherwise, re-raise with more context
+                # Re-raise with more context
                 raise ITSVariableError(
                     f"Undefined variable reference: ${{{var_ref}}}",
                     variable_path=var_ref,

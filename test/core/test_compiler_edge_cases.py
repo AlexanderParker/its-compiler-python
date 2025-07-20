@@ -172,18 +172,6 @@ class TestCompilerEdgeCases:
         with pytest.raises(ITSCompilationError):
             compiler.compile(template)
 
-    def test_circular_variable_reference_handling(self, compiler: ITSCompiler) -> None:
-        """Test handling of circular variable references."""
-        template = {
-            "version": "1.0.0",
-            "variables": {"a": "${b}", "b": "${a}"},
-            "content": [{"type": "text", "text": "${a}"}],
-        }
-
-        # Should handle circular references gracefully
-        with pytest.raises((ITSValidationError, ITSCompilationError)):
-            compiler.compile(template)
-
     def test_deeply_nested_conditional_processing(self, compiler: ITSCompiler) -> None:
         """Test processing of deeply nested conditional structures."""
         # Create deeply nested conditionals
