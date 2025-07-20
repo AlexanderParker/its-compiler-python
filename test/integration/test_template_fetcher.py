@@ -5,11 +5,9 @@ Fetches templates and variables from the its-example-templates GitHub repository
 for use in integration testing.
 """
 
-from typing import Any, Dict
-
 import pytest
 
-from .conftest import TemplateFetcher
+from conftest import TemplateFetcher
 
 
 @pytest.fixture

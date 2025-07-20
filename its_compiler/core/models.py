@@ -211,6 +211,8 @@ class InstructionTypeDefinition:
 
     def format_instruction(self, config: Dict[str, Any], user_content_wrapper: str) -> str:
         """Format the instruction template with config values."""
+        import re
+
         description = config.get("description", "")
 
         # Start with the template
@@ -220,11 +222,30 @@ class InstructionTypeDefinition:
         # pattern ([{<{description}>}]), so we just substitute the description directly
         formatted_template = formatted_template.replace("{description}", description)
 
-        # Replace other config placeholders
+        # Replace other config template_variables
         for key, value in config.items():
             if key != "description":
-                placeholder = "{" + key + "}"
-                formatted_template = formatted_template.replace(placeholder, str(value))
+                template_variable = "{" + key + "}"
+                formatted_template = formatted_template.replace(template_variable, str(value))
+
+        # Check for any remaining unreplaced template_variables, but exclude patterns that are
+        # part of the user content wrapper (like {<content>} or {<description with spaces>})
+        remaining_template_variables = re.findall(r"\{([^}]+)\}", formatted_template)
+
+        # Filter out template_variables that are part of user content wrapper patterns
+        # These patterns look like {<content>} or {<some description text>}
+        actual_template_variables = []
+        for template_variable in remaining_template_variables:
+            # Skip if this looks like a user content wrapper pattern
+            if not (template_variable.startswith("<") and template_variable.endswith(">")):
+                actual_template_variables.append(template_variable)
+
+        if actual_template_variables:
+            from .exceptions import ITSCompilationError
+
+            raise ITSCompilationError(
+                f"Missing required configuration for instruction type '{self.name}': {', '.join(actual_template_variables)}"
+            )
 
         return formatted_template
 

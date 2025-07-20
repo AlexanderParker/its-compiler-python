@@ -8,11 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from conftest import TemplateFetcher
 from its_compiler import ITSCompiler
 from its_compiler.core.exceptions import ITSCompilationError
 from its_compiler.security import SecurityConfig
-
-from .conftest import TemplateFetcher
 
 
 class TestSchemaLoadingIntegration:

@@ -3,11 +3,11 @@ Integration tests for error handling and invalid template processing.
 Tests complex error scenarios that span multiple components in realistic contexts.
 """
 
-from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 
+from conftest import TemplateFetcher
 from its_compiler import ITSCompiler
 from its_compiler.core.exceptions import (
     ITSCompilationError,
@@ -18,8 +18,6 @@ from its_compiler.core.exceptions import (
 )
 from its_compiler.core.models import ITSConfig
 from its_compiler.security import SecurityConfig
-
-from .test_template_fetcher import TemplateFetcher
 
 
 class TestErrorHandlingIntegration:
