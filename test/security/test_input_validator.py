@@ -6,6 +6,8 @@ from typing import Any, Dict
 
 import pytest
 
+# Import TemplateFetcher for type annotations
+from integration.conftest import TemplateFetcher
 from its_compiler.security import InputSecurityError, InputValidator, SecurityConfig
 
 
@@ -40,7 +42,7 @@ def production_validator(production_config: SecurityConfig) -> InputValidator:
 class TestInputValidator:
     """Test InputValidator security functionality."""
 
-    def test_valid_template_structure(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_valid_template_structure(self, input_validator: InputValidator, template_fetcher: TemplateFetcher) -> None:
         """Test valid template structure passes validation using repository template."""
         # Use a real template from the repository
         template = template_fetcher.fetch_template("01-text-only.json")
@@ -88,7 +90,7 @@ class TestInputValidator:
             assert "Invalid version format" in str(exc_info.value)
             assert exc_info.value.reason == "invalid_version"
 
-    def test_content_array_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_content_array_validation(self, input_validator: InputValidator, template_fetcher: TemplateFetcher) -> None:
         """Test content array validation using repository templates."""
         # Test with invalid template from repository
         try:
@@ -161,7 +163,9 @@ class TestInputValidator:
 
         assert "Text content too long in text_element_0" in str(exc_info.value)
 
-    def test_placeholder_element_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_placeholder_element_validation(
+        self, input_validator: InputValidator, template_fetcher: TemplateFetcher
+    ) -> None:
         """Test placeholder element validation using repository templates."""
         # Test with invalid template from repository
         try:
@@ -208,7 +212,9 @@ class TestInputValidator:
 
             assert "missing description" in str(exc_info.value)
 
-    def test_conditional_element_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_conditional_element_validation(
+        self, input_validator: InputValidator, template_fetcher: TemplateFetcher
+    ) -> None:
         """Test conditional element validation using repository templates."""
         # Test with valid conditional template first
         try:
@@ -270,7 +276,9 @@ class TestInputValidator:
         assert "Unknown content element type: unknown_type" in str(exc_info.value)
         assert exc_info.value.reason == "unknown_type"
 
-    def test_comprehensive_malicious_patterns(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_comprehensive_malicious_patterns(
+        self, input_validator: InputValidator, template_fetcher: TemplateFetcher
+    ) -> None:
         """Test all malicious patterns using repository security templates plus key hardcoded patterns."""
         # Try to use security templates from repository first
         try:
@@ -325,7 +333,7 @@ class TestInputValidator:
 
             assert "Malicious content detected in text_element_0" in str(exc_info.value)
 
-    def test_variables_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_variables_validation(self, input_validator: InputValidator, template_fetcher: TemplateFetcher) -> None:
         """Test variables object validation using repository templates."""
         # Test with valid variables template
         try:
@@ -349,7 +357,7 @@ class TestInputValidator:
         assert "Variables must be an object" in str(exc_info.value)
         assert exc_info.value.reason == "invalid_type"
 
-    def test_variable_name_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_variable_name_validation(self, input_validator: InputValidator, template_fetcher: TemplateFetcher) -> None:
         """Test variable name validation using repository variables."""
         # Test with valid variables from repository
         try:
@@ -456,7 +464,7 @@ class TestInputValidator:
         assert "Object nesting too deep" in str(exc_info.value)
         assert exc_info.value.reason == "nesting_too_deep"
 
-    def test_extensions_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_extensions_validation(self, input_validator: InputValidator, template_fetcher: TemplateFetcher) -> None:
         """Test extensions array validation using repository templates."""
         # Test with valid extensions template
         try:
@@ -507,7 +515,9 @@ class TestInputValidator:
         assert "Invalid extension URL" in str(exc_info.value)
         assert exc_info.value.reason == "invalid_extension_url"
 
-    def test_custom_instruction_types_validation(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_custom_instruction_types_validation(
+        self, input_validator: InputValidator, template_fetcher: TemplateFetcher
+    ) -> None:
         """Test custom instruction types validation using repository templates."""
         # Test with valid custom types template
         try:
@@ -695,7 +705,9 @@ class TestInputValidator:
 
         assert "Template must be a JSON object" in str(exc_info.value)
 
-    def test_malicious_variables_from_repository(self, input_validator: InputValidator, template_fetcher) -> None:
+    def test_malicious_variables_from_repository(
+        self, input_validator: InputValidator, template_fetcher: TemplateFetcher
+    ) -> None:
         """Test malicious variables detection using repository security templates."""
         try:
             malicious_template = template_fetcher.fetch_template("malicious_variables.json", "templates/security")
