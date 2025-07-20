@@ -33,37 +33,44 @@ class TestCompilationIntegration:
     @pytest.fixture
     def text_only_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch text-only template."""
-        return template_fetcher.fetch_template("01-text-only.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("01-text-only.json")
+        return template
 
     @pytest.fixture
     def single_placeholder_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch single placeholder template."""
-        return template_fetcher.fetch_template("02-single-placeholder.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("02-single-placeholder.json")
+        return template
 
     @pytest.fixture
     def multiple_placeholders_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch multiple placeholders template."""
-        return template_fetcher.fetch_template("03-multiple-placeholders.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("03-multiple-placeholders.json")
+        return template
 
     @pytest.fixture
     def simple_variables_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch simple variables template."""
-        return template_fetcher.fetch_template("04-simple-variables.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("04-simple-variables.json")
+        return template
 
     @pytest.fixture
     def complex_variables_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch complex variables template."""
-        return template_fetcher.fetch_template("05-complex-variables.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("05-complex-variables.json")
+        return template
 
     @pytest.fixture
     def custom_types_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch custom types template."""
-        return template_fetcher.fetch_template("08-custom-types.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("08-custom-types.json")
+        return template
 
     @pytest.fixture
     def array_usage_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch array usage template."""
-        return template_fetcher.fetch_template("09-array-usage.json")
+        template: Dict[str, Any] = template_fetcher.fetch_template("09-array-usage.json")
+        return template
 
     @pytest.fixture
     def template_files(self, temp_directory: Any, template_fetcher: Any) -> Dict[str, str]:
@@ -208,7 +215,7 @@ class TestCompilationIntegration:
     def test_large_template_compilation(self, compiler: ITSCompiler) -> None:
         """Test compilation of larger, more complex templates."""
         # Create a template with many elements
-        large_template = {
+        large_template: Dict[str, Any] = {
             "version": "1.0.0",
             "customInstructionTypes": {"custom_text": {"template": "Generate: ([{<{description}>}]). Style: {style}."}},
             "variables": {"sections": ["intro", "main", "conclusion"], "count": 10},
@@ -217,15 +224,13 @@ class TestCompilationIntegration:
 
         # Add many content elements
         for i in range(20):
-            large_template["content"].extend(
-                [
-                    {"type": "text", "text": f"# Section {i}\n\n"},
-                    {
-                        "type": "placeholder",
-                        "instructionType": "custom_text",
-                        "config": {"description": f"Content for section {i}", "style": "professional"},
-                    },
-                ]
+            large_template["content"].append({"type": "text", "text": f"# Section {i}\n\n"})
+            large_template["content"].append(
+                {
+                    "type": "placeholder",
+                    "instructionType": "custom_text",
+                    "config": {"description": f"Content for section {i}", "style": "professional"},
+                }
             )
 
         result = compiler.compile(large_template)
