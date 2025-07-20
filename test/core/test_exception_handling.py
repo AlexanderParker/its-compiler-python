@@ -3,8 +3,6 @@ Tests for exception classes and error handling.
 Tests exception methods, context generation, and error reporting.
 """
 
-from datetime import datetime
-
 from its_compiler.core.exceptions import (
     ITSCompilationError,
     ITSConditionalError,
