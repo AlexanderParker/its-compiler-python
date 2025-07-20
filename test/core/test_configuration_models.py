@@ -295,28 +295,30 @@ class TestConfigurationModels:
         assert risk_score < 2.0
 
         # Test medium risk scenario
-        report.vulnerabilities = ["Medium vulnerability"]
+        report.vulnerabilities = []
         report.warnings = ["Warning 1", "Warning 2"]
         report.untrusted_schemas = 1
-        report.dangerous_patterns_found = 1
+        report.dangerous_patterns_found = 0
 
         risk_score = report.calculate_risk_score()
-        assert report.risk_level in ["medium", "high"]
-        assert risk_score >= 2.0
+        assert report.risk_level == "medium"
+        assert 2.0 <= risk_score < 5.0
 
         # Test high risk scenario
-        report.vulnerabilities = ["Critical vuln 1", "Critical vuln 2"]
-        report.warnings = ["Warning 1", "Warning 2", "Warning 3"]
-        report.untrusted_schemas = 3
-        report.dangerous_patterns_found = 4
+        report.vulnerabilities = ["High vulnerability"]
+        report.warnings = ["Warning 1"]
+        report.untrusted_schemas = 1
+        report.dangerous_patterns_found = 0
 
         risk_score = report.calculate_risk_score()
-        assert report.risk_level in ["high", "critical"]
-        assert risk_score >= 5.0
+        assert report.risk_level == "high"
+        assert 5.0 <= risk_score < 7.0
 
         # Test critical risk scenario
         report.vulnerabilities = ["Critical 1", "Critical 2", "Critical 3"]
-        report.dangerous_patterns_found = 5
+        report.warnings = ["Warning 1"]
+        report.untrusted_schemas = 0
+        report.dangerous_patterns_found = 0
 
         risk_score = report.calculate_risk_score()
         assert report.risk_level == "critical"

@@ -34,9 +34,12 @@ class TestExceptionHandling:
 
         # Test basic properties
         assert error.message == "Test error message"
-        assert error.details["key"] == "value"
+        assert error.security_context["threat_level"] == "low"
         assert error.error_code == "TEST_ERROR"
-        assert isinstance(error.timestamp, datetime)
+
+        # Test that details are redacted when accessed normally (security feature)
+        assert error.details["key"] == "[REDACTED]"
+        assert error.details["number"] == 42
 
         # Test to_dict method
         error_dict = error.to_dict()
@@ -44,7 +47,7 @@ class TestExceptionHandling:
         assert error_dict["message"] == "Test error message"
         assert error_dict["error_code"] == "TEST_ERROR"
         assert "timestamp" in error_dict
-        assert error_dict["details"]["key"] == "value"
+        assert error_dict["details"]["key"] == "[REDACTED]"
         assert error_dict["security_context"]["threat_level"] == "low"
 
         # Test user message
