@@ -5,6 +5,7 @@ Tests scenarios that are difficult to trigger through normal integration tests.
 
 import json
 import tempfile
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, patch
@@ -309,8 +310,10 @@ class TestCompilerEdgeCases:
         # Test 1: HTTP Error scenarios (covers lines 205-225)
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = MagicMock()
+            # Create proper headers for HTTPError
+            headers = EmailMessage()
             mock_urlopen.side_effect = HTTPError(
-                url="https://example.com/test-schema.json", code=404, msg="Not Found", hdrs={}, fp=None
+                url="https://example.com/test-schema.json", code=404, msg="Not Found", hdrs=headers, fp=None
             )
 
             with pytest.raises((ITSCompilationError, ITSValidationError)):

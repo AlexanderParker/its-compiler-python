@@ -4,7 +4,7 @@ Integration test specific fixtures.
 Provides fixtures specific to integration testing scenarios.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator, List
 
 import pytest
 
@@ -197,7 +197,7 @@ def compilation_test_helper() -> Any:
 
 
 @pytest.fixture(autouse=True)
-def reset_compiler_state():
+def reset_compiler_state() -> Generator[None, None, None]:
     """
     Reset any global compiler state before each test.
 

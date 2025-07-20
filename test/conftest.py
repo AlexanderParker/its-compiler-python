@@ -13,7 +13,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import pytest
 
@@ -49,7 +49,7 @@ class TemplateFetcher:
         Raises:
             Exception: If all retries fail
         """
-        last_exception = None
+        last_exception: Optional[Exception] = None
 
         for attempt in range(max_retries + 1):
             try:
@@ -58,7 +58,9 @@ class TemplateFetcher:
                         raise urllib.error.HTTPError(
                             url, response.status, f"HTTP {response.status}", response.headers, None
                         )
-                    return response.read().decode("utf-8")
+                    content_bytes: bytes = response.read()
+                    content: str = content_bytes.decode("utf-8")
+                    return content
 
             except (urllib.error.HTTPError, urllib.error.URLError) as e:
                 last_exception = e
