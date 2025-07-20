@@ -40,6 +40,9 @@ class TemplateFetcher:
 
         Returns:
             Parsed JSON template
+
+        Raises:
+            Exception: If template cannot be fetched or is not a valid JSON object
         """
         url = f"{self.base_path}/{category}/{template_name}"
 
@@ -48,13 +51,22 @@ class TemplateFetcher:
                 if response.status != 200:
                     raise Exception(f"HTTP {response.status}")
                 content = response.read().decode("utf-8")
-                return json.loads(content)
+                parsed_data = json.loads(content)
+
+                # Ensure the parsed data is a dictionary
+                if not isinstance(parsed_data, dict):
+                    raise ValueError(f"Template {template_name} is not a JSON object, got {type(parsed_data).__name__}")
+
+                return parsed_data
         except urllib.error.URLError as e:
-            pytest.skip(f"Could not fetch template {template_name}: {e}")
+            raise Exception(f"Could not fetch template {template_name}: {e}")
         except json.JSONDecodeError as e:
-            pytest.skip(f"Invalid JSON in template {template_name}: {e}")
+            raise Exception(f"Invalid JSON in template {template_name}: {e}")
+        except ValueError:
+            # Re-raise ValueError as-is
+            raise
         except Exception as e:
-            pytest.skip(f"Error fetching template {template_name}: {e}")
+            raise Exception(f"Error fetching template {template_name}: {e}")
 
     def fetch_variables(self, variables_name: str) -> Dict[str, Any]:
         """
@@ -65,6 +77,9 @@ class TemplateFetcher:
 
         Returns:
             Parsed JSON variables
+
+        Raises:
+            Exception: If variables cannot be fetched or is not a valid JSON object
         """
         url = f"{self.base_path}/variables/{variables_name}"
 
@@ -73,13 +88,24 @@ class TemplateFetcher:
                 if response.status != 200:
                     raise Exception(f"HTTP {response.status}")
                 content = response.read().decode("utf-8")
-                return json.loads(content)
+                parsed_data = json.loads(content)
+
+                # Ensure the parsed data is a dictionary
+                if not isinstance(parsed_data, dict):
+                    raise ValueError(
+                        f"Variables {variables_name} is not a JSON object, got {type(parsed_data).__name__}"
+                    )
+
+                return parsed_data
         except urllib.error.URLError as e:
-            pytest.skip(f"Could not fetch variables {variables_name}: {e}")
+            raise Exception(f"Could not fetch variables {variables_name}: {e}")
         except json.JSONDecodeError as e:
-            pytest.skip(f"Invalid JSON in variables {variables_name}: {e}")
+            raise Exception(f"Invalid JSON in variables {variables_name}: {e}")
+        except ValueError:
+            # Re-raise ValueError as-is
+            raise
         except Exception as e:
-            pytest.skip(f"Error fetching variables {variables_name}: {e}")
+            raise Exception(f"Error fetching variables {variables_name}: {e}")
 
     def list_templates(self, category: str = "templates") -> List[str]:
         """
@@ -228,7 +254,7 @@ def sample_templates(template_fetcher: TemplateFetcher) -> Dict[str, Dict[str, A
         try:
             templates[name] = template_fetcher.fetch_template(name)
         except Exception:
-            # Skip templates that can't be fetched
+            # Skip templates that can't be fetched but don't break the fixture
             pass
 
     return templates
@@ -248,7 +274,7 @@ def sample_variables(template_fetcher: TemplateFetcher) -> Dict[str, Dict[str, A
         try:
             variables[name] = template_fetcher.fetch_variables(name)
         except Exception:
-            # Skip variables that can't be fetched
+            # Skip variables that can't be fetched but don't break the fixture
             pass
 
     return variables
@@ -273,7 +299,7 @@ def invalid_templates(template_fetcher: TemplateFetcher) -> Dict[str, Dict[str, 
         try:
             templates[name] = template_fetcher.fetch_template(name, category="templates/invalid")
         except Exception:
-            # Skip templates that can't be fetched
+            # Skip templates that can't be fetched but don't break the fixture
             pass
 
     return templates
@@ -294,7 +320,7 @@ def security_templates(template_fetcher: TemplateFetcher) -> Dict[str, Dict[str,
         try:
             templates[name] = template_fetcher.fetch_template(name, category="templates/security")
         except Exception:
-            # Skip templates that can't be fetched
+            # Skip templates that can't be fetched but don't break the fixture
             pass
 
     return templates
