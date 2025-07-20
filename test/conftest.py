@@ -1,12 +1,14 @@
 """
-Shared pytest fixtures for all tests.
+Shared pytest fixtures for all tests with improved TemplateFetcher.
 
 Provides common fixtures and utilities for testing the ITS Compiler.
+Includes caching and retry logic to handle GitHub rate limiting.
 """
 
 import json
 import shutil
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -21,17 +23,82 @@ from its_compiler.security import SecurityConfig
 
 
 class TemplateFetcher:
-    """Fetches templates from the its-example-templates GitHub repository."""
+    """Fetches templates from the its-example-templates GitHub repository with caching and retry logic."""
 
     BASE_URL = "https://raw.githubusercontent.com/AlexanderParker/its-example-templates/main"
 
     def __init__(self, version: str = "v1.0"):
         self.version = version
         self.base_path = f"{self.BASE_URL}/{version}"
+        # In-memory cache for the session
+        self._template_cache: Dict[str, Dict[str, Any]] = {}
+        self._variables_cache: Dict[str, Dict[str, Any]] = {}
+
+    def _fetch_with_retry(self, url: str, max_retries: int = 3, base_delay: float = 1.0) -> str:
+        """
+        Fetch content from URL with exponential backoff retry logic.
+
+        Args:
+            url: URL to fetch
+            max_retries: Maximum number of retry attempts
+            base_delay: Base delay in seconds, will be doubled for each retry
+
+        Returns:
+            Response content as string
+
+        Raises:
+            Exception: If all retries fail
+        """
+        last_exception = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    if response.status != 200:
+                        raise urllib.error.HTTPError(
+                            url, response.status, f"HTTP {response.status}", response.headers, None
+                        )
+                    return response.read().decode("utf-8")
+
+            except (urllib.error.HTTPError, urllib.error.URLError) as e:
+                last_exception = e
+
+                # Don't retry on 404 - the file definitely doesn't exist
+                if isinstance(e, urllib.error.HTTPError) and e.code == 404:
+                    break
+
+                # For rate limiting (429) or server errors (5xx), retry with backoff
+                should_retry = (isinstance(e, urllib.error.HTTPError) and e.code in [429, 502, 503, 504]) or isinstance(
+                    e, urllib.error.URLError
+                )
+
+                if should_retry and attempt < max_retries:
+                    delay = base_delay * (2**attempt)  # Exponential backoff
+                    print(f"Request failed (attempt {attempt + 1}/{max_retries + 1}), retrying in {delay}s: {e}")
+                    time.sleep(delay)
+                    continue
+
+                break
+
+            except Exception as e:
+                last_exception = e
+                # For unexpected errors, only retry once
+                if attempt < min(1, max_retries):
+                    delay = base_delay
+                    print(f"Unexpected error (attempt {attempt + 1}), retrying in {delay}s: {e}")
+                    time.sleep(delay)
+                    continue
+                break
+
+        # All retries failed
+        if last_exception:
+            raise last_exception
+        else:
+            raise Exception("All retry attempts failed")
 
     def fetch_template(self, template_name: str, category: str = "templates") -> Dict[str, Any]:
         """
-        Fetch a template from the repository.
+        Fetch a template from the repository with caching and retry logic.
 
         Args:
             template_name: Name of the template file (e.g., "01-text-only.json")
@@ -41,35 +108,48 @@ class TemplateFetcher:
             Parsed JSON template
 
         Raises:
-            Exception: If template cannot be fetched or is not a valid JSON object
+            pytest.skip.Exception: If template cannot be fetched after retries
         """
+        cache_key = f"{category}/{template_name}"
+
+        # Check cache first
+        if cache_key in self._template_cache:
+            return self._template_cache[cache_key]
+
         url = f"{self.base_path}/{category}/{template_name}"
 
         try:
-            with urllib.request.urlopen(url, timeout=10) as response:
-                if response.status != 200:
-                    raise Exception(f"HTTP {response.status}")
-                content = response.read().decode("utf-8")
-                parsed_data = json.loads(content)
+            content = self._fetch_with_retry(url)
+            parsed_data = json.loads(content)
 
-                # Ensure the parsed data is a dictionary
-                if not isinstance(parsed_data, dict):
-                    raise ValueError(f"Template {template_name} is not a JSON object, got {type(parsed_data).__name__}")
+            # Ensure the parsed data is a dictionary
+            if not isinstance(parsed_data, dict):
+                pytest.skip(f"Template {template_name} is not a JSON object, got {type(parsed_data).__name__}")
 
-                return parsed_data
+            # Cache the successful result
+            self._template_cache[cache_key] = parsed_data
+            return parsed_data
+
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                pytest.skip(f"Template {template_name} not found in repository (404)")
+            elif e.code == 429:
+                pytest.skip(f"Rate limited fetching template {template_name}, try again later")
+            else:
+                pytest.skip(f"HTTP error fetching template {template_name}: {e.code}")
+
         except urllib.error.URLError as e:
-            raise Exception(f"Could not fetch template {template_name}: {e}")
+            pytest.skip(f"Network error fetching template {template_name}: {e.reason}")
+
         except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON in template {template_name}: {e}")
-        except ValueError:
-            # Re-raise ValueError as-is
-            raise
+            pytest.skip(f"Invalid JSON in template {template_name}: {e}")
+
         except Exception as e:
-            raise Exception(f"Error fetching template {template_name}: {e}")
+            pytest.skip(f"Error fetching template {template_name} after retries: {e}")
 
     def fetch_variables(self, variables_name: str) -> Dict[str, Any]:
         """
-        Fetch a variables file from the repository.
+        Fetch a variables file from the repository with caching and retry logic.
 
         Args:
             variables_name: Name of the variables file (e.g., "custom-variables.json")
@@ -78,33 +158,51 @@ class TemplateFetcher:
             Parsed JSON variables
 
         Raises:
-            Exception: If variables cannot be fetched or is not a valid JSON object
+            pytest.skip.Exception: If variables cannot be fetched after retries
         """
+        # Check cache first
+        if variables_name in self._variables_cache:
+            return self._variables_cache[variables_name]
+
         url = f"{self.base_path}/variables/{variables_name}"
 
         try:
-            with urllib.request.urlopen(url, timeout=10) as response:
-                if response.status != 200:
-                    raise Exception(f"HTTP {response.status}")
-                content = response.read().decode("utf-8")
-                parsed_data = json.loads(content)
+            content = self._fetch_with_retry(url)
+            parsed_data = json.loads(content)
 
-                # Ensure the parsed data is a dictionary
-                if not isinstance(parsed_data, dict):
-                    raise ValueError(
-                        f"Variables {variables_name} is not a JSON object, got {type(parsed_data).__name__}"
-                    )
+            # Ensure the parsed data is a dictionary
+            if not isinstance(parsed_data, dict):
+                pytest.skip(f"Variables {variables_name} is not a JSON object, got {type(parsed_data).__name__}")
 
-                return parsed_data
+            # Cache the successful result
+            self._variables_cache[variables_name] = parsed_data
+            return parsed_data
+
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                pytest.skip(f"Variables {variables_name} not found in repository (404)")
+            elif e.code == 429:
+                pytest.skip(f"Rate limited fetching variables {variables_name}, try again later")
+            else:
+                pytest.skip(f"HTTP error fetching variables {variables_name}: {e.code}")
+
         except urllib.error.URLError as e:
-            raise Exception(f"Could not fetch variables {variables_name}: {e}")
+            pytest.skip(f"Network error fetching variables {variables_name}: {e.reason}")
+
         except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON in variables {variables_name}: {e}")
-        except ValueError:
-            # Re-raise ValueError as-is
-            raise
+            pytest.skip(f"Invalid JSON in variables {variables_name}: {e}")
+
         except Exception as e:
-            raise Exception(f"Error fetching variables {variables_name}: {e}")
+            pytest.skip(f"Error fetching variables {variables_name} after retries: {e}")
+
+    def clear_cache(self) -> None:
+        """Clear the in-memory cache."""
+        self._template_cache.clear()
+        self._variables_cache.clear()
+
+    def get_cache_stats(self) -> Dict[str, int]:
+        """Get cache statistics."""
+        return {"templates_cached": len(self._template_cache), "variables_cached": len(self._variables_cache)}
 
     def list_templates(self, category: str = "templates") -> List[str]:
         """
@@ -125,6 +223,7 @@ class TemplateFetcher:
                 "08-custom-types.json",
                 "09-array-usage.json",
                 "10-comprehensive-conditionals.json",
+                "11-override-types.json",
             ]
         elif category == "templates/invalid":
             return [
@@ -162,7 +261,7 @@ def template_fetcher() -> TemplateFetcher:
     Provide a TemplateFetcher instance for the entire test session.
 
     This is session-scoped to avoid creating multiple instances
-    and to allow for potential caching of fetched templates.
+    and to enable caching across all tests in the session.
     """
     return TemplateFetcher()
 

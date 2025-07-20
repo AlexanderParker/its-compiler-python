@@ -107,12 +107,10 @@ class TestErrorHandlingIntegration:
             "variables": {f"var_{i}": f"value_{i}" for i in range(200)},  # Many variables
         }
 
-        # Development might allow it (or fail for different reasons)
-        dev_result = None
         try:
-            dev_result = compiler.compile(large_template)
+            compiler.compile(large_template)
         except Exception:
-            pass  # Either way is fine for development
+            pass
 
         # Production should be more restrictive
         with pytest.raises((ITSValidationError, ITSSecurityError)):
