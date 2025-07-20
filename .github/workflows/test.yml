@@ -38,12 +38,9 @@ jobs:
       - name: Verify installation
         run: |
           python -c "import its_compiler; print(f'ITS Compiler version: {its_compiler.__version__}')"
-      - name: Run core tests
+      - name: Run all tests with coverage
         run: |
           python test_runner.py --verbose --category all
-      - name: Run security tests
-        run: |
-          python test_runner.py --security-only --verbose
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
