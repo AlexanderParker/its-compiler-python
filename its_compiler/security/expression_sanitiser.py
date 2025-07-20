@@ -263,19 +263,21 @@ class ExpressionSanitiser:
 
         # Handle direct constants
         if isinstance(slice_node, ast.Constant):  # Python 3.8+
-            if isinstance(slice_node.value, (int, float)):
+            if isinstance(slice_node.value, (int, float)) and not isinstance(slice_node.value, complex):
                 index_value = slice_node.value
         elif isinstance(slice_node, ast.Num):  # Python < 3.8
-            index_value = slice_node.n
+            if isinstance(slice_node.n, (int, float)) and not isinstance(slice_node.n, complex):
+                index_value = slice_node.n
         # Handle negative numbers (UnaryOp with USub)
         elif isinstance(slice_node, ast.UnaryOp) and isinstance(slice_node.op, ast.USub):
             if isinstance(slice_node.operand, ast.Constant):
                 # Type check to ensure value is numeric
                 operand_value = slice_node.operand.value
-                if isinstance(operand_value, (int, float)):
+                if isinstance(operand_value, (int, float)) and not isinstance(operand_value, complex):
                     index_value = -operand_value
             elif isinstance(slice_node.operand, ast.Num):
-                index_value = -slice_node.operand.n
+                if isinstance(slice_node.operand.n, (int, float)) and not isinstance(slice_node.operand.n, complex):
+                    index_value = -slice_node.operand.n
 
         # Validate the index if we successfully extracted a numeric value
         if isinstance(index_value, (int, float)):
