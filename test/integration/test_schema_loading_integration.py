@@ -3,7 +3,6 @@ Integration tests for schema loading and custom instruction types.
 Tests using real templates from the its-example-templates repository.
 """
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest

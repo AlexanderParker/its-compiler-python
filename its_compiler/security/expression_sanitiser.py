@@ -3,7 +3,6 @@ Expression sanitisation and validation for ITS Compiler conditionals.
 """
 
 import ast
-import re
 from typing import Any, Dict, List
 
 from ..core.exceptions import ITSConditionalError
@@ -82,6 +81,8 @@ class ExpressionSanitiser:
         self.processing_config = config.processing
 
         # Compile dangerous patterns
+        import re
+
         self.dangerous_regex = re.compile("|".join(self.DANGEROUS_PATTERNS), re.IGNORECASE)
 
     def sanitise_expression(self, expression: str, variables: Dict[str, Any]) -> str:
@@ -268,24 +269,30 @@ class ExpressionSanitiser:
         # Handle negative numbers (UnaryOp with USub)
         elif isinstance(slice_node, ast.UnaryOp) and isinstance(slice_node.op, ast.USub):
             if isinstance(slice_node.operand, ast.Constant):
-                index_value = -slice_node.operand.value
+                # Type check to ensure value is numeric
+                operand_value = slice_node.operand.value
+                if isinstance(operand_value, (int, float)):
+                    index_value = -operand_value
             elif isinstance(slice_node.operand, ast.Num):
                 index_value = -slice_node.operand.n
 
         # Validate the index if we successfully extracted a numeric value
-        if isinstance(index_value, int):
+        if isinstance(index_value, (int, float)):
             max_index = self.processing_config.max_array_index
 
-            if index_value > max_index:
+            # Convert to int for comparison if it's a float
+            index_int = int(index_value) if isinstance(index_value, float) else index_value
+
+            if index_int > max_index:
                 self._security_violation(
                     expression,
-                    f"Array index too large: {index_value}",
+                    f"Array index too large: {index_int}",
                     "array_index_too_large",
                 )
-            elif index_value < 0 and abs(index_value) > max_index:
+            elif index_int < 0 and abs(index_int) > max_index:
                 self._security_violation(
                     expression,
-                    f"Array index too negative: {index_value}",
+                    f"Array index too negative: {index_int}",
                     "array_index_too_negative",
                 )
 
