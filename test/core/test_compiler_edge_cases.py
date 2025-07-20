@@ -6,8 +6,9 @@ Tests scenarios that are difficult to trigger through normal integration tests.
 import json
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Sequence
-from unittest.mock import patch
+from typing import Any, Dict, Generator, List
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError, URLError
 
 import pytest
 
@@ -298,11 +299,6 @@ class TestCompilerEdgeCases:
 
     def test_schema_loader_comprehensive_error_scenarios(self, compiler: ITSCompiler) -> None:
         """Test schema loader with comprehensive HTTP and cache error scenarios."""
-        import gzip
-        import json
-        from unittest.mock import MagicMock, patch
-        from urllib.error import HTTPError, URLError
-
         # Test template that tries to load an external schema
         template = {
             "version": "1.0.0",
@@ -361,8 +357,9 @@ class TestCompilerEdgeCases:
 
         # Test 6: Cache corruption scenarios (covers lines 331-343, 347-353)
         if compiler.config.cache_enabled:
-            with patch("pathlib.Path.exists", return_value=True), patch(
-                "builtins.open", side_effect=json.JSONDecodeError("Invalid JSON", "", 0)
+            with (
+                patch("pathlib.Path.exists", return_value=True),
+                patch("builtins.open", side_effect=json.JSONDecodeError("Invalid JSON", "", 0)),
             ):
                 # This should handle corrupted cache gracefully and try to load from URL
                 with patch("urllib.request.urlopen") as mock_urlopen:
