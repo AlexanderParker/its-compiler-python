@@ -5,6 +5,7 @@ Provides common fixtures and utilities for testing the ITS Compiler.
 Includes caching and retry logic to handle GitHub rate limiting.
 """
 
+import copy
 import json
 import shutil
 import tempfile
@@ -13,7 +14,6 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Generator, List
-from urllib.parse import quote
 
 import pytest
 
@@ -100,12 +100,14 @@ class TemplateFetcher:
         """
         Fetch a template from the repository with caching and retry logic.
 
+        FIXED: Returns a deep copy to prevent shared mutable state issues.
+
         Args:
             template_name: Name of the template file (e.g., "01-text-only.json")
             category: Category subdirectory ("templates", "templates/invalid", "templates/security")
 
         Returns:
-            Parsed JSON template
+            Parsed JSON template (deep copy)
 
         Raises:
             pytest.skip.Exception: If template cannot be fetched after retries
@@ -114,7 +116,8 @@ class TemplateFetcher:
 
         # Check cache first
         if cache_key in self._template_cache:
-            return self._template_cache[cache_key]
+            # CRITICAL FIX: Return a deep copy, not the cached object itself
+            return copy.deepcopy(self._template_cache[cache_key])
 
         url = f"{self.base_path}/{category}/{template_name}"
 
@@ -128,7 +131,9 @@ class TemplateFetcher:
 
             # Cache the successful result
             self._template_cache[cache_key] = parsed_data
-            return parsed_data
+
+            # CRITICAL FIX: Return a deep copy, not the cached object itself
+            return copy.deepcopy(parsed_data)
 
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -151,18 +156,21 @@ class TemplateFetcher:
         """
         Fetch a variables file from the repository with caching and retry logic.
 
+        FIXED: Returns a deep copy to prevent shared mutable state issues.
+
         Args:
             variables_name: Name of the variables file (e.g., "custom-variables.json")
 
         Returns:
-            Parsed JSON variables
+            Parsed JSON variables (deep copy)
 
         Raises:
             pytest.skip.Exception: If variables cannot be fetched after retries
         """
         # Check cache first
         if variables_name in self._variables_cache:
-            return self._variables_cache[variables_name]
+            # Return a deep copy, not the cached object itself
+            return copy.deepcopy(self._variables_cache[variables_name])
 
         url = f"{self.base_path}/variables/{variables_name}"
 
@@ -176,7 +184,9 @@ class TemplateFetcher:
 
             # Cache the successful result
             self._variables_cache[variables_name] = parsed_data
-            return parsed_data
+
+            # Return a deep copy, not the cached object itself
+            return copy.deepcopy(parsed_data)
 
         except urllib.error.HTTPError as e:
             if e.code == 404:
