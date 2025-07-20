@@ -97,30 +97,21 @@ class TestCompilerEdgeCases:
 
         assert "Missing required configuration" in str(exc_info.value)
 
-    def test_custom_instruction_types_with_overrides(self, compiler: ITSCompiler) -> None:
+    def test_custom_instruction_types_with_overrides(self, compiler: ITSCompiler, template_fetcher: Any) -> None:
         """Test custom instruction types that override schema types."""
 
-        template = {
-            "version": "1.0.0",
-            "customInstructionTypes": {
-                "paragraph": {  # Override standard paragraph type
-                    "template": "CUSTOM PARAGRAPH: ([{<{description}>}])",
-                    "description": "Custom paragraph that overrides standard",
-                }
-            },
-            "content": [
-                {"type": "placeholder", "instructionType": "paragraph", "config": {"description": "Test paragraph"}}
-            ],
-        }
+        # Fetch the new template that demonstrates type overrides
+        template = template_fetcher.fetch_template("11-override-types.json")
 
         result = compiler.compile(template)
-        assert "CUSTOM PARAGRAPH:" in result.prompt
-        assert "Test paragraph" in result.prompt
+        assert "CUSTOM LIST FORMAT:" in result.prompt
+        assert "Create a custom formatted list" in result.prompt
+        assert "Style: bullet_points" in result.prompt
 
         # Check that override was reported
         assert len(result.overrides) > 0
         override = result.overrides[0]
-        assert override.type_name == "paragraph"
+        assert override.type_name == "list"
         assert override.override_source == "customInstructionTypes"
 
     def test_base_url_resolution(self, compiler: ITSCompiler, temp_directory: Path) -> None:
