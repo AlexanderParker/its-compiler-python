@@ -3,6 +3,7 @@ Integration tests for schema loading and custom instruction types.
 Tests using real templates from the its-example-templates repository.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +11,8 @@ import pytest
 from its_compiler import ITSCompiler
 from its_compiler.core.exceptions import ITSCompilationError
 from its_compiler.security import SecurityConfig
+
+from .conftest import TemplateFetcher
 
 
 class TestSchemaLoadingIntegration:
@@ -26,11 +29,11 @@ class TestSchemaLoadingIntegration:
         return ITSCompiler(security_config=config)
 
     @pytest.fixture
-    def fetcher(self, template_fetcher):
+    def fetcher(self, template_fetcher: TemplateFetcher) -> TemplateFetcher:
         """Use the shared template fetcher fixture."""
         return template_fetcher
 
-    def test_text_only_template_no_schema(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_text_only_template_no_schema(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test 01-text-only.json with no external schemas or instruction types."""
         template = fetcher.fetch_template("01-text-only.json")
 
@@ -49,7 +52,7 @@ class TestSchemaLoadingIntegration:
 
     @patch("socket.getaddrinfo")
     def test_single_placeholder_with_schema_loading(
-        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher: TemplateFetcher
     ) -> None:
         """Test 02-single-placeholder.json that loads external schema for instruction types."""
         # Mock DNS resolution for GitHub Pages
@@ -73,7 +76,7 @@ class TestSchemaLoadingIntegration:
 
     @patch("socket.getaddrinfo")
     def test_multiple_placeholders_with_schema(
-        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher: TemplateFetcher
     ) -> None:
         """Test 03-multiple-placeholders.json with multiple instruction types from schema."""
         mock_getaddrinfo.return_value = [(2, 1, 6, "", ("185.199.108.153", 443))]
@@ -97,7 +100,7 @@ class TestSchemaLoadingIntegration:
         assert "paragraph" in instruction_types
         assert "list" in instruction_types
 
-    def test_custom_instruction_types(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_custom_instruction_types(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test 08-custom-types.json with custom instruction type definitions."""
         template = fetcher.fetch_template("08-custom-types.json")
 
@@ -128,7 +131,7 @@ class TestSchemaLoadingIntegration:
 
     @patch("socket.getaddrinfo")
     def test_schema_and_custom_type_combination(
-        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher
+        self, mock_getaddrinfo: MagicMock, compiler: ITSCompiler, fetcher: TemplateFetcher
     ) -> None:
         """Test 08-custom-types.json which has both schema extension and custom types."""
         mock_getaddrinfo.return_value = [(2, 1, 6, "", ("185.199.108.153", 443))]
@@ -155,7 +158,7 @@ class TestSchemaLoadingIntegration:
         # Should also have standard list formatting
         assert "List required kitchen tools" in result.prompt
 
-    def test_templates_with_variables_and_schema_loading(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_templates_with_variables_and_schema_loading(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test templates that combine variables, conditionals, and schema loading."""
         # Test 04-simple-variables.json with schema
         template = fetcher.fetch_template("04-simple-variables.json")
@@ -168,7 +171,7 @@ class TestSchemaLoadingIntegration:
         assert "Write an introduction about sustainable technology" in result.prompt
         assert "List 4 examples of sustainable technology" in result.prompt
 
-    def test_complex_template_with_arrays_and_schema(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_complex_template_with_arrays_and_schema(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test 09-array-usage.json which uses arrays and schema loading."""
         template = fetcher.fetch_template("09-array-usage.json")
 
@@ -183,7 +186,7 @@ class TestSchemaLoadingIntegration:
         assert "SmartHome Hub" in result.prompt
         assert "voice control, home automation, energy monitoring, security integration" in result.prompt
 
-    def test_conditional_templates_with_schema(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_conditional_templates_with_schema(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test conditional templates that also load schemas."""
         # Test 06-simple-conditionals.json
         template = fetcher.fetch_template("06-simple-conditionals.json")
@@ -197,7 +200,7 @@ class TestSchemaLoadingIntegration:
         assert result.prompt is not None
         assert "Gaming Laptop Pro X" in result.prompt
 
-    def test_comprehensive_conditionals_no_schema(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_comprehensive_conditionals_no_schema(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test 10-comprehensive-conditionals.json which tests all operators."""
         template = fetcher.fetch_template("10-comprehensive-conditionals.json")
 
@@ -213,7 +216,7 @@ class TestSchemaLoadingIntegration:
         assert "[OK] Array length property works" in result.prompt
         assert "[FAIL]" not in result.prompt
 
-    def test_type_override_with_custom_types(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_type_override_with_custom_types(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that custom instruction types can override schema types."""
         template = fetcher.fetch_template("08-custom-types.json")
 
@@ -231,7 +234,7 @@ class TestSchemaLoadingIntegration:
         assert "CUSTOM LIST:" in result.prompt
         assert "List required kitchen tools" in result.prompt
 
-    def test_missing_instruction_type_error(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_missing_instruction_type_error(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test error when instruction type is not found in schema or custom types."""
         template = fetcher.fetch_template("02-single-placeholder.json")
 
@@ -244,7 +247,7 @@ class TestSchemaLoadingIntegration:
 
         assert "unknown instruction type" in str(exc_info.value).lower()
 
-    def test_schema_loading_failure_graceful_degradation(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_schema_loading_failure_graceful_degradation(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that compilation fails gracefully when schema loading fails and no custom types exist."""
         template = fetcher.fetch_template("02-single-placeholder.json")
 
@@ -256,7 +259,9 @@ class TestSchemaLoadingIntegration:
         with pytest.raises(ITSCompilationError):
             compiler.compile(template_modified)
 
-    def test_schema_loading_with_variables_in_descriptions(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_schema_loading_with_variables_in_descriptions(
+        self, compiler: ITSCompiler, fetcher: TemplateFetcher
+    ) -> None:
         """Test schema loading combined with variable substitution in descriptions."""
         template = fetcher.fetch_template("05-complex-variables.json")
 
@@ -270,7 +275,7 @@ class TestSchemaLoadingIntegration:
         assert "solar charging" in result.prompt
         assert "$899" in result.prompt
 
-    def test_all_schema_loading_templates(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_all_schema_loading_templates(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test all templates that use schema loading."""
         schema_templates = [
             "02-single-placeholder.json",
@@ -295,7 +300,7 @@ class TestSchemaLoadingIntegration:
             assert result.prompt is not None
             assert len(result.prompt) > 0
 
-    def test_custom_type_config_parameter_substitution(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_custom_type_config_parameter_substitution(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that custom type config parameters are properly substituted."""
         template = fetcher.fetch_template("08-custom-types.json")
 
@@ -320,7 +325,7 @@ class TestSchemaLoadingIntegration:
         assert "Duration: 5 minutes" in result.prompt
         assert "Duration: 3 minutes" in result.prompt
 
-    def test_schema_url_validation(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_schema_url_validation(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that schema URLs are validated by security components."""
         template = fetcher.fetch_template("02-single-placeholder.json")
 
@@ -333,7 +338,7 @@ class TestSchemaLoadingIntegration:
         result = compiler.compile(template)
         assert result.prompt is not None
 
-    def test_instruction_type_wrapper_application(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_instruction_type_wrapper_application(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that instruction types get proper wrapper formatting."""
         template = fetcher.fetch_template("02-single-placeholder.json")
 
@@ -347,7 +352,7 @@ class TestSchemaLoadingIntegration:
         assert "([{<" in result.prompt
         assert ">}])" in result.prompt
 
-    def test_compiler_override_reporting(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_compiler_override_reporting(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that compiler properly reports type overrides."""
         template = fetcher.fetch_template("08-custom-types.json")
 
@@ -375,7 +380,7 @@ class TestSchemaLoadingIntegration:
         # Should have allowlist feature status
         assert "allowlist" in status["features"]
 
-    def test_template_compilation_metrics(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_template_compilation_metrics(self, compiler: ITSCompiler, fetcher: TemplateFetcher) -> None:
         """Test that compilation provides useful metrics."""
         template = fetcher.fetch_template("08-custom-types.json")
 
