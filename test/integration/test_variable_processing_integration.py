@@ -4,6 +4,8 @@ Tests using real templates from the its-example-templates repository.
 Focus on complex real-world scenarios and template integration.
 """
 
+from typing import Any
+
 import pytest
 
 from its_compiler import ITSCompiler
@@ -19,11 +21,11 @@ class TestVariableProcessingIntegration:
         return ITSCompiler()
 
     @pytest.fixture
-    def fetcher(self, template_fetcher):
+    def fetcher(self, template_fetcher: Any) -> Any:
         """Use the shared template fetcher fixture."""
         return template_fetcher
 
-    def test_complex_variables_template(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_complex_variables_template(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test 05-complex-variables.json with object properties and arrays."""
         template = fetcher.fetch_template("05-complex-variables.json")
 
@@ -44,7 +46,7 @@ class TestVariableProcessingIntegration:
         assert "software platform" in result_custom.prompt
         assert "natural language processing" in result_custom.prompt
 
-    def test_complex_conditionals_template(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_complex_conditionals_template(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test 07-complex-conditionals.json with complex conditional logic."""
         template = fetcher.fetch_template("07-complex-conditionals.json")
 
@@ -74,7 +76,7 @@ class TestVariableProcessingIntegration:
         # Should not show beginner content (audience == "technical" and showBeginner == false)
         assert "getting started" not in result_custom.prompt.lower()
 
-    def test_array_usage_template(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_array_usage_template(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test 09-array-usage.json with arrays and complex variable access."""
         template = fetcher.fetch_template("09-array-usage.json")
 
@@ -95,7 +97,7 @@ class TestVariableProcessingIntegration:
         assert "natural language processing, computer vision, predictive analytics" in result_custom.prompt
         assert "software platform" in result_custom.prompt
 
-    def test_comprehensive_conditionals_template(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_comprehensive_conditionals_template(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test 10-comprehensive-conditionals.json with all conditional operators."""
         template = fetcher.fetch_template("10-comprehensive-conditionals.json")
 
@@ -127,7 +129,7 @@ class TestVariableProcessingIntegration:
         # Ensure no FAIL markers appear
         assert "[FAIL]" not in result.prompt
 
-    def test_nested_object_access(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_nested_object_access(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test deep object property access using complex variables."""
         template = fetcher.fetch_template("05-complex-variables.json")
 
@@ -156,7 +158,7 @@ class TestVariableProcessingIntegration:
         assert "electronics" in result.prompt
         assert "16GB RAM" in result.prompt
 
-    def test_conditional_edge_cases(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_conditional_edge_cases(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test conditional evaluation with various edge cases."""
         template = fetcher.fetch_template("07-complex-conditionals.json")
 
@@ -179,7 +181,7 @@ class TestVariableProcessingIntegration:
             assert result.prompt is not None
             # Should handle edge cases gracefully without errors
 
-    def test_mixed_variable_types(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_mixed_variable_types(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test mixing different variable types in a single template."""
         template = fetcher.fetch_template("09-array-usage.json")
 
@@ -197,7 +199,7 @@ class TestVariableProcessingIntegration:
         assert "test device" in result.prompt
         # Should handle empty arrays gracefully
 
-    def test_all_variable_files_with_templates(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_all_variable_files_with_templates(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test all variable files with compatible templates."""
         variable_files = fetcher.list_variables()
 
@@ -219,7 +221,7 @@ class TestVariableProcessingIntegration:
                 assert result.prompt is not None
                 assert len(result.prompt) > 0
 
-    def test_error_handling_with_real_templates(self, compiler: ITSCompiler, fetcher) -> None:
+    def test_error_handling_with_real_templates(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test error handling using real templates with missing variables."""
         template = fetcher.fetch_template("04-simple-variables.json")
 
