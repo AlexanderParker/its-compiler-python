@@ -3,13 +3,12 @@ Integration tests for schema loading and custom instruction types.
 Tests using real templates from the its-example-templates repository.
 """
 
-from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from its_compiler import ITSCompiler
-from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError
+from its_compiler.core.exceptions import ITSCompilationError
 from its_compiler.security import SecurityConfig
 
 

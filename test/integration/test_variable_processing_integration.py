@@ -4,8 +4,6 @@ Tests using real templates from the its-example-templates repository.
 Focus on complex real-world scenarios and template integration.
 """
 
-from typing import Any, Dict
-
 import pytest
 
 from its_compiler import ITSCompiler

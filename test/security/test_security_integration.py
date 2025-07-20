@@ -5,19 +5,13 @@ Tests using real malicious templates from the its-example-templates repository.
 
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from its_compiler import ITSCompiler
-from its_compiler.core.exceptions import (
-    ITSCompilationError,
-    ITSConditionalError,
-    ITSSecurityError,
-    ITSValidationError,
-    ITSVariableError,
-)
+from its_compiler.core.exceptions import ITSCompilationError, ITSConditionalError, ITSSecurityError, ITSValidationError
 from its_compiler.core.models import ITSConfig
 from its_compiler.security import SecurityConfig
 

@@ -4,9 +4,6 @@ Tests model functionality, configuration validation, and data structures.
 """
 
 from datetime import datetime
-from typing import Any, Dict
-
-import pytest
 
 from its_compiler.core.models import (
     AuditTrail,

@@ -5,8 +5,6 @@ Tests exception methods, context generation, and error reporting.
 
 from datetime import datetime
 
-import pytest
-
 from its_compiler.core.exceptions import (
     ITSCompilationError,
     ITSConditionalError,

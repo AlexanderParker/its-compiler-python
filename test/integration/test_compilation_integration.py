@@ -3,12 +3,11 @@ Integration tests for successful template compilation.
 Tests the complete compilation pipeline with valid templates from the example repository.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pytest
 
 from its_compiler import ITSCompiler, ITSConfig
-from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError
 from its_compiler.security import SecurityConfig
 
 

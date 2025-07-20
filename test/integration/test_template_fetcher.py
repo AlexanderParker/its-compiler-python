@@ -5,10 +5,6 @@ Fetches templates and variables from the its-example-templates GitHub repository
 for use in integration testing.
 """
 
-import json
-import urllib.error
-import urllib.request
-from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 import pytest

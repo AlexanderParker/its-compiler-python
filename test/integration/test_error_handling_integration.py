@@ -3,8 +3,6 @@ Integration tests for error handling and invalid template processing.
 Tests complex error scenarios that span multiple components in realistic contexts.
 """
 
-from typing import Any, Dict
-
 import pytest
 
 from its_compiler import ITSCompiler

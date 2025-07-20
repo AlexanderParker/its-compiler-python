@@ -3,8 +3,6 @@ Tests for variable resolution and processing edge cases.
 Tests complex variable scenarios, error conditions, and security validation.
 """
 
-from typing import Any, Dict
-
 import pytest
 
 from its_compiler.core.exceptions import ITSVariableError
