@@ -3,7 +3,7 @@ Tests for variable resolution and processing edge cases.
 Tests complex variable scenarios, error conditions, and security validation.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
 
@@ -175,7 +175,9 @@ class TestVariableResolution:
         }
 
         # Test different value type formatting
-        content = [{"type": "text", "text": "Array: ${array}, Object: ${object}, String: ${string}"}]
+        content: List[Dict[str, Any]] = [
+            {"type": "text", "text": "Array: ${array}, Object: ${object}, String: ${string}"}
+        ]
         result = processor.process_content(content, variables)
 
         processed_text = result[0]["text"]
@@ -196,7 +198,7 @@ class TestVariableResolution:
 
     def test_find_variable_references(self, processor: VariableProcessor) -> None:
         """Test finding all variable references in content."""
-        content = [
+        content: List[Dict[str, Any]] = [
             {"type": "text", "text": "Hello ${user.name}, you have ${count} items"},
             {
                 "type": "conditional",
@@ -214,7 +216,7 @@ class TestVariableResolution:
 
     def test_validate_variables_comprehensive(self, processor: VariableProcessor) -> None:
         """Test comprehensive variable validation."""
-        content = [
+        content: List[Dict[str, Any]] = [
             {"type": "text", "text": "User: ${user.name}, Count: ${items.length}"},
             {"type": "text", "text": "First: ${items[0]}"},
         ]
@@ -253,7 +255,7 @@ class TestVariableResolution:
             "__proto__": "dangerous",
         }
 
-        content = [{"type": "text", "text": "Test ${dangerous_var}"}]
+        content: List[Dict[str, Any]] = [{"type": "text", "text": "Test ${dangerous_var}"}]
 
         for var_name, value in dangerous_variables.items():
             variables_with_dangerous = {var_name: value}

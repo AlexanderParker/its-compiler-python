@@ -3,6 +3,9 @@ Integration tests for error handling and invalid template processing.
 Tests complex error scenarios that span multiple components in realistic contexts.
 """
 
+from pathlib import Path
+from typing import Any, Generator
+
 import pytest
 
 from its_compiler import ITSCompiler
@@ -117,7 +120,7 @@ class TestErrorHandlingIntegration:
         with pytest.raises((ITSValidationError, ITSSecurityError)):
             production_compiler.compile(large_template)
 
-    def test_file_based_error_scenarios(self, compiler: ITSCompiler, temp_directory) -> None:
+    def test_file_based_error_scenarios(self, compiler: ITSCompiler, temp_directory: Any) -> None:
         """Test error handling with file-based compilation scenarios."""
         # Create template file with permission issues simulation
         template_content = {

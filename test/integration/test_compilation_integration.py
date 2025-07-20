@@ -31,42 +31,42 @@ class TestCompilationIntegration:
         return ITSCompiler(security_config=security_config)
 
     @pytest.fixture
-    def text_only_template(self, template_fetcher) -> Dict[str, Any]:
+    def text_only_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch text-only template."""
         return template_fetcher.fetch_template("01-text-only.json")
 
     @pytest.fixture
-    def single_placeholder_template(self, template_fetcher) -> Dict[str, Any]:
+    def single_placeholder_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch single placeholder template."""
         return template_fetcher.fetch_template("02-single-placeholder.json")
 
     @pytest.fixture
-    def multiple_placeholders_template(self, template_fetcher) -> Dict[str, Any]:
+    def multiple_placeholders_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch multiple placeholders template."""
         return template_fetcher.fetch_template("03-multiple-placeholders.json")
 
     @pytest.fixture
-    def simple_variables_template(self, template_fetcher) -> Dict[str, Any]:
+    def simple_variables_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch simple variables template."""
         return template_fetcher.fetch_template("04-simple-variables.json")
 
     @pytest.fixture
-    def complex_variables_template(self, template_fetcher) -> Dict[str, Any]:
+    def complex_variables_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch complex variables template."""
         return template_fetcher.fetch_template("05-complex-variables.json")
 
     @pytest.fixture
-    def custom_types_template(self, template_fetcher) -> Dict[str, Any]:
+    def custom_types_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch custom types template."""
         return template_fetcher.fetch_template("08-custom-types.json")
 
     @pytest.fixture
-    def array_usage_template(self, template_fetcher) -> Dict[str, Any]:
+    def array_usage_template(self, template_fetcher: Any) -> Dict[str, Any]:
         """Fetch array usage template."""
         return template_fetcher.fetch_template("09-array-usage.json")
 
     @pytest.fixture
-    def template_files(self, temp_directory, template_fetcher) -> Dict[str, str]:
+    def template_files(self, temp_directory: Any, template_fetcher: Any) -> Dict[str, str]:
         """Create temporary template files."""
         template = template_fetcher.fetch_template("01-text-only.json")
         file_path = temp_directory / "01-text-only.json"

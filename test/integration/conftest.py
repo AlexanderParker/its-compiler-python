@@ -11,7 +11,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator, List
 from urllib.parse import quote
 
 import pytest
@@ -143,7 +143,7 @@ def template_fetcher() -> TemplateFetcher:
 
 
 @pytest.fixture
-def temp_directory():
+def temp_directory() -> Generator[Path, None, None]:
     """
     Create a temporary directory for test files.
 
@@ -316,7 +316,7 @@ def template_categories(template_fetcher: TemplateFetcher) -> Dict[str, List[str
 
 
 @pytest.fixture
-def mock_schema_response():
+def mock_schema_response() -> Dict[str, Any]:
     """
     Provide a mock schema response for testing schema loading.
 
@@ -349,7 +349,7 @@ def mock_schema_response():
 
 
 @pytest.fixture
-def compilation_test_helper():
+def compilation_test_helper() -> Any:
     """
     Provide helper functions for common compilation test operations.
 
@@ -396,7 +396,7 @@ def compilation_test_helper():
 
 
 @pytest.fixture(autouse=True)
-def reset_compiler_state():
+def reset_compiler_state() -> Generator[None, None, None]:
     """
     Reset any global compiler state before each test.
 
@@ -409,14 +409,14 @@ def reset_compiler_state():
     # Cleanup after test if needed
 
 
-def pytest_configure(config):
+def pytest_configure(config: Any) -> None:
     """Configure pytest with custom markers for integration tests."""
     config.addinivalue_line("markers", "network: mark test as requiring network access")
     config.addinivalue_line("markers", "slow: mark test as slow running")
     config.addinivalue_line("markers", "template_repo: mark test as requiring template repository access")
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(config: Any, items: List[Any]) -> None:
     """Modify test collection to add markers based on test content."""
     for item in items:
         # Add network marker to tests that use template_fetcher

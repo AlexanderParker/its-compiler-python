@@ -4,7 +4,7 @@ URL validation and SSRF protection for ITS Compiler.
 
 import ipaddress
 import socket
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from urllib.parse import urlparse
 
 from ..core.exceptions import ITSSchemaError
@@ -28,7 +28,7 @@ class URLValidator:
         self.network_config = config.network
 
         # Pre-compile blocked IP ranges
-        self._blocked_networks = []
+        self._blocked_networks: List[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]] = []
         for cidr in self.network_config.blocked_ip_ranges:
             try:
                 self._blocked_networks.append(ipaddress.ip_network(cidr, strict=False))
