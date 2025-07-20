@@ -189,11 +189,12 @@ class TestVariableResolution:
         """Test variable reference length limits."""
         variables = {"test": "value"}
 
-        # Very long variable reference should be rejected
+        # Very long variable reference should be rejected during string processing
         long_ref = "test." + ".".join(f"prop{i}" for i in range(50))
+        content: List[Dict[str, Any]] = [{"type": "text", "text": f"Value: ${{{long_ref}}}"}]
 
         with pytest.raises(ITSVariableError) as exc_info:
-            processor.resolve_variable_reference(long_ref, variables)
+            processor.process_content(content, variables)
         assert "too long" in str(exc_info.value)
 
     def test_find_variable_references(self, processor: VariableProcessor) -> None:

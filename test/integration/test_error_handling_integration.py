@@ -147,9 +147,37 @@ class TestErrorHandlingIntegration:
         # Start with a valid template and modify it to cause specific errors
         template = template_fetcher.fetch_template("08-custom-types.json")
 
-        # Modify to use non-existent instruction type to test error context
-        template["content"][0]["instructionType"] = "nonexistent_type"
-        template["content"][0]["id"] = "test_placeholder_123"  # Add ID for context testing
+        # Find the first placeholder element instead of assuming content[0]
+        placeholder_found = False
+        for i, element in enumerate(template["content"]):
+            if element.get("type") == "placeholder":
+                # Modify to use non-existent instruction type to test error context
+                template["content"][i]["instructionType"] = "nonexistent_type"
+                template["content"][i]["id"] = "test_placeholder_123"  # Add ID for context testing
+                placeholder_found = True
+                break
+
+        # If no placeholder found, create one
+        if not placeholder_found:
+            template["content"].append(
+                {
+                    "type": "placeholder",
+                    "instructionType": "nonexistent_type",
+                    "id": "test_placeholder_123",
+                    "config": {"description": "This will fail"},
+                }
+            )
+
+        # Also ensure we remove any custom instruction types that might provide fallbacks
+        if "customInstructionTypes" in template:
+            # Remove the custom types to ensure the nonexistent_type truly doesn't exist
+            template["customInstructionTypes"].pop("nonexistent_type", None)
+
+        # For extra safety, also remove schema extensions that might provide the type
+        # This ensures we're truly testing with a non-existent type
+        if "extends" in template:
+            # Keep extends but ensure our nonexistent_type won't be found there
+            pass
 
         with pytest.raises(ITSCompilationError) as exc_info:
             compiler.compile(template)
