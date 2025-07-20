@@ -3,7 +3,7 @@ Expression sanitisation and validation for ITS Compiler conditionals.
 """
 
 import ast
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from ..core.exceptions import ITSConditionalError
 from .config import SecurityConfig
@@ -259,11 +259,12 @@ class ExpressionSanitiser:
         slice_node = node.slice
 
         # Extract the index value, handling different AST node types
-        index_value = None
+        index_value: Union[int, float, None] = None
 
         # Handle direct constants
         if isinstance(slice_node, ast.Constant):  # Python 3.8+
-            index_value = slice_node.value
+            if isinstance(slice_node.value, (int, float)):
+                index_value = slice_node.value
         elif isinstance(slice_node, ast.Num):  # Python < 3.8
             index_value = slice_node.n
         # Handle negative numbers (UnaryOp with USub)

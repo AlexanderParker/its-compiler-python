@@ -7,7 +7,6 @@ Runs unit tests and security tests for the core library components.
 import argparse
 import subprocess
 import sys
-from pathlib import Path
 from typing import Optional
 
 
@@ -87,7 +86,7 @@ def run_security_scan() -> bool:
     print("Running security scan with bandit...")
 
     try:
-        cmd = ["bandit", "-r", "its_compiler/", "-f", "text"]
+        cmd = ["bandit", "-r", "its_compiler/", "-f", "txt"]
         result = subprocess.run(cmd, check=False)
         return result.returncode == 0
     except FileNotFoundError:
