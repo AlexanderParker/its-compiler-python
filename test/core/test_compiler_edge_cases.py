@@ -201,7 +201,7 @@ class TestCompilerEdgeCases:
 
         # Create 10 levels of nesting
         for i in range(10):
-            conditional = {"type": "conditional", "condition": f"level{i} == true", "content": []}
+            conditional: Dict[str, Any] = {"type": "conditional", "condition": f"level{i} == true", "content": []}
             current_content.append(conditional)
             current_content = conditional["content"]
 
