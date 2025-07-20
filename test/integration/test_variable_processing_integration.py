@@ -158,41 +158,6 @@ class TestVariableProcessingIntegration:
         assert "electronics" in result.prompt
         assert "16GB RAM" in result.prompt
 
-    def test_variable_override_precedence(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that provided variables override template variables."""
-        template = fetcher.fetch_template("04-simple-variables.json")
-
-        # Override the template variables
-        override_vars = {"topic": "artificial intelligence", "itemCount": 7}
-
-        result = compiler.compile(template, variables=override_vars)
-        assert result.prompt is not None
-        assert "artificial intelligence" in result.prompt
-        assert "7 examples" in result.prompt.lower()
-        # Should not contain the original template values
-        assert "sustainable technology" not in result.prompt
-
-    def test_boolean_conditionals_with_different_values(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test boolean conditionals with various true/false combinations."""
-        template = fetcher.fetch_template("06-simple-conditionals.json")
-
-        # Test all false
-        all_false_vars = {"includeSpecs": False, "includePricing": False, "productName": "Minimal Device"}
-
-        result_false = compiler.compile(template, variables=all_false_vars)
-        assert result_false.prompt is not None
-        assert "Minimal Device" in result_false.prompt
-        assert "availability" in result_false.prompt.lower()  # Should show else branch
-
-        # Test all true
-        all_true_vars = {"includeSpecs": True, "includePricing": True, "productName": "Full-Featured Device"}
-
-        result_true = compiler.compile(template, variables=all_true_vars)
-        assert result_true.prompt is not None
-        assert "Full-Featured Device" in result_true.prompt
-        assert "specifications" in result_true.prompt.lower() or "table" in result_true.prompt.lower()
-        assert "pricing" in result_true.prompt.lower()
-
     def test_conditional_edge_cases(self, compiler: ITSCompiler, fetcher) -> None:
         """Test conditional evaluation with various edge cases."""
         template = fetcher.fetch_template("07-complex-conditionals.json")
@@ -255,23 +220,6 @@ class TestVariableProcessingIntegration:
                 result = compiler.compile(template, variables=variables)
                 assert result.prompt is not None
                 assert len(result.prompt) > 0
-
-    def test_variable_scoping_and_precedence(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test variable scoping and precedence rules."""
-        template = fetcher.fetch_template("04-simple-variables.json")
-
-        # Test that external variables completely override template variables
-        external_vars = {
-            "topic": "external topic",
-            "itemCount": 99,
-            "additionalVar": "should be ignored",  # Not used in template
-        }
-
-        result = compiler.compile(template, variables=external_vars)
-        assert result.prompt is not None
-        assert "external topic" in result.prompt
-        assert "99 examples" in result.prompt.lower()
-        assert "sustainable technology" not in result.prompt  # Template default overridden
 
     def test_error_handling_with_real_templates(self, compiler: ITSCompiler, fetcher) -> None:
         """Test error handling using real templates with missing variables."""

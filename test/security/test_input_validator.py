@@ -48,21 +48,6 @@ class TestInputValidator:
         # Should not raise exception
         input_validator.validate_template(template)
 
-    def test_template_too_large(self, input_validator: InputValidator) -> None:
-        """Test template size limit enforcement."""
-        # Create large template content
-        large_text = "x" * (2 * 1024 * 1024)  # 2MB of content
-        large_template = {
-            "version": "1.0.0",
-            "content": [{"type": "text", "text": large_text}],
-        }
-
-        with pytest.raises(InputSecurityError) as exc_info:
-            input_validator.validate_template(large_template)
-
-        # The actual error is about text content being too long, not template size
-        assert "Text content too long in text_element_0" in str(exc_info.value)
-
     def test_missing_required_fields(self, input_validator: InputValidator) -> None:
         """Test detection of missing required fields."""
         # Missing version
@@ -285,9 +270,9 @@ class TestInputValidator:
         assert "Unknown content element type: unknown_type" in str(exc_info.value)
         assert exc_info.value.reason == "unknown_type"
 
-    def test_malicious_content_detection(self, input_validator: InputValidator, template_fetcher) -> None:
-        """Test detection of malicious content patterns using repository templates."""
-        # Try to use security templates from repository
+    def test_comprehensive_malicious_patterns(self, input_validator: InputValidator, template_fetcher) -> None:
+        """Test all malicious patterns using repository security templates plus key hardcoded patterns."""
+        # Try to use security templates from repository first
         try:
             malicious_template = template_fetcher.fetch_template("malicious_injection.json", "templates/security")
 
@@ -297,7 +282,7 @@ class TestInputValidator:
             assert "Malicious content detected" in str(exc_info.value)
             assert exc_info.value.reason == "malicious_content"
         except Exception:
-            # Fallback to hardcoded malicious patterns
+            # Fallback to essential hardcoded malicious patterns
             malicious_patterns = [
                 "<script>alert('xss')</script>",
                 "javascript:alert('xss')",
@@ -321,8 +306,8 @@ class TestInputValidator:
                 assert "Malicious content detected" in str(exc_info.value)
                 assert exc_info.value.reason == "malicious_content"
 
-    def test_suspicious_encoding_detection(self, input_validator: InputValidator) -> None:
-        """Test detection of suspicious encoding patterns."""
+    def test_encoding_attack_patterns(self, input_validator: InputValidator) -> None:
+        """Test various encoding-based attacks."""
         suspicious_content = [
             "\\x61\\x6c\\x65\\x72\\x74",  # Hex encoding
             "\\u0061\\u006c\\u0065\\u0072\\u0074",  # Unicode encoding

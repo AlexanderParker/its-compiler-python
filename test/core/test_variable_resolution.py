@@ -120,46 +120,33 @@ class TestVariableResolution:
             strict_processor.resolve_variable_reference(deep_ref, variables)
         assert "too deep" in str(exc_info.value)
 
-    def test_variable_not_found_error(self, processor: VariableProcessor) -> None:
-        """Test variable not found error with suggestions."""
-        variables = {"user": {"name": "John"}, "product": {"title": "Test"}}
+    def test_comprehensive_variable_errors(self, processor: VariableProcessor) -> None:
+        """Test all variable resolution error conditions."""
+        variables = {"user": {"name": "John", "age": 30}, "items": [1, 2, 3]}
 
+        # Variable not found
         with pytest.raises(ITSVariableError) as exc_info:
             processor.resolve_variable_reference("missing", variables)
-
         error = exc_info.value
         assert error.variable_path == "missing"
         assert "user" in error.available_variables
-        assert "product" in error.available_variables
 
-    def test_property_not_found_error(self, processor: VariableProcessor) -> None:
-        """Test property not found error."""
-        variables = {"user": {"name": "John", "age": 30}}
-
+        # Property not found
         with pytest.raises(ITSVariableError) as exc_info:
             processor.resolve_variable_reference("user.missing", variables)
-
         error = exc_info.value
         assert "missing" in str(error)
         assert "name" in error.available_variables
         assert "age" in error.available_variables
 
-    def test_non_object_property_access(self, processor: VariableProcessor) -> None:
-        """Test property access on non-object values."""
-        variables = {"number": 42, "text": "hello"}
-
-        # Should not be able to access properties on primitives (except length)
+        # Non-object property access
         with pytest.raises(ITSVariableError) as exc_info:
-            processor.resolve_variable_reference("number.property", variables)
+            processor.resolve_variable_reference("user.age.property", variables)
         assert "Cannot access property" in str(exc_info.value)
 
-    def test_non_array_indexing(self, processor: VariableProcessor) -> None:
-        """Test indexing on non-array values."""
-        variables = {"text": "hello", "number": 42}
-
-        # Should not be able to index non-arrays
+        # Non-array indexing
         with pytest.raises(ITSVariableError) as exc_info:
-            processor.resolve_variable_reference("text[0]", variables)
+            processor.resolve_variable_reference("user.name[0]", variables)
         assert "is not an array" in str(exc_info.value)
 
     def test_invalid_array_syntax(self, processor: VariableProcessor) -> None:
@@ -306,8 +293,7 @@ class TestVariableResolution:
     def test_variable_processing_performance_limits(self, strict_processor: VariableProcessor) -> None:
         """Test performance limits in variable processing."""
         # Create content with many variable references
-        many_refs = [{"type": "text", "text": f"Var {i}: ${{{f'var{i}'}}}"}]
-        large_content = many_refs * 200  # Many elements
+        large_content = [{"type": "text", "text": f"Var {j}: ${{{f'var{j}'}}}"} for j in range(200)]
 
         # Create matching variables
         many_variables = {f"var{i}": f"value{i}" for i in range(200)}

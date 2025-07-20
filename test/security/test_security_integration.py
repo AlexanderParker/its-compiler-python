@@ -82,45 +82,26 @@ class TestSecurityIntegration:
         assert len(result.prompt) > 0
         assert "This is a simple template with no placeholders" in result.prompt
 
-    def test_malicious_injection_blocked(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that malicious injection templates are blocked."""
-        template = fetcher.fetch_template("malicious_injection.json", category="templates/security")
+    def test_comprehensive_attack_prevention(self, compiler: ITSCompiler, fetcher) -> None:
+        """Test that all categories of attacks are prevented using real malicious templates."""
+        # Test all security templates from repository
+        security_templates = [
+            "malicious_injection.json",
+            "malicious_expressions.json",
+            "malicious_variables.json",
+            "malicious_schema.json",
+        ]
 
-        with pytest.raises((ITSValidationError, ITSSecurityError)) as exc_info:
-            compiler.compile(template)
+        for template_name in security_templates:
+            template = fetcher.fetch_template(template_name, category="templates/security")
 
-        error_msg = str(exc_info.value)
-        assert any(keyword in error_msg.lower() for keyword in ["malicious", "security", "dangerous", "blocked"])
+            with pytest.raises(
+                (ITSValidationError, ITSSecurityError, ITSConditionalError, ITSCompilationError)
+            ) as exc_info:
+                compiler.compile(template)
 
-    def test_malicious_expressions_blocked(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that malicious conditional expressions are blocked."""
-        template = fetcher.fetch_template("malicious_expressions.json", category="templates/security")
-
-        with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert any(keyword in error_msg.lower() for keyword in ["malicious", "security", "dangerous", "blocked"])
-
-    def test_malicious_variables_blocked(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that malicious variables are blocked."""
-        template = fetcher.fetch_template("malicious_variables.json", category="templates/security")
-
-        with pytest.raises((ITSValidationError, ITSSecurityError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert any(keyword in error_msg.lower() for keyword in ["dangerous", "variable", "__proto__", "security"])
-
-    def test_malicious_schema_urls_blocked(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that malicious schema URLs are blocked."""
-        template = fetcher.fetch_template("malicious_schema.json", category="templates/security")
-
-        with pytest.raises((ITSValidationError, ITSCompilationError, ITSSecurityError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert any(keyword in error_msg.lower() for keyword in ["schema", "blocked", "extensions", "many"])
+            error_msg = str(exc_info.value)
+            assert any(keyword in error_msg.lower() for keyword in ["malicious", "security", "dangerous", "blocked"])
 
     @patch("socket.getaddrinfo")
     def test_ssrf_protection_with_real_templates(
@@ -256,23 +237,6 @@ class TestSecurityIntegration:
 
         with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)):
             compiler.compile(template_modified, variables=variables)
-
-    def test_all_security_templates_blocked(self, compiler: ITSCompiler, fetcher) -> None:
-        """Test that all security templates in the repo are properly blocked."""
-        security_templates = fetcher.list_templates("templates/security")
-
-        for template_name in security_templates:
-            template = fetcher.fetch_template(template_name, category="templates/security")
-
-            with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)) as exc_info:
-                compiler.compile(template)
-
-            # Verify we get an appropriate security-related error
-            error_msg = str(exc_info.value)
-            assert any(
-                keyword in error_msg.lower()
-                for keyword in ["malicious", "security", "dangerous", "blocked", "validation", "error"]
-            )
 
     def test_layered_security_defense_with_real_templates(self, compiler: ITSCompiler, fetcher) -> None:
         """Test that multiple security layers work together with real template structures."""

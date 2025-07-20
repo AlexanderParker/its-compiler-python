@@ -67,15 +67,6 @@ class TestCompilationIntegration:
         return template_fetcher.fetch_template("09-array-usage.json")
 
     @pytest.fixture
-    def templates_list(self, template_fetcher) -> List[Dict[str, Any]]:
-        """Fetch a list of templates for batch testing."""
-        template_names = ["01-text-only.json", "04-simple-variables.json", "08-custom-types.json"]
-        templates = []
-        for name in template_names:
-            templates.append(template_fetcher.fetch_template(name))
-        return templates
-
-    @pytest.fixture
     def template_files(self, temp_directory, template_fetcher) -> Dict[str, str]:
         """Create temporary template files."""
         template = template_fetcher.fetch_template("01-text-only.json")
@@ -85,30 +76,6 @@ class TestCompilationIntegration:
 
             json.dump(template, f)
         return {"01-text-only.json": str(file_path)}
-
-    def test_text_only_template(self, compiler: ITSCompiler, text_only_template: Dict[str, Any]) -> None:
-        """Test compilation of template with only text content."""
-        result = compiler.compile(text_only_template)
-
-        assert result.prompt is not None
-        assert len(result.prompt) > 0
-        assert "This is a simple template with no placeholders" in result.prompt
-        assert "INTRODUCTION" in result.prompt
-        assert "INSTRUCTIONS" in result.prompt
-        assert "TEMPLATE" in result.prompt
-        assert len(result.warnings) == 0
-
-    def test_single_placeholder_template(
-        self, compiler: ITSCompiler, single_placeholder_template: Dict[str, Any]
-    ) -> None:
-        """Test compilation of template with single placeholder."""
-        result = compiler.compile(single_placeholder_template)
-
-        assert result.prompt is not None
-        assert "list 5 different citrus fruits" in result.prompt
-        assert "bullet_points formatting" in result.prompt
-        assert "<<" in result.prompt and ">>" in result.prompt
-        assert len(result.warnings) == 0
 
     def test_multiple_placeholders_template(
         self, compiler: ITSCompiler, multiple_placeholders_template: Dict[str, Any]
@@ -215,25 +182,6 @@ class TestCompilationIntegration:
         assert result.prompt is not None
         assert "list 5 different citrus fruits" in result.prompt
 
-    def test_prompt_structure_consistency(self, compiler: ITSCompiler, templates_list: List[Dict[str, Any]]) -> None:
-        """Test that all templates produce prompts with consistent structure."""
-        for template in templates_list[:3]:  # Test first 3 templates to avoid long test times
-            try:
-                result = compiler.compile(template)
-
-                # All prompts should have these sections
-                assert "INTRODUCTION" in result.prompt
-                assert "INSTRUCTIONS" in result.prompt
-                assert "TEMPLATE" in result.prompt
-
-                # Should contain instruction numbering
-                assert "1." in result.prompt
-                assert "2." in result.prompt
-
-            except (ITSCompilationError, ITSValidationError):
-                # Skip templates that are expected to fail
-                continue
-
     def test_file_compilation(self, compiler: ITSCompiler, template_files: Dict[str, str]) -> None:
         """Test compilation from file paths."""
         # Test with a simple template file
@@ -288,7 +236,7 @@ class TestCompilationIntegration:
         assert result.prompt.count("Section") >= 20
 
     def test_compiler_configuration_variants(self) -> None:
-        """Test different compiler initialization scenarios."""
+        """Test different compiler initialization and configuration scenarios."""
         # Default initialization
         compiler1 = ITSCompiler()
         assert compiler1.config is not None

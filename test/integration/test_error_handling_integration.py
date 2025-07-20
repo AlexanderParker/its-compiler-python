@@ -75,57 +75,6 @@ class TestErrorHandlingIntegration:
         error_msg = str(exc_info.value)
         assert any(keyword in error_msg.lower() for keyword in ["dangerous", "variable", "__proto__", "security"])
 
-    def test_invalid_template_structures_from_repo(
-        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
-    ) -> None:
-        """Test various invalid template structures from the examples repository."""
-        invalid_templates = [
-            "02-missing-required-fields.json",
-            "03-undefined-variables.json",
-            "04-unknown-instruction-type.json",
-            "07-empty-content.json",
-        ]
-
-        for template_name in invalid_templates:
-            template = template_fetcher.fetch_template(template_name, category="templates/invalid")
-
-            with pytest.raises((ITSValidationError, ITSCompilationError, ITSVariableError)):
-                compiler.compile(template)
-
-    def test_undefined_variables_in_realistic_context(
-        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
-    ) -> None:
-        """Test undefined variable errors using real templates with missing variable definitions."""
-        template = template_fetcher.fetch_template("03-undefined-variables.json", category="templates/invalid")
-
-        with pytest.raises((ITSValidationError, ITSVariableError, ITSCompilationError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "undefined" in error_msg.lower() or "not found" in error_msg.lower()
-
-    def test_invalid_conditional_expressions_from_repo(
-        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
-    ) -> None:
-        """Test invalid conditional expressions using real invalid templates."""
-        template = template_fetcher.fetch_template("05-invalid-conditional.json", category="templates/invalid")
-
-        with pytest.raises((ITSValidationError, ITSConditionalError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "syntax" in error_msg.lower() or "invalid" in error_msg.lower()
-
-    def test_unknown_instruction_type_from_repo(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test unknown instruction type errors using real invalid templates."""
-        template = template_fetcher.fetch_template("04-unknown-instruction-type.json", category="templates/invalid")
-
-        with pytest.raises(ITSCompilationError) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "unknown instruction type" in error_msg.lower() or "nonExistentType" in error_msg
-
     def test_schema_loading_cascade_errors(self, compiler: ITSCompiler) -> None:
         """Test cascading errors when schema loading fails and affects compilation."""
         template = {

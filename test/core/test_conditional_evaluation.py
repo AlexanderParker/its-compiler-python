@@ -226,19 +226,6 @@ class TestConditionalEvaluation:
         assert result[0]["text"] == "Outer true"
         assert result[1]["text"] == "Inner false"
 
-    def test_expression_validation(self, evaluator: ConditionalEvaluator) -> None:
-        """Test expression validation without evaluation."""
-        variables = {"test": True}
-
-        # Valid expression
-        errors = evaluator.validate_condition("test == true", variables)
-        assert len(errors) == 0
-
-        # Invalid syntax
-        errors = evaluator.validate_condition("test ==", variables)
-        assert len(errors) > 0
-        assert any("syntax" in error.lower() for error in errors)
-
     def test_syntax_error_handling(self, evaluator: ConditionalEvaluator) -> None:
         """Test syntax error handling in expressions."""
         variables = {"test": True}

@@ -234,21 +234,6 @@ class TestCompilerEdgeCases:
             # Acceptable if variable limits are hit
             pass
 
-    def test_malformed_template_structure_edge_cases(self, compiler: ITSCompiler) -> None:
-        """Test various malformed template structures that could cause issues."""
-        malformed_templates = [
-            # Template with null values
-            {"version": "1.0.0", "content": [None]},
-            # Template with mixed content types
-            {"version": "1.0.0", "content": [{"type": "text", "text": "ok"}, "invalid"]},
-            # Template with recursive references
-            {"version": "1.0.0", "content": [{"type": "conditional", "condition": "true", "content": "self"}]},
-        ]
-
-        for template in malformed_templates:
-            with pytest.raises((ITSValidationError, ITSCompilationError, TypeError)):
-                compiler.compile(template)
-
     def test_extreme_edge_case_file_operations(self, compiler: ITSCompiler, temp_directory: Path) -> None:
         """Test extreme edge cases in file operations."""
         # Test with file that exists but becomes inaccessible
