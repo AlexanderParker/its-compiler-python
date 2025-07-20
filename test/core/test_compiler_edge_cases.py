@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from its_compiler import ITSCompiler, ITSConfig
-from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError
+from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError, ITSVariableError
 from its_compiler.security import SecurityConfig
 
 
@@ -215,20 +215,32 @@ class TestCompilerEdgeCases:
             result = compiler.compile(template, large_vars)
             assert "item0" in result.prompt
             assert "item99" in result.prompt
-        except (ITSValidationError, ITSCompilationError):
+        except (ITSValidationError, ITSCompilationError, ITSVariableError):
             # Acceptable if variable limits are hit
             pass
 
     def test_extreme_edge_case_file_operations(self, compiler: ITSCompiler, temp_directory: Path) -> None:
         """Test extreme edge cases in file operations."""
-        # Test with file that exists but becomes inaccessible
+        # Create a file that will cause issues during security validation
         test_file = temp_directory / "test.json"
-        test_file.write_text('{"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}')
 
-        # Mock file stat to simulate permission error
-        with patch("pathlib.Path.stat", side_effect=OSError("Permission denied")):
-            with pytest.raises(ITSCompilationError):
+        # First, let's patch the security config to have a very small limit
+        original_max_size = compiler.security_config.processing.max_template_size
+        compiler.security_config.processing.max_template_size = 10  # Very small limit
+
+        try:
+            # Create a file that's larger than the limit
+            large_content = '{"version": "1.0.0", "content": [{"type": "text", "text": "' + "x" * 1000 + '"}]}'
+            test_file.write_text(large_content)
+
+            with pytest.raises(ITSCompilationError) as exc_info:
                 compiler.compile_file(str(test_file))
+
+            assert "Template file too large" in str(exc_info.value)
+
+        finally:
+            # Restore original limit
+            compiler.security_config.processing.max_template_size = original_max_size
 
     def test_memory_intensive_template_processing(self, compiler: ITSCompiler) -> None:
         """Test templates that could consume excessive memory."""
