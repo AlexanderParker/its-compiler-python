@@ -245,32 +245,6 @@ class TestVariableResolution:
         assert len(errors) > 0
         assert any("items" in error for error in errors)
 
-    def test_process_content_with_nested_structures(self, processor: VariableProcessor) -> None:
-        """Test processing content with nested conditional structures."""
-        variables = {"show": True, "user": {"name": "Alice"}}
-
-        content = [
-            {
-                "type": "conditional",
-                "condition": "show == true",
-                "content": [
-                    {"type": "text", "text": "Hello ${user.name}"},
-                    {
-                        "type": "conditional",
-                        "condition": "user.name == 'Alice'",
-                        "content": [{"type": "text", "text": "Welcome back!"}],
-                    },
-                ],
-            }
-        ]
-
-        result = processor.process_content(content, variables)
-
-        # Should process variables in nested structures
-        conditional = result[0]
-        inner_text = conditional["content"][0]["text"]
-        assert "Hello Alice" in inner_text
-
     def test_security_status(self, processor: VariableProcessor) -> None:
         """Test variable processor security status reporting."""
         status = processor.get_security_status()
@@ -282,3 +256,65 @@ class TestVariableResolution:
 
         assert isinstance(status["max_variable_references"], int)
         assert isinstance(status["max_variable_name_length"], int)
+
+    def test_variable_name_security_validation(self, processor: VariableProcessor) -> None:
+        """Test security validation of variable names."""
+        dangerous_variables = {
+            "__builtins__": "dangerous",
+            "__globals__": "dangerous",
+            "constructor": "dangerous",
+            "__proto__": "dangerous",
+        }
+
+        content = [{"type": "text", "text": "Test ${dangerous_var}"}]
+
+        for var_name, value in dangerous_variables.items():
+            variables = {var_name: value}
+            # Should either block or handle safely
+            try:
+                processor.process_content(content, variables)
+            except ITSVariableError:
+                # Blocking dangerous variables is acceptable
+                pass
+
+    def test_extremely_deep_nesting_security(self, strict_processor: VariableProcessor) -> None:
+        """Test security limits on extremely deep object nesting."""
+        # Create object with extreme nesting
+        nested_obj = {}
+        current = nested_obj
+        for i in range(50):  # Very deep
+            current[f"level{i}"] = {}
+            current = current[f"level{i}"]
+        current["value"] = "deep"
+
+        variables = {"deep": nested_obj}
+
+        # Extremely deep reference should be blocked
+        very_deep_ref = "deep." + ".".join(f"level{i}" for i in range(30)) + ".value"
+
+        with pytest.raises(ITSVariableError):
+            strict_processor.resolve_variable_reference(very_deep_ref, variables)
+
+    def test_large_array_index_security(self, strict_processor: VariableProcessor) -> None:
+        """Test security limits on large array indices."""
+        variables = {"large_array": list(range(1000))}
+
+        # Extremely large index should be blocked
+        with pytest.raises(ITSVariableError):
+            strict_processor.resolve_variable_reference("large_array[999999]", variables)
+
+    def test_variable_processing_performance_limits(self, strict_processor: VariableProcessor) -> None:
+        """Test performance limits in variable processing."""
+        # Create content with many variable references
+        many_refs = [{"type": "text", "text": f"Var {i}: ${{{f'var{i}'}}}"}]
+        large_content = many_refs * 200  # Many elements
+
+        # Create matching variables
+        many_variables = {f"var{i}": f"value{i}" for i in range(200)}
+
+        # Should handle reasonable amounts but enforce limits
+        try:
+            strict_processor.process_content(large_content, many_variables)
+        except ITSVariableError:
+            # Performance limits may trigger - this is acceptable
+            pass

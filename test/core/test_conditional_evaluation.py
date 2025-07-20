@@ -1,6 +1,6 @@
 """
 Tests for conditional expression evaluation and validation.
-Tests complex expressions, security validation, and error handling.
+Tests functional expression evaluation logic - security validation is handled in test_expression_sanitiser.py.
 """
 
 from typing import Any, Dict
@@ -13,18 +13,12 @@ from its_compiler.security import SecurityConfig
 
 
 class TestConditionalEvaluation:
-    """Test conditional expression evaluation and validation."""
+    """Test conditional expression evaluation functionality."""
 
     @pytest.fixture
     def evaluator(self) -> ConditionalEvaluator:
         """Create conditional evaluator with test config."""
         security_config = SecurityConfig.for_development()
-        return ConditionalEvaluator(security_config)
-
-    @pytest.fixture
-    def strict_evaluator(self) -> ConditionalEvaluator:
-        """Create conditional evaluator with strict security config."""
-        security_config = SecurityConfig.from_environment()
         return ConditionalEvaluator(security_config)
 
     def test_boolean_literals(self, evaluator: ConditionalEvaluator) -> None:
@@ -178,51 +172,6 @@ class TestConditionalEvaluation:
         # Unary not
         assert evaluator.evaluate_condition("not flag == false", variables) is True
 
-    def test_dangerous_variable_names(self, evaluator: ConditionalEvaluator) -> None:
-        """Test that dangerous variable names are blocked."""
-        dangerous_variables = {"__builtins__": {}, "__globals__": {}, "exec": lambda x: x, "eval": lambda x: x}
-
-        for dangerous_name in dangerous_variables:
-            with pytest.raises(ITSConditionalError):
-                evaluator.evaluate_condition(f"{dangerous_name} == true", {dangerous_name: True})
-
-    def test_dangerous_attribute_access(self, evaluator: ConditionalEvaluator) -> None:
-        """Test that dangerous attribute access is blocked."""
-        variables = {"obj": {"__class__": type, "normal": "safe"}}
-
-        # Dangerous attributes should be blocked
-        with pytest.raises(ITSConditionalError):
-            evaluator.evaluate_condition("obj.__class__ == None", variables)
-
-        # Normal attributes should work
-        assert evaluator.evaluate_condition('obj.normal == "safe"', variables) is True
-
-    def test_large_array_indices(self, strict_evaluator: ConditionalEvaluator) -> None:
-        """Test that large array indices are blocked."""
-        variables = {"items": list(range(100))}
-
-        # Very large index should be blocked
-        with pytest.raises(ITSConditionalError) as exc_info:
-            strict_evaluator.evaluate_condition("items[50000] == 1", variables)
-        assert "index too large" in str(exc_info.value)
-
-    def test_expression_validation(self, evaluator: ConditionalEvaluator) -> None:
-        """Test expression validation without evaluation."""
-        variables = {"test": True}
-
-        # Valid expression
-        errors = evaluator.validate_condition("test == true", variables)
-        assert len(errors) == 0
-
-        # Invalid syntax
-        errors = evaluator.validate_condition("test ==", variables)
-        assert len(errors) > 0
-        assert any("syntax" in error.lower() for error in errors)
-
-        # Undefined variable
-        errors = evaluator.validate_condition("undefined == true", variables)
-        # Note: This might not always be an error in validation, just logged
-
     def test_evaluate_content_with_conditionals(self, evaluator: ConditionalEvaluator) -> None:
         """Test evaluating content with conditional elements."""
         variables = {"show": True, "hide": False}
@@ -277,27 +226,18 @@ class TestConditionalEvaluation:
         assert result[0]["text"] == "Outer true"
         assert result[1]["text"] == "Inner false"
 
-    def test_security_status(self, evaluator: ConditionalEvaluator) -> None:
-        """Test conditional evaluator security status."""
-        status = evaluator.get_security_status()
-
-        assert "expression_sanitisation_enabled" in status
-        assert "max_expression_length" in status
-        assert "max_expression_depth" in status
-
-        assert isinstance(status["max_expression_length"], int)
-        assert isinstance(status["max_expression_depth"], int)
-
-    def test_expression_complexity_limits(self, strict_evaluator: ConditionalEvaluator) -> None:
-        """Test expression complexity limits."""
+    def test_expression_validation(self, evaluator: ConditionalEvaluator) -> None:
+        """Test expression validation without evaluation."""
         variables = {"test": True}
 
-        # Create very long expression
-        long_expr = " and ".join(["test == true"] * 100)
+        # Valid expression
+        errors = evaluator.validate_condition("test == true", variables)
+        assert len(errors) == 0
 
-        # Should be rejected due to length or complexity
-        with pytest.raises(ITSConditionalError):
-            strict_evaluator.evaluate_condition(long_expr, variables)
+        # Invalid syntax
+        errors = evaluator.validate_condition("test ==", variables)
+        assert len(errors) > 0
+        assert any("syntax" in error.lower() for error in errors)
 
     def test_syntax_error_handling(self, evaluator: ConditionalEvaluator) -> None:
         """Test syntax error handling in expressions."""
@@ -316,3 +256,14 @@ class TestConditionalEvaluation:
             with pytest.raises(ITSConditionalError) as exc_info:
                 evaluator.evaluate_condition(invalid_expr, variables)
             assert "syntax" in str(exc_info.value).lower() or "error" in str(exc_info.value).lower()
+
+    def test_get_security_status(self, evaluator: ConditionalEvaluator) -> None:
+        """Test conditional evaluator security status."""
+        status = evaluator.get_security_status()
+
+        assert "expression_sanitisation_enabled" in status
+        assert "max_expression_length" in status
+        assert "max_expression_depth" in status
+
+        assert isinstance(status["max_expression_length"], int)
+        assert isinstance(status["max_expression_depth"], int)

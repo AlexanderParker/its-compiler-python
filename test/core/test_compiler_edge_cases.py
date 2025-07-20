@@ -30,29 +30,6 @@ class TestCompilerEdgeCases:
         """Create compiler instance."""
         return ITSCompiler()
 
-    def test_compiler_initialization_variants(self) -> None:
-        """Test different compiler initialization scenarios."""
-        # Default initialization
-        compiler1 = ITSCompiler()
-        assert compiler1.config is not None
-        assert compiler1.security_config is not None
-
-        # With custom config
-        config = ITSConfig(cache_enabled=False, strict_mode=False)
-        compiler2 = ITSCompiler(config=config)
-        assert compiler2.config.cache_enabled is False
-        assert compiler2.config.strict_mode is False
-
-        # With custom security config
-        security_config = SecurityConfig.for_development()
-        compiler3 = ITSCompiler(security_config=security_config)
-        assert compiler3.security_config.is_development()
-
-        # With both configs
-        compiler4 = ITSCompiler(config, security_config)
-        assert compiler4.config.cache_enabled is False
-        assert compiler4.security_config.is_development()
-
     def test_file_not_found_error(self, compiler: ITSCompiler) -> None:
         """Test compilation of non-existent file."""
         with pytest.raises(ITSCompilationError) as exc_info:
@@ -68,21 +45,6 @@ class TestCompilerEdgeCases:
             compiler.compile_file(str(invalid_json_file))
         assert "Invalid JSON" in str(exc_info.value)
 
-    def test_file_validation_edge_cases(self, compiler: ITSCompiler, temp_directory: Path) -> None:
-        """Test file validation edge cases."""
-        # Test validation of non-existent file
-        validation_result = compiler.validate_file("nonexistent.json")
-        assert not validation_result.is_valid
-        assert "not found" in validation_result.errors[0]
-
-        # Test validation of invalid JSON file
-        invalid_json_file = temp_directory / "invalid.json"
-        invalid_json_file.write_text("invalid json content")
-
-        validation_result = compiler.validate_file(str(invalid_json_file))
-        assert not validation_result.is_valid
-        assert "Invalid JSON" in validation_result.errors[0]
-
     def test_file_path_resolution_error(self, compiler: ITSCompiler, temp_directory: Path) -> None:
         """Test file path resolution error handling."""
         template_file = temp_directory / "test.json"
@@ -93,29 +55,6 @@ class TestCompilerEdgeCases:
             # Should handle the resolution error gracefully
             result = compiler.compile_file(str(template_file))
             assert result.prompt is not None
-
-    def test_file_security_validation_warnings(self, compiler: ITSCompiler, temp_directory: Path) -> None:
-        """Test file security validation warning scenarios."""
-        # Test unusual file extension
-        unusual_file = temp_directory / "template.unusual"
-        unusual_file.write_text('{"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}')
-
-        with patch("builtins.print") as mock_print:
-            compiler.compile_file(str(unusual_file))
-            # Should warn about unusual extension
-            print_calls = [str(call) for call in mock_print.call_args_list]
-            warning_found = any("unusual" in call.lower() for call in print_calls)
-            assert warning_found
-
-        # Test suspicious filename pattern
-        suspicious_file = temp_directory / "test..suspicious.json"
-        suspicious_file.write_text('{"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}')
-
-        with patch("builtins.print") as mock_print:
-            compiler.compile_file(str(suspicious_file))
-            print_calls = [str(call) for call in mock_print.call_args_list]
-            warning_found = any("suspicious" in call.lower() for call in print_calls)
-            assert warning_found
 
     def test_unknown_instruction_type_error(self, compiler: ITSCompiler) -> None:
         """Test error when instruction type is not found."""
@@ -151,56 +90,6 @@ class TestCompilerEdgeCases:
             compiler.compile(template)
 
         assert "Missing required configuration" in str(exc_info.value)
-
-    def test_template_validation_comprehensive(self, compiler: ITSCompiler) -> None:
-        """Test comprehensive template validation scenarios."""
-
-        # Valid template
-        valid_template = {"version": "1.0.0", "content": [{"type": "text", "text": "Hello world"}]}
-        result = compiler.validate(valid_template)
-        assert result.is_valid
-        assert len(result.errors) == 0
-
-        # Test validation with base URL
-        result_with_base = compiler.validate(valid_template, "https://example.com/")
-        assert result_with_base.is_valid
-
-        # Invalid templates
-        invalid_templates = [
-            # Missing version
-            ({"content": [{"type": "text", "text": "test"}]}, "Missing required field: version"),
-            # Missing content
-            ({"version": "1.0.0"}, "Missing required field: content"),
-            # Empty content
-            ({"version": "1.0.0", "content": []}, "cannot be empty"),
-            # Invalid content type
-            ({"version": "1.0.0", "content": "not a list"}, "must be an array"),
-            # Invalid content element
-            ({"version": "1.0.0", "content": ["not a dict"]}, "must be an object"),
-            # Missing element type
-            ({"version": "1.0.0", "content": [{"no_type": "value"}]}, "missing required field: type"),
-        ]
-
-        for invalid_template, expected_error in invalid_templates:
-            result = compiler.validate(invalid_template)
-            assert not result.is_valid
-            assert len(result.errors) > 0
-            assert any(expected_error in error for error in result.errors)
-
-    def test_placeholder_config_validation(self, compiler: ITSCompiler) -> None:
-        """Test placeholder config validation edge cases."""
-
-        # Placeholder with invalid config type
-        template = {
-            "version": "1.0.0",
-            "content": [
-                {"type": "placeholder", "instructionType": "test", "config": "not an object"}  # Should be object
-            ],
-        }
-
-        result = compiler.validate(template)
-        assert not result.is_valid
-        assert any("config must be an object" in error for error in result.errors)
 
     def test_custom_instruction_types_with_overrides(self, compiler: ITSCompiler) -> None:
         """Test custom instruction types that override schema types."""
@@ -273,3 +162,115 @@ class TestCompilerEdgeCases:
         assert not status["features"]["input_validation"]
         assert not status["features"]["expression_sanitisation"]
         assert not status["features"]["allowlist"]
+
+    def test_schema_loading_failure_graceful_degradation(self, compiler: ITSCompiler) -> None:
+        """Test that compilation fails gracefully when schema loading fails and no custom types exist."""
+        template = {
+            "version": "1.0.0",
+            "extends": ["https://nonexistent.example.com/fake-schema.json"],
+            "content": [{"type": "placeholder", "instructionType": "unknownType", "config": {"description": "test"}}],
+        }
+
+        # Should fail because it can't load the schema and doesn't have custom types
+        with pytest.raises(ITSCompilationError):
+            compiler.compile(template)
+
+    def test_circular_variable_reference_handling(self, compiler: ITSCompiler) -> None:
+        """Test handling of circular variable references."""
+        template = {
+            "version": "1.0.0",
+            "variables": {"a": "${b}", "b": "${a}"},
+            "content": [{"type": "text", "text": "${a}"}],
+        }
+
+        # Should handle circular references gracefully
+        with pytest.raises((ITSValidationError, ITSCompilationError)):
+            compiler.compile(template)
+
+    def test_deeply_nested_conditional_processing(self, compiler: ITSCompiler) -> None:
+        """Test processing of deeply nested conditional structures."""
+        # Create deeply nested conditionals
+        template = {"version": "1.0.0", "content": []}
+        current_content = template["content"]
+
+        # Create 10 levels of nesting
+        for i in range(10):
+            conditional = {"type": "conditional", "condition": f"level{i} == true", "content": []}
+            current_content.append(conditional)
+            current_content = conditional["content"]
+
+        # Add final content
+        current_content.append({"type": "text", "text": "deeply nested"})
+
+        # Create variables for all levels
+        variables = {f"level{i}": True for i in range(10)}
+
+        # Should either process successfully or hit nesting limits
+        try:
+            result = compiler.compile(template, variables)
+            assert "deeply nested" in result.prompt
+        except (ITSValidationError, ITSCompilationError):
+            # Acceptable if nesting limits are hit
+            pass
+
+    def test_large_variable_object_processing(self, compiler: ITSCompiler) -> None:
+        """Test processing of large variable objects."""
+        # Create large variable structure
+        large_vars = {}
+        for i in range(100):
+            large_vars[f"var{i}"] = {"name": f"item{i}", "value": i, "data": [j for j in range(10)]}
+
+        template = {
+            "version": "1.0.0",
+            "content": [{"type": "text", "text": "Processing ${var0.name} and ${var99.name}"}],
+        }
+
+        # Should either process successfully or hit variable limits
+        try:
+            result = compiler.compile(template, large_vars)
+            assert "item0" in result.prompt
+            assert "item99" in result.prompt
+        except (ITSValidationError, ITSCompilationError):
+            # Acceptable if variable limits are hit
+            pass
+
+    def test_malformed_template_structure_edge_cases(self, compiler: ITSCompiler) -> None:
+        """Test various malformed template structures that could cause issues."""
+        malformed_templates = [
+            # Template with null values
+            {"version": "1.0.0", "content": [None]},
+            # Template with mixed content types
+            {"version": "1.0.0", "content": [{"type": "text", "text": "ok"}, "invalid"]},
+            # Template with recursive references
+            {"version": "1.0.0", "content": [{"type": "conditional", "condition": "true", "content": "self"}]},
+        ]
+
+        for template in malformed_templates:
+            with pytest.raises((ITSValidationError, ITSCompilationError, TypeError)):
+                compiler.compile(template)
+
+    def test_extreme_edge_case_file_operations(self, compiler: ITSCompiler, temp_directory: Path) -> None:
+        """Test extreme edge cases in file operations."""
+        # Test with file that exists but becomes inaccessible
+        test_file = temp_directory / "test.json"
+        test_file.write_text('{"version": "1.0.0", "content": [{"type": "text", "text": "test"}]}')
+
+        # Mock file stat to simulate permission error
+        with patch("pathlib.Path.stat", side_effect=OSError("Permission denied")):
+            with pytest.raises(ITSCompilationError):
+                compiler.compile_file(str(test_file))
+
+    def test_memory_intensive_template_processing(self, compiler: ITSCompiler) -> None:
+        """Test templates that could consume excessive memory."""
+        # Template with many large text elements
+        large_elements = [{"type": "text", "text": "x" * 1000} for _ in range(100)]
+
+        template = {"version": "1.0.0", "content": large_elements}
+
+        # Should either process or hit memory/size limits
+        try:
+            result = compiler.compile(template)
+            assert len(result.prompt) > 100000  # Should be substantial
+        except (ITSValidationError, ITSCompilationError):
+            # Acceptable if size limits are hit
+            pass

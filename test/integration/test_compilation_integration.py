@@ -234,15 +234,6 @@ class TestCompilationIntegration:
                 # Skip templates that are expected to fail
                 continue
 
-    def test_compiler_with_custom_config(
-        self, secure_compiler: ITSCompiler, text_only_template: Dict[str, Any]
-    ) -> None:
-        """Test compilation with custom compiler configuration."""
-        result = secure_compiler.compile(text_only_template)
-
-        assert result.prompt is not None
-        assert len(result.prompt) > 0
-
     def test_file_compilation(self, compiler: ITSCompiler, template_files: Dict[str, str]) -> None:
         """Test compilation from file paths."""
         # Test with a simple template file
@@ -266,20 +257,6 @@ class TestCompilationIntegration:
         assert security_status["security_enabled"] is True
         assert "features" in security_status
         assert "components" in security_status
-
-    def test_template_validation_before_compilation(
-        self, compiler: ITSCompiler, text_only_template: Dict[str, Any]
-    ) -> None:
-        """Test that templates are validated before compilation."""
-        # Valid template should validate successfully
-        validation_result = compiler.validate(text_only_template)
-
-        assert validation_result.is_valid is True
-        assert len(validation_result.errors) == 0
-
-        # Should compile after successful validation
-        result = compiler.compile(text_only_template)
-        assert result.prompt is not None
 
     def test_large_template_compilation(self, compiler: ITSCompiler) -> None:
         """Test compilation of larger, more complex templates."""
@@ -309,3 +286,35 @@ class TestCompilationIntegration:
         assert result.prompt is not None
         assert len(result.prompt) > 1000  # Should be substantial
         assert result.prompt.count("Section") >= 20
+
+    def test_compiler_configuration_variants(self) -> None:
+        """Test different compiler initialization scenarios."""
+        # Default initialization
+        compiler1 = ITSCompiler()
+        assert compiler1.config is not None
+        assert compiler1.security_config is not None
+
+        # With custom config
+        config = ITSConfig(cache_enabled=False, strict_mode=False)
+        compiler2 = ITSCompiler(config=config)
+        assert compiler2.config.cache_enabled is False
+        assert compiler2.config.strict_mode is False
+
+        # With custom security config
+        security_config = SecurityConfig.for_development()
+        compiler3 = ITSCompiler(security_config=security_config)
+        assert compiler3.security_config.is_development()
+
+        # With both configs
+        compiler4 = ITSCompiler(config, security_config)
+        assert compiler4.config.cache_enabled is False
+        assert compiler4.security_config.is_development()
+
+    def test_compiler_with_custom_config(
+        self, secure_compiler: ITSCompiler, text_only_template: Dict[str, Any]
+    ) -> None:
+        """Test compilation with custom compiler configuration."""
+        result = secure_compiler.compile(text_only_template)
+
+        assert result.prompt is not None
+        assert len(result.prompt) > 0
