@@ -47,7 +47,6 @@ dev = [
     # Testing
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
-    # "pytest-xdist>=3.0.0",
     # "pytest-mock>=3.10.0",
     "pytest-timeout>=2.4.0",
 
@@ -60,12 +59,10 @@ dev = [
     "mypy >=1.17.0",
 
     # Security
-    # "bandit[toml]>=1.7.0",
+    "bandit[toml]>=1.8.3",
 
     # Development tools
     "pre-commit>=4.2.0",
-    # "build>=0.10.0",
-    # "twine>=4.0.0",
     "flake8-pyproject>=1.2.3",
 ]
 
