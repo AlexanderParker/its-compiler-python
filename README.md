@@ -1,4 +1,4 @@
-# ITS Compiler Python
+# ITS Compiler
 
 [![PyPI version](https://img.shields.io/pypi/v/its-compiler.svg)](https://pypi.org/project/its-compiler/)
 [![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
@@ -7,6 +7,42 @@
 Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
 
 > **New to ITS?** See the [specification documentation](https://alexanderparker.github.io/instruction-template-specification/) for complete details on the template format and concepts.
+
+## Installation
+
+### For Library Users
+
+```bash
+pip install its-compiler
+```
+
+### Command Line Interface
+
+For command-line usage, install the separate CLI package:
+
+```bash
+pip install its-compiler-cli
+```
+
+See the [ITS Compiler CLI repository](https://github.com/AlexanderParker/its-compiler-cli-python) for command-line documentation and usage examples.
+
+### For Developers
+
+```bash
+# Clone and setup
+git clone https://github.com/AlexanderParker/its-compiler-python.git
+cd its-compiler-python
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run tests
+python test_runner.py
+```
 
 ## Quick Example
 
@@ -111,42 +147,6 @@ TEMPLATE
 <<Replace this placeholder with a list using this user prompt: ([{<List 4 examples of sustainable technology>}]). Format requirements: Use bullet_points formatting with each item on a new line. Create exactly 4 items.>>
 ```
 
-## Installation
-
-### For Library Users
-
-```bash
-pip install its-compiler
-```
-
-### For Developers
-
-```bash
-# Clone and setup
-git clone https://github.com/AlexanderParker/its-compiler-python.git
-cd its-compiler-python
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run tests
-python test_runner.py
-```
-
-## Command Line Interface
-
-For command-line usage, install the separate CLI package:
-
-```bash
-pip install its-compiler-cli
-```
-
-See the [ITS Compiler CLI repository](https://github.com/AlexanderParker/its-compiler-cli-python) for command-line documentation and usage examples.
-
 ## Python Library Usage
 
 ### Basic Usage
@@ -193,25 +193,6 @@ security_config.allowlist.interactive_mode = False
 
 compiler = ITSCompiler(config=config, security_config=security_config)
 ```
-
-## Features
-
-### Complete ITS v1.0 Support
-
-- All standard instruction types (list, paragraph, table, etc.)
-- Variables with `${variable}` syntax, including object properties and arrays
-- Conditional content with Python-like expressions
-- Schema extension mechanism with override precedence
-- Custom instruction types
-
-### Security Features
-
-The compiler includes security features to help protect against common attack vectors. **Users are responsible for validating their own inputs** and ensuring templates meet their security requirements.
-
-- **Schema Allowlist** - Control which schema URLs are permitted
-- **Expression Validation** - Validate conditional expressions
-- **Input Validation** - Scan content for problematic patterns
-- **SSRF Protection** - Block private networks and validate URLs
 
 ### Variables and Conditionals
 
@@ -467,6 +448,7 @@ python -m twine upload dist/*
 ```
 
 **TestPyPI Testing:**
+
 ```bash
 # Install from TestPyPI to verify the package
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ its-compiler
