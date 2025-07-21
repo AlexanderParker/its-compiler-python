@@ -1,8 +1,8 @@
 # ITS Compiler Python
 
-[![PyPI version](https://badge.fury.io/py/its-compiler-python.svg)](https://badge.fury.io/py/its-compiler-python)
-[![Python](https://img.shields.io/pypi/pyversions/its-compiler-python.svg)](https://pypi.org/project/its-compiler-python/)
-[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
+[![PyPI version](https://badge.fury.io/py/its-compiler.svg)](https://badge.fury.io/py/its-compiler)
+[![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
+[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler.svg)](LICENSE)
 
 Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
 
@@ -116,7 +116,7 @@ TEMPLATE
 ### For Library Users
 
 ```bash
-pip install its-compiler-python
+pip install its-compiler
 ```
 
 ### For Developers
@@ -142,7 +142,7 @@ python test_runner.py
 For command-line usage, install the separate CLI package:
 
 ```bash
-pip install its-compiler-cli-python
+pip install its-compiler-cli
 ```
 
 See the [ITS Compiler CLI repository](https://github.com/AlexanderParker/its-compiler-cli-python) for command-line documentation and usage examples.
@@ -340,12 +340,6 @@ python test_runner.py --verbose
 python test_runner.py --lint
 python test_runner.py --security-scan
 ```
-
-**Test Coverage:**
-
-- **24 integration tests** - All ITS features and error cases
-- **8 security tests** - Malicious content detection and blocking
-- **9 error handling tests** - Invalid templates and edge cases
 
 ## API Reference
 
