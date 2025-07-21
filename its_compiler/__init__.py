@@ -9,9 +9,9 @@ Includes comprehensive security features for safe template processing.
 
 from typing import Any, Dict
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "Alexander Parker"
-__email__ = "its-compiler@parker.im"
+__email__ = "pypi@parker.im"
 
 # Supported ITS specification version
 __supported_schema_version__ = "1.0"
