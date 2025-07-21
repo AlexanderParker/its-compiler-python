@@ -57,6 +57,7 @@ def run_linting() -> bool:
         (["black", "--check", "."], "Black formatting"),
         (["flake8", "its_compiler/", "test/"], "Flake8 linting"),
         (["mypy", "its_compiler/", "--ignore-missing-imports"], "MyPy type checking"),
+        (["isort", "--check-only", "--profile", "black", "."], "Import sorting"),
     ]
 
     all_passed = True
