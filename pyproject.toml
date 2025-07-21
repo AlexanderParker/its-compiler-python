@@ -45,44 +45,33 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
     # Testing
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-xdist>=3.0.0",
-    "pytest-mock>=3.10.0",
-    "pytest-timeout>=2.1.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    # "pytest-xdist>=3.0.0",
+    # "pytest-mock>=3.10.0",
+    "pytest-timeout>=2.4.0",
 
     # Code quality
-    "black>=22.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "flake8-bugbear>=23.0.0",
-    "pep8-naming>=0.13.0",
-    "mypy>=1.0.0",
+    "black>=25.0.0",
+    # "isort>=5.12.0",
+    "flake8>=7.3.0",
+    # "flake8-bugbear>=23.0.0",
+    # "pep8-naming>=0.13.0",
+    "mypy >=1.17.0",
 
     # Security
-    "bandit[toml]>=1.7.0",
+    # "bandit[toml]>=1.7.0",
 
     # Development tools
-    "pre-commit>=3.0.0",
-    "build>=0.10.0",
-    "twine>=4.0.0",
+    "pre-commit>=4.2.0",
+    # "build>=0.10.0",
+    # "twine>=4.0.0",
     "flake8-pyproject>=1.2.3",
 ]
 
-security = [
-    # Additional security libraries for enhanced protection
-    "cryptography>=38.0.0",
-    "pyotp>=2.8.0",
-    "passlib>=1.7.0",
-    "bcrypt>=4.0.0",
-]
+security = []
 
-monitoring = [
-    # Monitoring and observability
-    "prometheus-client>=0.15.0",
-    "structlog>=22.0.0",
-    "sentry-sdk>=1.15.0",
-]
+monitoring = []
 
 all = ["its-compiler-python[dev,security,monitoring]"]
 
