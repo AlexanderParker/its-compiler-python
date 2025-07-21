@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/its-compiler.svg)](https://badge.fury.io/py/its-compiler)
 [![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
-[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
 
 Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
 
