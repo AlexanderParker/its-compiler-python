@@ -50,6 +50,17 @@ jobs:
             htmlcov/
             coverage.xml
             .coverage
+        id: upload-results
+        continue-on-error: true
+      - name: Retry upload test results on failure
+        uses: actions/upload-artifact@v4
+        if: always() && steps.upload-results.outcome == 'failure'
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            htmlcov/
+            coverage.xml
+            .coverage
 
   lint:
     runs-on: ubuntu-latest
