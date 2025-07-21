@@ -343,6 +343,15 @@ python test_runner.py --security-scan
 
 ## API Reference
 
+### Required Imports
+
+```python
+from typing import Optional
+from its_compiler import ITSCompiler, ITSConfig
+from its_compiler.security import SecurityConfig
+from its_compiler.core.exceptions import ITSValidationError, ITSCompilationError
+```
+
 ### ITSCompiler Class
 
 ```python
@@ -350,32 +359,77 @@ class ITSCompiler:
     def __init__(self, config: Optional[ITSConfig] = None,
                  security_config: Optional[SecurityConfig] = None)
 
-    def compile(self, template: dict, variables: Optional[dict] = None) -> CompilationResult
+    def compile(self, template: dict, variables: Optional[dict] = None,
+                base_url: Optional[str] = None) -> CompilationResult
+
     def compile_file(self, template_path: str, variables: Optional[dict] = None) -> CompilationResult
-    def validate(self, template: dict) -> ValidationResult
+
+    def validate(self, template: dict, base_url: Optional[str] = None) -> ValidationResult
+
     def validate_file(self, template_path: str) -> ValidationResult
+
+    def get_security_status(self) -> dict
 ```
 
 ### CompilationResult Class
 
 ```python
 class CompilationResult:
-    prompt: str                    # The compiled prompt
-    template: dict                 # The original template
-    variables: dict                # Resolved variables
-    overrides: List[TypeOverride]  # Type overrides that occurred
-    warnings: List[str]            # Compilation warnings
+    prompt: str                           # The compiled prompt
+    template: dict                        # The original template
+    variables: dict                       # Resolved variables
+    overrides: List[TypeOverride]         # Type overrides that occurred
+    warnings: List[str]                   # Compilation warnings
+    security_metrics: SecurityMetrics     # Security operation metrics
+    compilation_time: Optional[float]     # Time taken to compile
+    security_events: List[str]            # Security events that occurred
+
+    # Properties
+    @property
+    def has_overrides(self) -> bool       # Check if any type overrides occurred
+
+    @property
+    def has_warnings(self) -> bool        # Check if any warnings were generated
+
+    @property
+    def has_security_events(self) -> bool # Check if any security events occurred
+
+    @property
+    def prompt_size(self) -> int          # Get prompt size in bytes
+
+    # Methods
+    def get_summary(self) -> dict         # Get compilation summary with metrics
+```
+
+### ValidationResult Class
+
+```python
+class ValidationResult:
+    is_valid: bool                        # Whether validation passed
+    errors: List[str]                     # Validation errors found
+    warnings: List[str]                   # Validation warnings
+    security_issues: List[str]            # Security issues found
+    validation_time: Optional[float]      # Time taken to validate
+
+    # Properties
+    @property
+    def has_security_issues(self) -> bool # Check if security issues were found
+
+    @property
+    def total_issues(self) -> int         # Get total count of all issues
+
+    def __bool__(self) -> bool            # Allows `if validation_result:` usage
 ```
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and add tests
-4. Ensure all tests pass (`python test_runner.py`)
-5. Run linting (`black . && flake8`)
-6. Commit your changes
-7. Push to the branch and open a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`; other branch prefixes could be used i.e. `bugfix`, `devops`, `test`, etc, depending on use-case)
+3. Make your changes and add / update tests, precommit configs, and github workflows as appropriate
+4. Ensure all tests pass (`python test_runner.py --all`)
+5. Commit your changes
+6. Push to the branch and ensure all github workflows pass
+7. Open a Pull Request
 
 ### Development Setup
 
