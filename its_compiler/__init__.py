@@ -1,7 +1,7 @@
 """
 ITS Compiler Python
 
-Reference Python compiler for Instruction Template Specification (ITS).
+Reference Python library for Instruction Template Specification (ITS).
 Converts content templates with placeholders into structured AI prompts.
 
 Includes comprehensive security features for safe template processing.
@@ -9,15 +9,16 @@ Includes comprehensive security features for safe template processing.
 
 from typing import Any, Dict
 
-__version__ = "0.1.1"
+__version__ = "1.0.0"
 __author__ = "Alexander Parker"
-__email__ = "its-compiler@parker.im"
+__email__ = "pypi@parker.im"
 
 # Supported ITS specification version
 __supported_schema_version__ = "1.0"
 
-from .compiler import ITSCompiler
-from .exceptions import (
+# Core exports
+from .core.compiler import ITSCompiler
+from .core.exceptions import (
     ITSCompilationError,
     ITSConditionalError,
     ITSConfigurationError,
@@ -28,7 +29,7 @@ from .exceptions import (
     ITSValidationError,
     ITSVariableError,
 )
-from .models import (
+from .core.models import (
     CompilationResult,
     InstructionTypeDefinition,
     ITSConfig,

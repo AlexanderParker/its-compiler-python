@@ -6,8 +6,8 @@ import ast
 import operator
 from typing import Any, Callable, Dict, List, Optional
 
+from ..security import ExpressionSanitiser, SecurityConfig
 from .exceptions import ITSConditionalError
-from .security import ExpressionSanitiser, SecurityConfig
 
 
 class ConditionalEvaluator:
@@ -105,7 +105,7 @@ class ConditionalEvaluator:
     def _basic_security_check(self, node: ast.AST, condition: str) -> None:
         """Basic security check when full sanitiser is disabled."""
 
-        # Check for dangerous node types (removed ast.Exec as it doesn't exist in Python 3)
+        # Check for dangerous node types
         dangerous_nodes = {
             ast.Call,
             ast.FunctionDef,
@@ -131,13 +131,7 @@ class ConditionalEvaluator:
     def _evaluate_node(self, node: ast.AST, variables: Dict[str, Any]) -> Any:
         """Recursively evaluate an AST node with enhanced security."""
 
-        if isinstance(node, ast.Constant):  # Python 3.8+
-            return node.value
-        elif isinstance(node, ast.Num):  # Python < 3.8
-            return node.n
-        elif isinstance(node, ast.Str):  # Python < 3.8
-            return node.s
-        elif isinstance(node, ast.NameConstant):  # Python < 3.8
+        if isinstance(node, ast.Constant):
             return node.value
 
         elif isinstance(node, ast.Name):
@@ -202,11 +196,8 @@ class ConditionalEvaluator:
             # Array/dict subscript access (e.g., items[0])
             obj = self._evaluate_node(node.value, variables)
 
-            # Handle Python version differences for slice
-            if hasattr(node.slice, "value"):  # Python < 3.9
-                index = self._evaluate_node(node.slice.value, variables)
-            else:  # Python 3.9+
-                index = self._evaluate_node(node.slice, variables)
+            # In Python 3.9+, node.slice is the slice expression directly
+            index = self._evaluate_node(node.slice, variables)
 
             # Security check for large indices
             if isinstance(index, int) and abs(index) > self.security_config.processing.max_array_index:

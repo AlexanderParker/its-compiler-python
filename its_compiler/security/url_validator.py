@@ -4,10 +4,10 @@ URL validation and SSRF protection for ITS Compiler.
 
 import ipaddress
 import socket
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from urllib.parse import urlparse
 
-from ..exceptions import ITSSchemaError
+from ..core.exceptions import ITSSchemaError
 from .config import SecurityConfig
 
 
@@ -28,7 +28,7 @@ class URLValidator:
         self.network_config = config.network
 
         # Pre-compile blocked IP ranges
-        self._blocked_networks = []
+        self._blocked_networks: List[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]] = []
         for cidr in self.network_config.blocked_ip_ranges:
             try:
                 self._blocked_networks.append(ipaddress.ip_network(cidr, strict=False))
@@ -46,8 +46,9 @@ class URLValidator:
             # Protocol validation
             self._validate_protocol(parsed, url)
 
-            # Domain validation
-            self._validate_domain(parsed, url)
+            # Domain validation (only if enforced)
+            if self.network_config.enforce_domain_allowlist:
+                self._validate_domain(parsed, url)
 
             # SSRF protection
             self._validate_ssrf_protection(parsed, url)
@@ -108,7 +109,7 @@ class URLValidator:
         if not hostname:
             self._log_and_raise(url, "Invalid hostname", "invalid_hostname")
 
-        # Check domain allowlist
+        # Check domain allowlist only if enforcement is enabled
         if self.network_config.enforce_domain_allowlist:
             if not self._is_domain_allowed(hostname):
                 self._log_and_raise(url, f"Domain '{hostname}' not in allowlist", "domain_not_allowed")
@@ -137,18 +138,39 @@ class URLValidator:
         try:
             ip_addresses = self._resolve_hostname(hostname)
             for ip_str in ip_addresses:
-                self._validate_ip_address(str(ip_str), url)
-        except socket.gaierror:
-            # DNS resolution failed - could be suspicious
-            print(f"Warning: DNS resolution failed for {hostname}")
+                self._validate_ip_address(ip_str, url)
+        except socket.gaierror as e:
+            # Re-raise as URLSecurityError for consistent handling
+            raise URLSecurityError(
+                f"DNS resolution failed for {hostname}: {e}",
+                url=url,
+                reason="dns_resolution_failed",
+            )
 
     def _resolve_hostname(self, hostname: str) -> List[str]:
         """Resolve hostname to IP addresses."""
         try:
             # Get all IP addresses for the hostname
             addr_info = socket.getaddrinfo(hostname, None)
-            ip_addresses = list(set(info[4][0] for info in addr_info))
-            return ip_addresses
+            # Extract IP addresses and ensure they are strings
+            ip_addresses = []
+            for info in addr_info:
+                # info[4] is the socket address tuple (IP, port, ...)
+                # info[4][0] is the IP address part
+                ip_addr = info[4][0]
+                # Ensure it's a string (it should be, but type checker needs assurance)
+                if isinstance(ip_addr, str):
+                    ip_addresses.append(ip_addr)
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_ips = []
+            for ip in ip_addresses:
+                if ip not in seen:
+                    seen.add(ip)
+                    unique_ips.append(ip)
+
+            return unique_ips
         except socket.gaierror as e:
             raise URLSecurityError(
                 f"DNS resolution failed for {hostname}: {e}",
@@ -161,12 +183,19 @@ class URLValidator:
         try:
             ip = ipaddress.ip_address(ip_str)
 
-            # Check against blocked ranges
+            # Check against blocked ranges first (most specific)
             for network in self._blocked_networks:
                 if ip in network:
-                    self._ssrf_blocked(url, f"IP {ip_str} in blocked range {network}")
+                    if network.network_address == ipaddress.ip_address("224.0.0.0"):
+                        self._ssrf_blocked(url, f"Multicast IP address blocked: {ip_str}")
+                    elif network.network_address == ipaddress.ip_address("::1"):
+                        self._ssrf_blocked(url, f"Loopback IP address blocked: {ip_str}")
+                    elif network.network_address == ipaddress.ip_address("169.254.0.0"):
+                        self._ssrf_blocked(url, f"Link-local IP address blocked: {ip_str}")
+                    else:
+                        self._ssrf_blocked(url, f"SSRF protection: IP {ip_str} in blocked range {network}")
 
-            # Check specific IP properties
+            # Additional property checks
             if self.network_config.block_private_networks and ip.is_private:
                 self._ssrf_blocked(url, f"Private IP address blocked: {ip_str}")
 
@@ -176,7 +205,6 @@ class URLValidator:
             if self.network_config.block_link_local and ip.is_link_local:
                 self._ssrf_blocked(url, f"Link-local IP address blocked: {ip_str}")
 
-            # Additional checks for suspicious IPs
             if ip.is_multicast:
                 self._ssrf_blocked(url, f"Multicast IP address blocked: {ip_str}")
 
@@ -184,7 +212,6 @@ class URLValidator:
                 self._ssrf_blocked(url, f"Reserved IP address blocked: {ip_str}")
 
         except ValueError:
-            # Invalid IP address format
             self._log_and_raise(url, f"Invalid IP address: {ip_str}", "invalid_ip")
 
     def _is_domain_allowed(self, hostname: str) -> bool:

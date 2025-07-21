@@ -3,10 +3,9 @@ Expression sanitisation and validation for ITS Compiler conditionals.
 """
 
 import ast
-import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
-from ..exceptions import ITSConditionalError
+from ..core.exceptions import ITSConditionalError
 from .config import SecurityConfig
 
 
@@ -82,6 +81,8 @@ class ExpressionSanitiser:
         self.processing_config = config.processing
 
         # Compile dangerous patterns
+        import re
+
         self.dangerous_regex = re.compile("|".join(self.DANGEROUS_PATTERNS), re.IGNORECASE)
 
     def sanitise_expression(self, expression: str, variables: Dict[str, Any]) -> str:
@@ -254,30 +255,49 @@ class ExpressionSanitiser:
     def _validate_subscript_access(self, node: ast.Subscript, expression: str) -> None:
         """Validate array/dict subscript access."""
 
-        # For Python < 3.9 compatibility
-        if hasattr(node.slice, "value"):
-            slice_node = node.slice.value
-        else:
-            slice_node = node.slice
+        # Extract the slice node - handle Python version differences
+        slice_node = node.slice
 
-        # If it's a constant, validate the index
-        if isinstance(slice_node, (ast.Constant, ast.Num)):
-            index_value = slice_node.value if isinstance(slice_node, ast.Constant) else slice_node.n
+        # Extract the index value, handling different AST node types
+        index_value: Union[int, float, None] = None
 
-            if isinstance(index_value, int):
-                if index_value > self.processing_config.max_array_index:
-                    self._security_violation(
-                        expression,
-                        f"Array index too large: {index_value}",
-                        "array_index_too_large",
-                    )
+        # Handle direct constants
+        if isinstance(slice_node, ast.Constant):  # Python 3.8+
+            if isinstance(slice_node.value, (int, float)) and not isinstance(slice_node.value, complex):
+                index_value = slice_node.value
+        elif isinstance(slice_node, ast.Num):  # Python < 3.8
+            if isinstance(slice_node.n, (int, float)) and not isinstance(slice_node.n, complex):
+                index_value = slice_node.n
+        # Handle negative numbers (UnaryOp with USub)
+        elif isinstance(slice_node, ast.UnaryOp) and isinstance(slice_node.op, ast.USub):
+            if isinstance(slice_node.operand, ast.Constant):
+                # Type check to ensure value is numeric
+                operand_value = slice_node.operand.value
+                if isinstance(operand_value, (int, float)) and not isinstance(operand_value, complex):
+                    index_value = -operand_value
+            elif isinstance(slice_node.operand, ast.Num):
+                if isinstance(slice_node.operand.n, (int, float)) and not isinstance(slice_node.operand.n, complex):
+                    index_value = -slice_node.operand.n
 
-                if index_value < -self.processing_config.max_array_index:
-                    self._security_violation(
-                        expression,
-                        f"Array index too negative: {index_value}",
-                        "array_index_too_negative",
-                    )
+        # Validate the index if we successfully extracted a numeric value
+        if isinstance(index_value, (int, float)):
+            max_index = self.processing_config.max_array_index
+
+            # Convert to int for comparison if it's a float
+            index_int = int(index_value) if isinstance(index_value, float) else index_value
+
+            if index_int > max_index:
+                self._security_violation(
+                    expression,
+                    f"Array index too large: {index_int}",
+                    "array_index_too_large",
+                )
+            elif index_int < 0 and abs(index_int) > max_index:
+                self._security_violation(
+                    expression,
+                    f"Array index too negative: {index_int}",
+                    "array_index_too_negative",
+                )
 
     def _validate_literal_size(self, node: ast.AST, expression: str) -> None:
         """Validate size of list/tuple literals."""

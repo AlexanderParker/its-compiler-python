@@ -1,13 +1,14 @@
 """
 Variable processing for ITS Compiler with security enhancements.
+Variables can only contain static values - no references to other variables.
 """
 
 import json
 import re
 from typing import Any, Dict, List, Optional
 
+from ..security import InputValidator, SecurityConfig
 from .exceptions import ITSVariableError
-from .security import InputValidator, SecurityConfig
 
 
 class VariableProcessor:
@@ -285,9 +286,9 @@ class VariableProcessor:
     def resolve_variable_reference(self, var_ref: str, variables: Dict[str, Any]) -> Any:
         """Resolve a variable reference with enhanced security validation."""
 
-        # Validate reference syntax
+        # Validate reference syntax - updated to allow negative array indices
         if not re.match(
-            r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*(\[\d+\])*$",
+            r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*(\[-?\d+\])*$",
             var_ref.replace(".length", ""),
         ):
             raise ITSVariableError(
@@ -311,10 +312,10 @@ class VariableProcessor:
                     variable_path=var_ref,
                 )
 
-            # Handle array access like items[0]
+            # Handle array access like items[0] or items[-1]
             if "[" in part and part.endswith("]"):
-                # Split array name and index
-                array_match = re.match(r"([^[]+)\[(\d+)\]", part)
+                # Split array name and index - updated to handle negative indices
+                array_match = re.match(r"([^[]+)\[(-?\d+)\]", part)
                 if not array_match:
                     raise ITSVariableError(
                         f"Invalid array syntax in variable reference: {var_ref}",
@@ -324,8 +325,8 @@ class VariableProcessor:
                 array_name = array_match.group(1)
                 array_index = int(array_match.group(2))
 
-                # Validate array index
-                if array_index > self.security_config.processing.max_array_index:
+                # Validate array index - check absolute value for size limit
+                if abs(array_index) > self.security_config.processing.max_array_index:
                     raise ITSVariableError(
                         f"Array index too large: {array_index} in {var_ref}",
                         variable_path=var_ref,
@@ -344,6 +345,17 @@ class VariableProcessor:
                         f"Variable '{array_name}' is not an array",
                         variable_path=var_ref,
                     )
+
+                # Handle negative indexing
+                if array_index < 0:
+                    # Convert negative index to positive
+                    positive_index = len(array_value) + array_index
+                    if positive_index < 0:
+                        raise ITSVariableError(
+                            f"Array index {array_index} out of bounds for '{array_name}' (length: {len(array_value)})",
+                            variable_path=var_ref,
+                        )
+                    array_index = positive_index
 
                 if array_index >= len(array_value):
                     raise ITSVariableError(

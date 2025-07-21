@@ -4,10 +4,11 @@ Input validation and sanitisation for ITS Compiler.
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, NoReturn, Optional, Union
 
-from ..exceptions import ITSValidationError
+from ..core.exceptions import ITSValidationError
 from .config import SecurityConfig
 
 
@@ -73,6 +74,10 @@ class InputValidator:
 
     def validate_template(self, template: Dict[str, Any], template_path: Optional[str] = None) -> None:
         """Validate complete template structure and content."""
+
+        # First check if template is actually a dictionary/object
+        if not isinstance(template, dict):
+            self._security_violation("Template must be a JSON object", "template", "invalid_type")
 
         # Size validation
         self._validate_template_size(template)
@@ -429,21 +434,36 @@ class InputValidator:
         """Validate text content for malicious patterns."""
 
         # Length check
-        if len(text) > 10000:  # Reasonable limit for text content
+        if len(text) > 10000:
             self._security_violation(f"Text content too long in {context}", "text_content", "text_too_long")
 
-        # Check for malicious patterns
-        if self.malicious_regex.search(text):
+        # Check for null bytes (security bypass attack)
+        if "\x00" in text:
+            self._security_violation(
+                f"Null byte detected in {context}",
+                "text_content",
+                "null_byte_detected",
+            )
+
+        normalized_text = unicodedata.normalize("NFKC", text)
+
+        # Check for malicious patterns in both original and normalized text
+        if self.malicious_regex.search(text) or self.malicious_regex.search(normalized_text):
             self._security_violation(
                 f"Malicious content detected in {context}",
                 "text_content",
                 "malicious_content",
             )
 
-        # Check for suspicious encoding
-        if "\\x" in text or "\\u" in text or "%" in text:
-            # More detailed check for actual encoding
-            if re.search(r"\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|%[0-9a-fA-F]{2}", text):
+        # Check for suspicious encoding (be more specific)
+        suspicious_patterns = [
+            r"\\x[0-9a-fA-F]{2}",  # Hex encoding
+            r"\\u[0-9a-fA-F]{4}",  # Unicode encoding
+            r"%[0-9a-fA-F]{2}",  # URL encoding
+        ]
+
+        for pattern in suspicious_patterns:
+            if re.search(pattern, text):
                 self._security_violation(
                     f"Suspicious encoding detected in {context}",
                     "text_content",

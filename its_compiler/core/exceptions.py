@@ -176,6 +176,11 @@ class ITSSchemaError(ITSError):
             from urllib.parse import urlparse, urlunparse
 
             parsed = urlparse(url)
+
+            # Check if URL is valid (has scheme and netloc)
+            if not parsed.scheme or not parsed.netloc:
+                return "[INVALID_URL]"
+
             # Remove query parameters and fragment
             sanitised = urlunparse(
                 (
@@ -229,6 +234,9 @@ class ITSVariableError(ITSError):
     def get_suggestion_message(self) -> str:
         """Get error message with variable suggestions."""
         parts = [self.message]
+
+        if self.variable_path:
+            parts.append(f"Variable path: {self.variable_path}")
 
         if self.available_variables:
             if len(self.available_variables) <= 5:

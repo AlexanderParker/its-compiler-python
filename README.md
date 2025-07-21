@@ -1,8 +1,8 @@
 # ITS Compiler Python
 
-[![PyPI version](https://badge.fury.io/py/its-compiler-python.svg)](https://badge.fury.io/py/its-compiler-python)
-[![Python](https://img.shields.io/pypi/pyversions/its-compiler-python.svg)](https://pypi.org/project/its-compiler-python/)
-[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
+[![PyPI version](https://badge.fury.io/py/its-compiler.svg)](https://badge.fury.io/py/its-compiler)
+[![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
+[![License](https://img.shields.io/github/license/AlexanderParker/its-compiler.svg)](LICENSE)
 
 Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
 
@@ -71,13 +71,17 @@ Reference Python compiler for the [Instruction Template Specification (ITS)](htt
 }
 ```
 
-**Compilation:**
+**Using the Python Library:**
 
-```bash
-its-compile blog-post.json --output blog-prompt.txt
+```python
+from its_compiler import ITSCompiler
+
+compiler = ITSCompiler()
+result = compiler.compile_file('blog-post.json')
+print(result.prompt)
 ```
 
-**Output (`blog-prompt.txt`):**
+**Output:**
 
 ```
 INTRODUCTION
@@ -109,10 +113,10 @@ TEMPLATE
 
 ## Installation
 
-### For Users
+### For Library Users
 
 ```bash
-pip install its-compiler-python
+pip install its-compiler
 ```
 
 ### For Developers
@@ -129,38 +133,23 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install in development mode
 pip install -e ".[dev]"
 
-# Verify installation
-its-compile --help
+# Run tests
+python test_runner.py
 ```
 
-## Quick Start
+## Command Line Interface
 
-### Command Line
+For command-line usage, install the separate CLI package:
 
 ```bash
-# Basic compilation
-its-compile template.json
-
-# Output to file
-its-compile template.json --output prompt.txt
-
-# Use custom variables
-its-compile template.json --variables vars.json
-
-# Watch mode for development
-its-compile template.json --watch
-
-# Validate template without compiling
-its-compile template.json --validate-only
-
-# Strict validation
-its-compile template.json --strict
-
-# Check supported schema version
-its-compile --supported-schema-version
+pip install its-compiler-cli
 ```
 
-### Python Library
+See the [ITS Compiler CLI repository](https://github.com/AlexanderParker/its-compiler-cli-python) for command-line documentation and usage examples.
+
+## Python Library Usage
+
+### Basic Usage
 
 ```python
 from its_compiler import ITSCompiler
@@ -185,6 +174,26 @@ except ITSCompilationError as e:
     print(f"Compilation error: {e}")
 ```
 
+### Configuration
+
+```python
+from its_compiler import ITSCompiler, ITSConfig
+from its_compiler.security import SecurityConfig
+
+# Custom configuration
+config = ITSConfig(
+    cache_enabled=False,
+    strict_mode=True,
+    max_retries=5
+)
+
+# Security configuration
+security_config = SecurityConfig.for_development()
+security_config.allowlist.interactive_mode = False
+
+compiler = ITSCompiler(config=config, security_config=security_config)
+```
+
 ## Features
 
 ### Complete ITS v1.0 Support
@@ -194,13 +203,6 @@ except ITSCompilationError as e:
 - Conditional content with Python-like expressions
 - Schema extension mechanism with override precedence
 - Custom instruction types
-
-### Developer Tools
-
-- Error messages with line numbers
-- Override reporting shows which types are being replaced
-- Watch mode for rapid development iteration
-- Validation with detailed feedback
 
 ### Security Features
 
@@ -244,23 +246,6 @@ The compiler includes security features to help protect against common attack ve
 - Boolean: `and`, `or`, `not`
 - Membership: `in`, `not in`
 
-## CLI Reference
-
-```
-its-compile [OPTIONS] TEMPLATE_FILE
-
-Options:
-  -o, --output FILE          Output file (default: stdout)
-  -v, --variables FILE       JSON file with variable values
-  -w, --watch               Watch template file for changes
-  --validate-only           Validate template without compiling
-  --verbose                 Show detailed output
-  --strict                  Enable strict validation mode
-  --supported-schema-version Show supported ITS specification version
-  --allowlist-status        Show schema allowlist status
-  --help                    Show this message and exit
-```
-
 ## Configuration
 
 ### Environment Variables
@@ -299,12 +284,6 @@ URL: https://example.com/schema.json
 2. Allow for this session only
 3. Deny (compilation will fail)
 ```
-
-**Management commands:**
-
-- `its-compile --allowlist-status` - View allowlist status
-- `its-compile --add-trusted-schema URL` - Add trusted schema
-- `its-compile --export-allowlist FILE` - Export allowlist
 
 ### Configuration File
 
@@ -346,10 +325,8 @@ ITSVariableError: Undefined variable reference at content[1].config.description:
 
 ## Testing
 
-The test suite automatically uses templates that match your compiler's supported schema version:
-
 ```bash
-# Run all tests (automatically detects schema version from compiler)
+# Run all tests
 python test_runner.py
 
 # Run specific categories
@@ -359,53 +336,21 @@ python test_runner.py --category integration
 # Run with verbose output
 python test_runner.py --verbose
 
-# Generate JUnit XML for CI
-python test_runner.py --junit-xml test-results.xml
-
-# Run specific test by name
-python test_runner.py --test "Simple Variables"
-
-# List available test categories
-python test_runner.py --list-categories
-
-# Run only security tests
-python test_runner.py --security-only
+# Run linting and security checks
+python test_runner.py --lint
+python test_runner.py --security-scan
 ```
-
-**Test Coverage:**
-
-- **24 integration tests** - All ITS features and error cases
-- **8 security tests** - Malicious content detection and blocking
-- **9 error handling tests** - Invalid templates and edge cases
-
-The test runner will:
-
-1. Query your compiler for its supported schema version
-2. Download test templates for that specific version
-3. Run comprehensive tests to ensure compatibility
-4. Fail fast if it can't determine the compiler's schema version
-
-**Schema Version Detection:**
-
-```bash
-# Test runner automatically detects:
-✓ Compiler 'its-compile' supports ITS schema version: 1.0
-Using test templates for schema version: 1.0
-```
-
-You can also fetch the supported schema in code:
-
-```python
-schema_version = get_supported_schema_version()
-```
-
-**Requirements:**
-
-- Internet connection for downloading test templates
-- No git installation required
-- Works in any environment with Python and urllib
 
 ## API Reference
+
+### Required Imports
+
+```python
+from typing import Optional
+from its_compiler import ITSCompiler, ITSConfig
+from its_compiler.security import SecurityConfig
+from its_compiler.core.exceptions import ITSValidationError, ITSCompilationError
+```
 
 ### ITSCompiler Class
 
@@ -414,32 +359,77 @@ class ITSCompiler:
     def __init__(self, config: Optional[ITSConfig] = None,
                  security_config: Optional[SecurityConfig] = None)
 
-    def compile(self, template: dict, variables: Optional[dict] = None) -> CompilationResult
+    def compile(self, template: dict, variables: Optional[dict] = None,
+                base_url: Optional[str] = None) -> CompilationResult
+
     def compile_file(self, template_path: str, variables: Optional[dict] = None) -> CompilationResult
-    def validate(self, template: dict) -> ValidationResult
+
+    def validate(self, template: dict, base_url: Optional[str] = None) -> ValidationResult
+
     def validate_file(self, template_path: str) -> ValidationResult
+
+    def get_security_status(self) -> dict
 ```
 
 ### CompilationResult Class
 
 ```python
 class CompilationResult:
-    prompt: str                    # The compiled prompt
-    template: dict                 # The original template
-    variables: dict                # Resolved variables
-    overrides: List[TypeOverride]  # Type overrides that occurred
-    warnings: List[str]            # Compilation warnings
+    prompt: str                           # The compiled prompt
+    template: dict                        # The original template
+    variables: dict                       # Resolved variables
+    overrides: List[TypeOverride]         # Type overrides that occurred
+    warnings: List[str]                   # Compilation warnings
+    security_metrics: SecurityMetrics     # Security operation metrics
+    compilation_time: Optional[float]     # Time taken to compile
+    security_events: List[str]            # Security events that occurred
+
+    # Properties
+    @property
+    def has_overrides(self) -> bool       # Check if any type overrides occurred
+
+    @property
+    def has_warnings(self) -> bool        # Check if any warnings were generated
+
+    @property
+    def has_security_events(self) -> bool # Check if any security events occurred
+
+    @property
+    def prompt_size(self) -> int          # Get prompt size in bytes
+
+    # Methods
+    def get_summary(self) -> dict         # Get compilation summary with metrics
+```
+
+### ValidationResult Class
+
+```python
+class ValidationResult:
+    is_valid: bool                        # Whether validation passed
+    errors: List[str]                     # Validation errors found
+    warnings: List[str]                   # Validation warnings
+    security_issues: List[str]            # Security issues found
+    validation_time: Optional[float]      # Time taken to validate
+
+    # Properties
+    @property
+    def has_security_issues(self) -> bool # Check if security issues were found
+
+    @property
+    def total_issues(self) -> int         # Get total count of all issues
+
+    def __bool__(self) -> bool            # Allows `if validation_result:` usage
 ```
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and add tests
-4. Ensure all tests pass (`python test_runner.py`)
-5. Run linting (`black . && flake8`)
-6. Commit your changes
-7. Push to the branch and open a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`; other branch prefixes could be used i.e. `bugfix`, `devops`, `test`, etc, depending on use-case)
+3. Make your changes and add / update tests, precommit configs, and github workflows as appropriate
+4. Ensure all tests pass (`python test_runner.py --all`)
+5. Commit your changes
+6. Push to the branch and ensure all github workflows pass
+7. Open a Pull Request
 
 ### Development Setup
 
@@ -461,6 +451,7 @@ python test_runner.py
 
 ## Related Projects
 
+- **[ITS Compiler CLI](https://github.com/AlexanderParker/its-compiler-cli-python)** - Command-line interface for the ITS Compiler
 - **[Instruction Template Specification](https://alexanderparker.github.io/instruction-template-specification/)** - The official ITS specification and schema
 - **[ITS Example Templates](https://github.com/AlexanderParker/its-example-templates)** - Test templates and examples for the ITS compiler
 

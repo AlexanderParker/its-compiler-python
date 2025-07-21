@@ -115,6 +115,9 @@ class AllowlistManager:
     def _prompt_user(self, url: str) -> Tuple[bool, TrustLevel]:
         """Prompt user for schema approval."""
         if not self.config.allowlist.interactive_mode:
+            # Check auto-approve in CI before returning False
+            if self.config.allowlist.auto_approve_in_ci and not self.config.allowlist.require_confirmation:
+                return True, TrustLevel.SESSION
             return False, TrustLevel.NEVER
 
         parsed = urlparse(url)

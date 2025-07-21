@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "its-compiler-python"
-version = "0.1.1"
-description = "Reference Python compiler for Instruction Template Specification (ITS) with comprehensive security features"
-readme = "README.md"
+name = "its-compiler"
+version = "1.0.0"
+description = "Reference Python library for Instruction Template Specification (ITS) with comprehensive security features"
+readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "MIT" }
-authors = [{ name = "Alexander Parker", email = "your-email@example.com" }]
-maintainers = [{ name = "Alexander Parker", email = "your-email@example.com" }]
+authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
+maintainers = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
 keywords = [
     "its",
     "instruction",
@@ -21,6 +21,7 @@ keywords = [
     "nlp",
     "content-generation",
     "security",
+    "library",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -28,86 +29,62 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: Markup",
     "Topic :: Security",
+    "Typing :: Typed",
 ]
-requires-python = ">=3.9"
-dependencies = [
-    "click>=8.0.0",
-    "rich>=13.0.0",
-    "requests>=2.28.0",
-    "jsonschema>=4.17.0",
-    "watchdog>=3.0.0",
-    "pydantic>=1.10.0",
-    "python-dateutil>=2.8.0",
-]
+requires-python = ">=3.10"
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
     # Testing
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-xdist>=3.0.0",
-    "pytest-mock>=3.10.0",
-    "pytest-timeout>=2.1.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-timeout>=2.4.0",
 
-    # Code quality (streamlined)
-    "black>=22.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "flake8-bugbear>=23.0.0",
-    "pep8-naming>=0.13.0",
-    "mypy>=1.0.0",
+    # Code quality
+    "black>=25.0.0",
+    "isort>=6.0.1",
+    "flake8>=7.3.0",
+    "flake8-bugbear>=24.12.12",
+    "flake8-pyproject>=1.2.3",
+    "pep8-naming>=0.15.1",
+    "mypy >=1.17.0",
 
     # Security
-    "bandit[toml]>=1.7.0",
+    "bandit>=1.8.3",
+    "pip-audit>=2.9.0",
 
     # Development tools
-    "pre-commit>=3.0.0",
-    "build>=0.10.0",
-    "twine>=4.0.0",
+    "pre-commit>=4.2.0",
 ]
 
-security = [
-    # Additional security libraries for enhanced protection
-    "cryptography>=38.0.0",
-    "pyotp>=2.8.0",
-    "passlib>=1.7.0",
-    "bcrypt>=4.0.0",
-]
+security = []
 
-monitoring = [
-    # Monitoring and observability
-    "prometheus-client>=0.15.0",
-    "structlog>=22.0.0",
-    "sentry-sdk>=1.15.0",
-]
+monitoring = []
 
 all = ["its-compiler-python[dev,security,monitoring]"]
 
 [project.urls]
-Homepage = "https://github.com/alexanderparker/its-compiler-python"
-Documentation = "https://its-compiler-python.readthedocs.io/"
-Repository = "https://github.com/alexanderparker/its-compiler-python.git"
-Changelog = "https://github.com/alexanderparker/its-compiler-python/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/alexanderparker/its-compiler-python/issues"
-"Security Policy" = "https://github.com/alexanderparker/its-compiler-python/security/policy"
-
-[project.scripts]
-its-compile = "its_compiler.cli:main"
+Homepage = "https://github.com/AlexanderParker/its-compiler-python"
+Documentation = "https://github.com/AlexanderParker/its-compiler-python"
+Repository = "https://github.com/AlexanderParker/its-compiler-python.git"
+Changelog = "https://github.com/AlexanderParker/its-compiler-python/commits/main/"
+"Bug Tracker" = "https://github.com/AlexanderParker/its-compiler-python/issues"
 
 [tool.setuptools]
 package-dir = { "" = "." }
 
 [tool.setuptools.packages.find]
 include = ["its_compiler*"]
-exclude = ["test*", "docs*", "examples*"]
+exclude = ["test*", "docs*", "examples*", "its_compiler.cli*"]
 
 [tool.setuptools.package-data]
 its_compiler = ["config/*.json", "security/*.json", "py.typed"]
@@ -185,10 +162,17 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-
-[[tool.mypy.overrides]]
-module = ["rich.*", "watchdog.*", "requests.*"]
-ignore_missing_imports = true
+exclude = [
+    "venv/",
+    "venv\\\\",
+    ".venv/",
+    ".venv\\\\",
+    "env/",
+    "env\\\\",
+    ".env/",
+    ".env\\\\",
+    "build/",
+]
 
 # Streamlined flake8 config
 [tool.flake8]
@@ -197,21 +181,21 @@ extend-ignore = [
     "E203", # Whitespace before ':' (conflicts with black)
     "W503", # Line break before binary operator (conflicts with black)
     "E501", # Line too long (handled by black)
-    "D100", # Missing docstring in public module
-    "D101", # Missing docstring in public class
-    "D102", # Missing docstring in public method
-    "D103", # Missing docstring in public function
-    "D104", # Missing docstring in public package
-    "D105", # Missing docstring in magic method
-    "D106", # Missing docstring in public nested class
-    "D107", # Missing docstring in __init__
-    "D200", # One-line docstring should fit on one line
-    "D202", # No blank lines allowed after function docstring
-    "D205", # 1 blank line required between summary line and description
-    "D212", # Multi-line docstring summary should start at the first line
-    "D400", # First line should end with a period
-    "D401", # First line should be in imperative mood
-    "D415", # First line should end with a period, question mark, or exclamation point
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "D200",
+    "D202",
+    "D205",
+    "D212",
+    "D400",
+    "D401",
+    "D415",
 ]
 exclude = [
     ".git",
@@ -225,9 +209,7 @@ exclude = [
     "test/templates/invalid/",
     "test/templates/security/",
 ]
-per-file-ignores = [
-    "__init__.py:F401", # Allow unused imports in __init__ files
-]
+per-file-ignores = ["__init__.py:F401"]
 
 # Coverage Configuration
 [tool.coverage.run]
@@ -238,6 +220,7 @@ omit = [
     "*/__pycache__/*",
     "*/site-packages/*",
     "*/dist-packages/*",
+    "*/its_compiler/cli/*",
 ]
 
 [tool.coverage.report]
