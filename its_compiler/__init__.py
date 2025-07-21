@@ -9,7 +9,7 @@ Includes comprehensive security features for safe template processing.
 
 from typing import Any, Dict
 
-__version__ = "0.3.1"
+__version__ = "1.0.0"
 __author__ = "Alexander Parker"
 __email__ = "pypi@parker.im"
 
