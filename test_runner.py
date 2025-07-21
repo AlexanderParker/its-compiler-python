@@ -82,16 +82,77 @@ def run_linting() -> bool:
 
 
 def run_security_scan() -> bool:
-    """Run security scanning with bandit."""
-    print("Running security scan with bandit...")
+    """Run security scanning with bandit and pip-audit."""
+    import os
+    import shutil
 
-    try:
-        cmd = ["bandit", "-r", "its_compiler/", "-f", "txt"]
-        result = subprocess.run(cmd, check=False)
-        return result.returncode == 0
-    except FileNotFoundError:
-        print("Warning: bandit not found. Install with: pip install bandit")
-        return True  # Don't fail if bandit is not available
+    all_passed = True
+
+    # Run bandit for code security scanning
+    print("Running code security scan with bandit...")
+    bandit_cmd = shutil.which("bandit")
+    if bandit_cmd:
+        try:
+            cmd = [bandit_cmd, "-r", "its_compiler/", "-f", "txt"]
+            result = subprocess.run(cmd, check=False)
+            if result.returncode == 0:
+                print("✓ Bandit scan passed")
+            else:
+                print("✗ Bandit scan found issues")
+                all_passed = False
+        except Exception as e:
+            print(f"Error running bandit: {e}")
+            all_passed = False
+    else:
+        # Try running as a module
+        try:
+            cmd = [sys.executable, "-m", "bandit", "-r", "its_compiler/", "-f", "txt"]
+            result = subprocess.run(cmd, check=False)
+            if result.returncode == 0:
+                print("✓ Bandit scan passed")
+            else:
+                print("✗ Bandit scan found issues")
+                all_passed = False
+        except Exception as e:
+            print(f"Warning: bandit not found. Error: {e}")
+            print("Install with: pip install bandit")
+
+    # Run pip-audit for dependency vulnerability scanning
+    print("\nRunning dependency security scan with pip-audit...")
+
+    # Set up environment to use the current Python interpreter
+    env = os.environ.copy()
+    env["PIPAPI_PYTHON_LOCATION"] = sys.executable
+    print(f"Using Python interpreter: {sys.executable}")
+
+    pip_audit_cmd = shutil.which("pip-audit")
+    if pip_audit_cmd:
+        try:
+            cmd = [pip_audit_cmd]
+            result = subprocess.run(cmd, check=False, env=env)
+            if result.returncode == 0:
+                print("✓ pip-audit scan passed")
+            else:
+                print("✗ pip-audit scan found vulnerabilities")
+                all_passed = False
+        except Exception as e:
+            print(f"Error running pip-audit: {e}")
+            all_passed = False
+    else:
+        # Try running as a module
+        try:
+            cmd = [sys.executable, "-m", "pip_audit"]
+            result = subprocess.run(cmd, check=False, env=env)
+            if result.returncode == 0:
+                print("✓ pip-audit scan passed")
+            else:
+                print("✗ pip-audit scan found vulnerabilities")
+                all_passed = False
+        except Exception as e:
+            print(f"Warning: pip-audit not found. Error: {e}")
+            print("Add pip-audit to your dev dependencies in pyproject.toml")
+
+    return all_passed
 
 
 def main() -> int:

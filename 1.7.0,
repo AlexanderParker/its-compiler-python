@@ -1,7 +1,0 @@
-Found existing installation: pytest-cov 6.2.1
-Uninstalling pytest-cov-6.2.1:
-  Would remove:
-    c:\python311\lib\site-packages\pytest-cov.pth
-    c:\python311\lib\site-packages\pytest_cov-6.2.1.dist-info\*
-    c:\python311\lib\site-packages\pytest_cov\*
-Proceed (Y/n)?
