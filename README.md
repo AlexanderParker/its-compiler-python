@@ -449,6 +449,30 @@ pip install -e ".[dev]"
 python test_runner.py
 ```
 
+### For Maintainers
+
+**Publishing to PyPI:**
+
+This package is published to PyPI as `its-compiler`. Releases are currently managed manually:
+
+```bash
+# Build the package
+python -m build
+
+# Test upload to TestPyPI first (recommended)
+python -m twine upload --repository testpypi dist/*
+
+# Upload to production PyPI (requires appropriate credentials)
+python -m twine upload dist/*
+```
+
+**TestPyPI Testing:**
+
+```bash
+# Install from TestPyPI to verify the package
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ its-compiler
+```
+
 ## Related Projects
 
 - **[ITS Compiler CLI](https://github.com/AlexanderParker/its-compiler-cli-python)** - Command-line interface for the ITS Compiler
