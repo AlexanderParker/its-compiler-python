@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "its-compiler-python"
-version = "0.3.1"
+name = "its-compiler"
+version = "1.0.0"
 description = "Reference Python library for Instruction Template Specification (ITS) with comprehensive security features"
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "MIT" }
@@ -73,12 +73,11 @@ monitoring = []
 all = ["its-compiler-python[dev,security,monitoring]"]
 
 [project.urls]
-Homepage = "https://github.com/alexanderparker/its-compiler-python"
-Documentation = "https://its-compiler-python.readthedocs.io/"
-Repository = "https://github.com/alexanderparker/its-compiler-python.git"
-Changelog = "https://github.com/alexanderparker/its-compiler-python/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/alexanderparker/its-compiler-python/issues"
-"Security Policy" = "https://github.com/alexanderparker/its-compiler-python/security/policy"
+Homepage = "https://github.com/AlexanderParker/its-compiler-python"
+Documentation = "https://github.com/AlexanderParker/its-compiler-python"
+Repository = "https://github.com/AlexanderParker/its-compiler-python.git"
+Changelog = "https://github.com/AlexanderParker/its-compiler-python/commits/main/"
+"Bug Tracker" = "https://github.com/AlexanderParker/its-compiler-python/issues"
 
 [tool.setuptools]
 package-dir = { "" = "." }
