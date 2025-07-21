@@ -1,6 +1,6 @@
 # ITS Compiler Python
 
-[![PyPI version](https://badge.fury.io/py/its-compiler.svg)](https://badge.fury.io/py/its-compiler)
+[![PyPI version](https://img.shields.io/pypi/v/its-compiler.svg)](https://pypi.org/project/its-compiler/)
 [![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
 [![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
 
@@ -467,7 +467,6 @@ python -m twine upload dist/*
 ```
 
 **TestPyPI Testing:**
-
 ```bash
 # Install from TestPyPI to verify the package
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ its-compiler
