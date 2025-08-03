@@ -4,13 +4,11 @@ on:
     branches: [main, develop, refactor/*, feature/*, publish/*, bugfix/*, test/*, devops/*]
   pull_request:
     branches: [main, develop]
-
 permissions:
   contents: read
   checks: write
   pull-requests: write
   actions: read
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -46,7 +44,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.python-version }}
+          name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
           path: |
             htmlcov/
             coverage.xml
@@ -57,12 +55,11 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always() && steps.upload-results.outcome == 'failure'
         with:
-          name: test-results-${{ matrix.python-version }}
+          name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
           path: |
             htmlcov/
             coverage.xml
             .coverage
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +80,6 @@ jobs:
       - name: Run linting
         run: |
           python test_runner.py --lint
-
   security-scan:
     runs-on: ubuntu-latest
     steps:
