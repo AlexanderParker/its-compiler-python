@@ -2,6 +2,9 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/its-compiler.svg)](https://pypi.org/project/its-compiler/)
 [![Python](https://img.shields.io/pypi/pyversions/its-compiler.svg)](https://pypi.org/project/its-compiler/)
+[![Tests](https://img.shields.io/github/actions/workflow/status/AlexanderParker/its-compiler-python/test.yml?branch=main&label=tests)](https://github.com/AlexanderParker/its-compiler-python/actions/workflows/test.yml)
+[![Lint](https://img.shields.io/github/actions/workflow/status/AlexanderParker/its-compiler-python/test.yml?branch=main&label=lint)](https://github.com/AlexanderParker/its-compiler-python/actions/workflows/test.yml)
+[![Security](https://img.shields.io/github/actions/workflow/status/AlexanderParker/its-compiler-python/test.yml?branch=main&label=security)](https://github.com/AlexanderParker/its-compiler-python/actions/workflows/test.yml)
 [![License](https://img.shields.io/github/license/AlexanderParker/its-compiler-python.svg)](LICENSE)
 
 Reference Python compiler for the [Instruction Template Specification (ITS)](https://alexanderparker.github.io/instruction-template-specification/) that converts content templates with placeholders into structured AI prompts.
