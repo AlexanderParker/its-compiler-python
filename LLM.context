@@ -232,3 +232,584 @@ Write an introduction about AI safety that is professional in tone...
 - Contextual help for template syntax
 
 This compiler is designed for production use with comprehensive security controls while remaining flexible for development and integration scenarios.
+
+# Schema and Standard Types
+
+## Instruction Template Specification Schema (ITS v.1.0)
+
+The following is the base schema used by the compiler:
+
+```json
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+    "title": "Instruction Template Specification - Base Schema v1.0",
+    "description": "Base schema for instruction-generative content templates that compile to AI prompts",
+    "type": "object",
+    "required": [
+        "version",
+        "content"
+    ],
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema reference"
+        },
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+            "description": "Template format version (semantic versioning)"
+        },
+        "extends": {
+            "type": "array",
+            "description": "Schema references for instruction type definitions",
+            "items": {
+                "type": "string"
+            },
+            "default": [
+                "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json"
+            ]
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Template metadata and information",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Human-readable template name"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Template description and purpose"
+                },
+                "author": {
+                    "type": "string",
+                    "description": "Template author"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Searchable tags for categorisation"
+                },
+                "created": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Template creation timestamp"
+                },
+                "modified": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last modification timestamp"
+                }
+            }
+        },
+        "content": {
+            "type": "array",
+            "description": "Array of content elements forming the template",
+            "minItems": 1,
+            "items": {
+                "oneOf": [
+                    {
+                        "$ref": "#/$defs/textElement"
+                    },
+                    {
+                        "$ref": "#/$defs/instructionPlaceholder"
+                    },
+                    {
+                        "$ref": "#/$defs/conditionalElement"
+                    }
+                ],
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "text",
+                            "placeholder",
+                            "conditional"
+                        ]
+                    }
+                }
+            }
+        },
+        "customInstructionTypes": {
+            "type": "object",
+            "description": "Template-specific custom instruction type definitions",
+            "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_-]*$": {
+                    "$ref": "#/$defs/instructionTypeDefinition"
+                }
+            }
+        },
+        "compilerConfig": {
+            "type": "object",
+            "description": "Configuration for template compilation",
+            "properties": {
+                "systemPrompt": {
+                    "type": "string",
+                    "description": "Base system prompt for the AI",
+                    "default": "You are an AI assistant that fills in content templates. Follow the instructions exactly and replace each placeholder with appropriate content based on the user prompts provided. Respond only with the transformed content."
+                },
+                "instructionWrapper": {
+                    "type": "string",
+                    "description": "Format for wrapping instruction placeholders",
+                    "default": "<<{instruction}>>"
+                },
+                "userContentWrapper": {
+                    "type": "string",
+                    "description": "Format for wrapping user content within instructions to prevent parsing conflicts",
+                    "default": "([{<{content}>}])"
+                },
+                "processingInstructions": {
+                    "type": "array",
+                    "description": "Detailed instructions for how the AI should process the template",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "Replace each placeholder marked with << >> with generated content",
+                        "The user's content request is wrapped in ([{< >}]) to distinguish it from instructions",
+                        "Follow the format requirements specified after each user prompt",
+                        "Maintain the existing structure and formatting of the template",
+                        "Only replace the placeholders - do not modify any other text",
+                        "Generate content that matches the tone and style requested",
+                        "Respond only with the transformed content - do not include any explanations or additional text"
+                    ]
+                },
+                "targetModel": {
+                    "type": "string",
+                    "enum": [
+                        "gpt-4",
+                        "claude",
+                        "gemini",
+                        "generic"
+                    ],
+                    "description": "Target AI model for optimised output",
+                    "default": "generic"
+                }
+            }
+        },
+        "variables": {
+            "type": "object",
+            "description": "Template-level variables for reuse",
+            "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9_-]*$": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "object"
+                        },
+                        {
+                            "type": "array"
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "$defs": {
+        "textElement": {
+            "type": "object",
+            "description": "Static text content",
+            "required": [
+                "type",
+                "text"
+            ],
+            "properties": {
+                "type": {
+                    "const": "text"
+                },
+                "text": {
+                    "type": "string",
+                    "description": "The text content"
+                },
+                "id": {
+                    "type": "string",
+                    "description": "Optional element identifier"
+                }
+            },
+            "additionalProperties": false
+        },
+        "instructionPlaceholder": {
+            "type": "object",
+            "description": "Placeholder that becomes an AI instruction",
+            "required": [
+                "type",
+                "instructionType",
+                "config"
+            ],
+            "properties": {
+                "type": {
+                    "const": "placeholder"
+                },
+                "id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                    "description": "Unique placeholder identifier"
+                },
+                "instructionType": {
+                    "type": "string",
+                    "description": "Type of instruction to generate (must be defined in extended schemas or customInstructionTypes)"
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Configuration for this placeholder",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "Content description for the AI"
+                        },
+                        "displayName": {
+                            "type": "string",
+                            "description": "Human-readable name for the placeholder"
+                        }
+                    },
+                    "required": [
+                        "description"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "conditionalElement": {
+            "type": "object",
+            "description": "Conditional content based on variables",
+            "required": [
+                "type",
+                "condition",
+                "content"
+            ],
+            "properties": {
+                "type": {
+                    "const": "conditional"
+                },
+                "condition": {
+                    "type": "string",
+                    "description": "Condition expression to evaluate"
+                },
+                "content": {
+                    "type": "array",
+                    "description": "Content to include if condition is true",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/textElement"
+                            },
+                            {
+                                "$ref": "#/$defs/instructionPlaceholder"
+                            },
+                            {
+                                "$ref": "#/$defs/conditionalElement"
+                            }
+                        ]
+                    }
+                },
+                "else": {
+                    "type": "array",
+                    "description": "Content to include if condition is false",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/textElement"
+                            },
+                            {
+                                "$ref": "#/$defs/instructionPlaceholder"
+                            },
+                            {
+                                "$ref": "#/$defs/conditionalElement"
+                            }
+                        ]
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "instructionTypeDefinition": {
+            "type": "object",
+            "description": "Definition of a custom instruction type",
+            "required": [
+                "template"
+            ],
+            "properties": {
+                "template": {
+                    "type": "string",
+                    "description": "Template for generating the instruction"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Description of what this instruction type does"
+                },
+                "configSchema": {
+                    "type": "object",
+                    "description": "JSON Schema for validating config objects"
+                },
+                "examples": {
+                    "type": "array",
+                    "description": "Example configurations and outputs",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "config": {
+                                "type": "object",
+                                "description": "Example configuration"
+                            },
+                            "output": {
+                                "type": "string",
+                                "description": "Expected instruction output"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Standard Types:
+
+The following is the standard types defintion supported by the compiler:
+
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-type-extension-schema-v1.json",
+  "$id": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-standard-types-v1.json",
+  "title": "Instruction Template Specification - Standard Types v1.0",
+  "description": "Standard library of instruction types for content generation",
+  "version": "1.0.0",
+  "instructionTypes": {
+    "title": {
+      "template": "<<Replace this placeholder with a title using this user prompt: ([{<{description}>}]). Format requirements: Create a {style} title that is {length} in length.>>",
+      "description": "Generates titles and headlines with customizable style and length",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "style": {
+            "type": "string",
+            "enum": [
+              "headline",
+              "descriptive",
+              "catchy",
+              "formal",
+              "creative"
+            ],
+            "default": "headline"
+          },
+          "length": {
+            "type": "string",
+            "enum": [
+              "short",
+              "medium",
+              "long"
+            ],
+            "default": "short"
+          }
+        }
+      }
+    },
+    "list": {
+      "template": "<<Replace this placeholder with a list using this user prompt: ([{<{description}>}]). Format requirements: Use {format} formatting with each item on a new line.>>",
+      "description": "Generates formatted lists with customizable formatting and optional item counts",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "bullet_points",
+              "numbered",
+              "dashes",
+              "plain"
+            ],
+            "default": "bullet_points"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "If specified, the exact number of items to generate"
+          }
+        }
+      },
+      "examples": [
+        {
+          "config": {
+            "description": "list 5 different citrus fruits",
+            "format": "bullet_points",
+            "itemCount": 5
+          },
+          "output": "<<Replace this placeholder with a list using this user prompt: ([{<list 5 different citrus fruits>}]). Format requirements: Use bullet_points formatting with each item on a new line.>>"
+        }
+      ]
+    },
+    "paragraph": {
+      "template": "<<Replace this placeholder with text using this user prompt: ([{<{description}>}]). Format requirements: Use {tone} tone and {length} length (short=1-2 sentences, medium=2-4 sentences, long=4+ sentences).>>",
+      "description": "Generates paragraphs of text with customizable tone and length",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "tone": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "casual",
+              "enthusiastic",
+              "professional",
+              "friendly"
+            ],
+            "default": "professional"
+          },
+          "length": {
+            "type": "string",
+            "enum": [
+              "short",
+              "medium",
+              "long"
+            ],
+            "default": "medium"
+          }
+        }
+      }
+    },
+    "table": {
+      "template": "<<Replace this placeholder with a table using this user prompt: ([{<{description}>}]). Format requirements: Use {format} format.>>",
+      "description": "Generates tables with customizable formatting and optional dimensions",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "markdown",
+              "plain_text",
+              "csv"
+            ],
+            "default": "markdown"
+          },
+          "columns": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 10,
+            "description": "If specified, the number of columns"
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "If specified, the number of rows"
+          }
+        }
+      }
+    },
+    "code_block": {
+      "template": "<<Replace this placeholder with a code block using this user prompt: ([{<{description}>}]). Format requirements: Use {language} language with proper syntax highlighting formatting.>>",
+      "description": "Generates code examples and snippets with syntax highlighting",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "enum": [
+              "javascript",
+              "python",
+              "java",
+              "html",
+              "css",
+              "sql",
+              "bash",
+              "generic"
+            ],
+            "default": "generic"
+          }
+        }
+      }
+    },
+    "image_description": {
+      "template": "<<Replace this placeholder with an image description using this user prompt: ([{<{description}>}]). Format requirements: Use {style} style (photorealistic=detailed realistic description, artistic=creative artistic description, technical=precise technical description).>>",
+      "description": "Generates descriptive text for images with different stylistic approaches",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "style": {
+            "type": "string",
+            "enum": [
+              "photorealistic",
+              "artistic",
+              "technical"
+            ],
+            "default": "photorealistic"
+          }
+        }
+      }
+    },
+    "dialogue": {
+      "template": "<<Replace this placeholder with a dialogue using this user prompt: ([{<{description}>}]). Format requirements: Create a conversation between {participantCount} people using {style} style. Format each line as: Person Name: \"Dialogue\">>",
+      "description": "Generates conversational dialogue between multiple participants",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "participantCount": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 6,
+            "default": 2
+          },
+          "style": {
+            "type": "string",
+            "enum": [
+              "casual",
+              "formal",
+              "dramatic",
+              "humorous"
+            ],
+            "default": "casual"
+          }
+        }
+      }
+    },
+    "quote": {
+      "template": "<<Replace this placeholder with a quote using this user prompt: ([{<{description}>}]). Format requirements: Provide a relevant quote with attribution.>>",
+      "description": "Generates relevant quotes with attribution",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "includeAttribution": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to include attribution with the quote"
+          }
+        }
+      }
+    },
+    "summary": {
+      "template": "<<Replace this placeholder with a summary using this user prompt: ([{<{description}>}]). Format requirements: Use {length} length (brief=1-2 sentences, standard=3-5 sentences, detailed=6+ sentences).>>",
+      "description": "Generates summaries of varying lengths and detail",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "length": {
+            "type": "string",
+            "enum": [
+              "brief",
+              "standard",
+              "detailed"
+            ],
+            "default": "standard"
+          }
+        }
+      }
+    }
+  }
+}
