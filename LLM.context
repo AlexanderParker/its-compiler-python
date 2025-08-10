@@ -1,0 +1,234 @@
+# ITS Compiler Context for LLM Development
+
+## Overview
+
+The ITS (Instruction Template Specification) Compiler is a Python library that converts structured JSON templates into AI prompts. It processes templates containing text, placeholders, variables, and conditionals to generate structured prompts for language models.
+
+## Core Architecture
+
+### Main Components
+
+1. **ITSCompiler** (`its_compiler/core/compiler.py`)
+   - Main entry point for compilation
+   - Handles template loading, validation, and processing
+   - Manages security controls and caching
+   - Returns `CompilationResult` objects
+
+2. **Template Structure** (JSON format)
+   ```json
+   {
+     "version": "1.0.0",
+     "extends": ["schema-url"],
+     "variables": { "key": "value" },
+     "content": [
+       { "type": "text", "text": "static text" },
+       { "type": "placeholder", "instructionType": "title", "config": {...} },
+       { "type": "conditional", "condition": "expression", "content": [...] }
+     ]
+   }
+   ```
+
+3. **Security System** (`its_compiler/security/`)
+   - **AllowlistManager**: Interactive schema approval system
+   - **URLValidator**: SSRF protection and domain validation
+   - **InputValidator**: Template content sanitisation
+   - **ExpressionSanitiser**: Safe conditional expression evaluation
+
+### Key Data Models
+
+- **CompilationResult**: Contains compiled prompt, variables, warnings, security metrics
+- **ValidationResult**: Template validation status with errors/warnings
+- **SecurityConfig**: Comprehensive security settings
+- **ITSConfig**: Compiler configuration options
+
+## Template Processing Flow
+
+1. **Load Template** → JSON file or dictionary
+2. **Security Validation** → Input sanitisation, URL validation
+3. **Schema Resolution** → Load extended schemas (with allowlist checking)
+4. **Variable Processing** → Resolve `${variable}` references
+5. **Conditional Evaluation** → Process conditional blocks with safe AST parsing
+6. **Instruction Generation** → Replace placeholders with formatted instructions
+7. **Prompt Assembly** → Combine into final structured prompt
+
+## Variable System
+
+**Syntax**: `${variableName}`, `${object.property}`, `${array[0]}`, `${array.length}`
+
+**Features**:
+- Object property access: `${user.name}`
+- Array indexing: `${items[0]}`, `${items[-1]}`
+- Array length: `${features.length}`
+- Arrays as lists: `${tags}` → "react, typescript, ui"
+
+**Security**:
+- No variable-to-variable references
+- Safe property chains with depth limits
+- Sanitised output values
+
+## Conditional System
+
+**Operators**: `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `in`, `not in`
+
+**Examples**:
+```json
+{
+  "type": "conditional",
+  "condition": "showAdvanced == true and userLevel > 2",
+  "content": [...],
+  "else": [...]
+}
+```
+
+**Security**: AST-based evaluation with restricted node types, no function calls or imports.
+
+## Instruction Types
+
+Templates reference instruction types that define how placeholders become prompts:
+
+```json
+{
+  "instructionType": "paragraph",
+  "config": {
+    "description": "Write about ${topic}",
+    "tone": "professional",
+    "length": "medium"
+  }
+}
+```
+
+Standard types include: `title`, `paragraph`, `list`, `table`, `code`, `summary`, etc.
+
+## Security Model
+
+**Production Defaults**:
+- HTTPS-only schema fetching
+- Interactive allowlist for unknown schemas
+- Private network access blocked
+- Input validation and sanitisation enabled
+- Expression evaluation sandboxed
+
+**Development Mode**:
+- HTTP allowed for local schemas
+- Localhost access permitted
+- Relaxed validation limits
+
+## API Usage Patterns
+
+### Basic Compilation
+```python
+from its_compiler import ITSCompiler
+
+compiler = ITSCompiler()
+result = compiler.compile_file('template.json')
+print(result.prompt)
+```
+
+### With Variables
+```python
+variables = {"topic": "AI safety", "includeExamples": True}
+result = compiler.compile(template_dict, variables=variables)
+```
+
+### Error Handling
+```python
+try:
+    result = compiler.compile_file('template.json')
+except ITSValidationError as e:
+    # Template structure issues
+    print(f"Validation failed: {e.validation_errors}")
+except ITSCompilationError as e:
+    # Processing failures
+    print(f"Compilation failed: {e}")
+except ITSSecurityError as e:
+    # Security violations
+    print(f"Security error: {e.get_user_message()}")
+```
+
+### Configuration
+```python
+from its_compiler.security import SecurityConfig
+
+security_config = SecurityConfig.for_development()
+security_config.allowlist.interactive_mode = False
+
+compiler = ITSCompiler(security_config=security_config)
+```
+
+## Output Format
+
+The compiler generates structured prompts with:
+1. **Introduction**: System instructions for the AI
+2. **Instructions**: Step-by-step processing rules
+3. **Template**: Content with `<<placeholder>>` markers for the AI to replace
+
+Example output:
+```
+INTRODUCTION
+
+You are an AI assistant that fills in content templates...
+
+INSTRUCTIONS
+
+1. Replace each placeholder marked with << >> with generated content
+2. The user's content request is wrapped in ([{< >}]) to distinguish it from instructions
+...
+
+TEMPLATE
+
+# <<Replace this placeholder with: ([{<Create a title about AI safety>}])>>
+
+Write an introduction about AI safety that is professional in tone...
+```
+
+## Common Integration Patterns
+
+### React/TypeScript Integration
+- Use as compilation backend for WYSIWYG editors
+- Real-time template validation and preview
+- Variable autocomplete from template context
+- Security-aware schema management
+
+### Template Builder Tools
+- Visual drag-and-drop template construction
+- Live variable substitution preview
+- Conditional logic visual editor
+- Schema browser and instruction type picker
+
+### Content Management Integration
+- Template versioning and storage
+- Variable preset management
+- Batch compilation workflows
+- Integration with AI content generation APIs
+
+## Error Types to Handle
+
+- **ITSValidationError**: Template structure/schema issues
+- **ITSCompilationError**: Processing failures
+- **ITSVariableError**: Undefined variables or access issues
+- **ITSConditionalError**: Expression evaluation problems
+- **ITSSecurityError**: Security policy violations
+- **ITSSchemaError**: Schema loading/network issues
+
+## Development Considerations
+
+**For WYSIWYG Editors**:
+- Templates are JSON structures, not markup
+- Real-time validation as users edit
+- Variable suggestions from current template context
+- Preview requires full compilation
+- Schema allowlist management in UI
+
+**Performance**:
+- Schema caching reduces network requests
+- Validation can be expensive for large templates
+- Consider debouncing real-time validation
+- Security checks add overhead but are essential
+
+**User Experience**:
+- Progressive disclosure of advanced features
+- Clear error messages with suggestions
+- Visual indicators for validation status
+- Contextual help for template syntax
+
+This compiler is designed for production use with comprehensive security controls while remaining flexible for development and integration scenarios.
