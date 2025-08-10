@@ -1,10 +1,76 @@
-# .blobify configuration (https://github.com/AlexanderParker/blobify) to include some files it usually excludes by default
+# .blobify configuration for ITS Compiler Python library
+# This Python library provides secure template compilation for AI prompt generation
 
-# include specific configuration files
-+.pre-commit-config.yaml
+# Default context - complete codebase for comprehensive analysis
+@copy-to-clipboard=true
+@show-excluded=false
+@output-line-numbers=false
+@output-index=false
+@output-metadata=false
+## Complete ITS Compiler codebase including core library, security modules, comprehensive tests, and documentation
 
-# include github automations
+# Base context that excludes everything - used for inheritance
+[nothing:default]
+-**
+## Empty base context for selective inclusion
+
+# Core library code only - main implementation without tests
+[code:nothing]
++its_compiler/**
++test_runner.py
++README.md
++SECURITY.md
+## Core ITS Compiler library code including security modules, compiler logic, and essential documentation
+
+# Test suite only - comprehensive test coverage
+[tests:nothing]
++test/**
++test_runner.py
+## Complete test suite including unit tests, integration tests, and security tests for the ITS Compiler
+
+# CI/CD and automation files
+[cicd:nothing]
 +.github/**
-
-# include project configuration
++test_runner.py
++*.yml
++*.yaml
 +pyproject.toml
++setup.py
++requirements*.txt
++Dockerfile*
++docker-compose*.yml
++.pre-commit-config.yaml
+## CI/CD pipeline configuration, test runners, and project automation files
+
+# Documentation only - user and developer guides
+[docs:nothing]
++README.md
++SECURITY.md
++docs/**
++*.md
++LICENSE*
+## Project documentation including security policy, usage guides, and API documentation
+
+# Security-focused context - security modules and related tests
+[security:nothing]
++its_compiler/security/**
++test/security/**
++SECURITY.md
+## Security-focused components including validation, sanitisation, allowlist management, and security tests
+
+# Core compiler only - main compilation logic without security
+[compiler:nothing]
++its_compiler/core/**
++test/core/**
++its_compiler/__init__.py
+## Core compiler functionality including template processing, variable resolution, and conditional evaluation
+
+# Configuration and schema files
+[config:nothing]
++its_compiler/config/**
++*.json
++*.yml
++*.yaml
++pyproject.toml
++setup.py
+## Configuration files, schemas, and project setup files
