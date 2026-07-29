@@ -88,6 +88,11 @@ class ExpressionSanitiser:
     def sanitise_expression(self, expression: str, variables: Dict[str, Any]) -> str:
         """Sanitise and validate a conditional expression."""
 
+        from ..core.expression_utils import translate_condition_operators
+
+        # Rewrite the specification's &&, || and ! operators for Python parsing
+        expression = translate_condition_operators(expression)
+
         # Basic length and structure checks
         self._validate_basic_structure(expression)
 
