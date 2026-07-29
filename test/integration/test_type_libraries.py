@@ -56,7 +56,9 @@ class TestTypeLibrarySecurity:
         security.allowlist.interactive_mode = False
         compiler = ITSCompiler(security_config=security)
 
-        with pytest.raises(ITSCompilationError, match="blocked by security policy"):
+        # The file schema is refused, so its types never load and the
+        # placeholder cannot resolve
+        with pytest.raises(ITSCompilationError, match="Unknown instruction type"):
             compiler.compile_file(str(FIXTURES / "json-types-template.json"))
 
     def test_relative_extends_accepted_by_input_validation(self) -> None:
