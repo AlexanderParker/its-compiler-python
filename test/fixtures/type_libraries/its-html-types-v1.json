@@ -1,0 +1,103 @@
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-type-extension-schema-v1.json",
+  "$id": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-html-types-v1.json",
+  "title": "Instruction Template Specification - HTML Types v1.0",
+  "description": "Type library for generating raw HTML fragments that slot into surrounding static markup; never full documents",
+  "version": "1.0.0",
+  "instructionTypes": {
+    "html_fragment": {
+      "template": "<<Replace this placeholder with an HTML fragment using this user prompt: ([{<{description}>}]). Format requirements: Produce an HTML fragment consisting of one container element and its contents. Do not include a doctype or html, head or body tags. Include class attributes on elements: {includeClasses}. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates an HTML fragment with a single container element, with an optional preferred root element",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "rootElement": {
+            "type": "string",
+            "description": "If specified, the tag name to use for the fragment's container element, for example div or article"
+          },
+          "includeClasses": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "html_table": {
+      "template": "<<Replace this placeholder with an HTML table using this user prompt: ([{<{description}>}]). Format requirements: Produce a complete table element. Include a header row: {includeHeader}. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates a complete HTML table with optional dimensions and a configurable header row",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 10,
+            "description": "If specified, the number of columns"
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "If specified, the number of rows"
+          },
+          "includeHeader": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "config": {
+            "description": "A comparison of three broadband plans by speed, price and contract length",
+            "includeHeader": true
+          },
+          "output": "<<Replace this placeholder with an HTML table using this user prompt: ([{<A comparison of three broadband plans by speed, price and contract length>}]). Format requirements: Produce a complete table element. Include a header row: true. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>"
+        }
+      ]
+    },
+    "html_list": {
+      "template": "<<Replace this placeholder with an HTML list using this user prompt: ([{<{description}>}]). Format requirements: Produce one {listType} list element (unordered=ul, ordered=ol, description=dl). Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates an HTML list element of a configurable list type with an optional item count",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "listType": {
+            "type": "string",
+            "enum": [
+              "unordered",
+              "ordered",
+              "description"
+            ],
+            "default": "unordered"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "If specified, the exact number of items to generate"
+          }
+        }
+      }
+    },
+    "html_form_fields": {
+      "template": "<<Replace this placeholder with HTML form fields using this user prompt: ([{<{description}>}]). Format requirements: Produce a set of form field controls without a form wrapper element. Include a label element for each control: {includeLabels}. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates form controls with labels, without the form wrapper element",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "fieldCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 15,
+            "description": "If specified, the exact number of form fields to generate"
+          },
+          "includeLabels": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  }
+}

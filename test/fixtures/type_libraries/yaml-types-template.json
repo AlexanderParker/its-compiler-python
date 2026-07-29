@@ -1,0 +1,28 @@
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+  "version": "1.0.0",
+  "extends": ["./its-yaml-types-v1.json"],
+  "variables": {
+    "projectName": "example-storefront"
+  },
+  "content": [
+    { "type": "text", "text": "# CI configuration\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "yaml_document",
+      "config": {
+        "description": "A CI pipeline for ${projectName}",
+        "indentSize": 2,
+        "useAnchors": false
+      }
+    },
+    { "type": "text", "text": "\nDefaults only:\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "yaml_block",
+      "config": {
+        "description": "A deploy job for ${projectName}"
+      }
+    }
+  ]
+}
