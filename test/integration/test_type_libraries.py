@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from its_compiler import ITSCompiler
+from its_compiler import ITSCompilationError, ITSCompiler
 from its_compiler.security import SecurityConfig
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "type_libraries"
@@ -56,7 +56,7 @@ class TestTypeLibrarySecurity:
         security.allowlist.interactive_mode = False
         compiler = ITSCompiler(security_config=security)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ITSCompilationError, match="blocked by security policy"):
             compiler.compile_file(str(FIXTURES / "json-types-template.json"))
 
     def test_relative_extends_accepted_by_input_validation(self) -> None:

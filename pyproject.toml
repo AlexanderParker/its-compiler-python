@@ -180,6 +180,8 @@ extend-ignore = [
     "E203", # Whitespace before ':' (conflicts with black)
     "W503", # Line break before binary operator (conflicts with black)
     "E501", # Line too long (handled by black)
+    "B042", # Exception __init__ kwargs; flagged across existing exception classes by newer bugbear releases
+
     "D100",
     "D101",
     "D102",
