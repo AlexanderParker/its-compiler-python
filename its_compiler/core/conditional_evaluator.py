@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from ..security import ExpressionSanitiser, SecurityConfig
 from .exceptions import ITSConditionalError
+from .expression_utils import translate_condition_operators
 
 
 class ConditionalEvaluator:
@@ -78,7 +79,7 @@ class ConditionalEvaluator:
                     condition=condition,
                 )
         else:
-            sanitised_condition = condition
+            sanitised_condition = translate_condition_operators(condition)
 
         try:
             # Convert single quotes to double quotes for proper Python parsing

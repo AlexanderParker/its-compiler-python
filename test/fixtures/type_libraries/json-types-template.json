@@ -1,0 +1,43 @@
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+  "version": "1.0.0",
+  "extends": ["./its-json-types-v1.json"],
+  "variables": {
+    "resourceName": "orders",
+    "includeErrorExample": true
+  },
+  "content": [
+    { "type": "text", "text": "Example response:\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "json_object",
+      "config": {
+        "description": "A ${resourceName} API response object",
+        "indent": "two_spaces"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "includeErrorExample == true",
+      "content": [
+        { "type": "text", "text": "\nError response:\n" },
+        {
+          "type": "placeholder",
+          "instructionType": "json_object",
+          "config": {
+            "description": "A not_found error object for ${resourceName}",
+            "indent": "compact"
+          }
+        }
+      ]
+    },
+    { "type": "text", "text": "\nDefaults only:\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "json_schema",
+      "config": {
+        "description": "A schema for the response above"
+      }
+    }
+  ]
+}

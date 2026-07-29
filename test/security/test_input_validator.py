@@ -495,17 +495,28 @@ class TestInputValidator:
 
     def test_invalid_extension_url(self, input_validator: InputValidator) -> None:
         """Test invalid extension URL detection."""
+        for bad_url in ["ftp://example.com/schema.json", "data:application/json;base64,e30=", "//example.com/x.json"]:
+            template = {
+                "version": "1.0.0",
+                "content": [{"type": "text", "text": "test"}],
+                "extends": [bad_url],
+            }
+
+            with pytest.raises(InputSecurityError) as exc_info:
+                input_validator.validate_template(template)
+
+            assert "Invalid extension URL" in str(exc_info.value)
+            assert exc_info.value.reason == "invalid_extension_url"
+
+    def test_relative_extension_reference_allowed(self, input_validator: InputValidator) -> None:
+        """Scheme-less extends entries are relative references and pass input validation."""
         template = {
             "version": "1.0.0",
             "content": [{"type": "text", "text": "test"}],
-            "extends": ["not-a-url"],
+            "extends": ["./local-types.json", "../shared/types.json", "types/custom.json"],
         }
 
-        with pytest.raises(InputSecurityError) as exc_info:
-            input_validator.validate_template(template)
-
-        assert "Invalid extension URL" in str(exc_info.value)
-        assert exc_info.value.reason == "invalid_extension_url"
+        input_validator.validate_template(template)
 
     def test_custom_instruction_types_validation(self, input_validator: InputValidator, template_fetcher: Any) -> None:
         """Test custom instruction types validation using repository templates."""

@@ -363,9 +363,13 @@ class InputValidator:
                     "invalid_extension_type",
                 )
 
-            # Basic URL validation (detailed validation done by URL validator)
+            # Basic URL validation (detailed validation done by URL validator).
+            # Scheme-less references are relative to the template and are
+            # validated after resolution; explicit non-http schemes and
+            # protocol-relative URLs are rejected here.
             if not re.match(r"^https?://", url):
-                self._security_violation(f"Invalid extension URL: {url}", "extends", "invalid_extension_url")
+                if re.match(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:", url) or url.startswith("//"):
+                    self._security_violation(f"Invalid extension URL: {url}", "extends", "invalid_extension_url")
 
     def _validate_custom_types(self, custom_types: Dict[str, Any]) -> None:
         """Validate custom instruction types."""

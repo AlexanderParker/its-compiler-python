@@ -150,6 +150,21 @@ TEMPLATE
 <<Replace this placeholder with a list using this user prompt: ([{<List 4 examples of sustainable technology>}]). Format requirements: Use bullet_points formatting with each item on a new line. Create exactly 4 items.>>
 ```
 
+## Published type libraries
+
+Templates import instruction types through `extends`. The specification publishes these libraries under `https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/`, all trusted by the compiler's built-in allowlist patterns:
+
+| Library        | File                         | Purpose                                                                       |
+| -------------- | ---------------------------- | ----------------------------------------------------------------------------- |
+| Standard Types | `its-standard-types-v1.json` | Prose content: titles, lists, paragraphs, tables, dialogue and more           |
+| JSON Types     | `its-json-types-v1.json`     | Raw JSON output: values, objects, arrays, JSON Schema documents               |
+| HTML Types     | `its-html-types-v1.json`     | Raw HTML fragments: containers, tables, lists, form fields (never full pages) |
+| YAML Types     | `its-yaml-types-v1.json`     | Raw YAML output: blocks, complete documents, markdown frontmatter             |
+
+The structured-output libraries (JSON, HTML, YAML) instruct the model to emit raw output with no markdown code fences and no commentary. If a placeholder omits a config property, defaults declared in the library's `configSchema` are substituted into the compiled instruction.
+
+`extends` entries may also be local file paths relative to the template, useful when developing unpublished type libraries. This is disabled by default; enable it with `SecurityConfig.allow_local_schemas()` or `ITS_ALLOW_LOCAL_SCHEMAS=true`.
+
 ## Python Library Usage
 
 ### Basic Usage
@@ -227,7 +242,7 @@ compiler = ITSCompiler(config=config, security_config=security_config)
 **Conditional operators:**
 
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- Boolean: `and`, `or`, `not`
+- Boolean: `&&`, `||`, `!` (the specification's operators), with `and`, `or`, `not` accepted as equivalents
 - Membership: `in`, `not in`
 
 ## Configuration
@@ -237,6 +252,7 @@ compiler = ITSCompiler(config=config, security_config=security_config)
 **Network Security:**
 
 - `ITS_ALLOW_HTTP` - Allow HTTP URLs (default: false)
+- `ITS_ALLOW_LOCAL_SCHEMAS` - Allow extends to resolve local file paths relative to the template (default: false)
 - `ITS_BLOCK_LOCALHOST` - Block localhost access (default: true)
 - `ITS_REQUEST_TIMEOUT` - Network timeout in seconds (default: 10)
 - `ITS_DOMAIN_ALLOWLIST` - Comma-separated allowed domains

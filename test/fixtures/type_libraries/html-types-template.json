@@ -1,0 +1,29 @@
+{
+  "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+  "version": "1.0.0",
+  "extends": ["./its-html-types-v1.json"],
+  "variables": {
+    "productName": "Solar Garden Lantern"
+  },
+  "content": [
+    { "type": "text", "text": "<section>\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "html_fragment",
+      "config": {
+        "description": "A summary paragraph for the ${productName}",
+        "rootElement": "p",
+        "includeClasses": true
+      }
+    },
+    { "type": "text", "text": "\nDefaults only:\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "html_list",
+      "config": {
+        "description": "Key features of the ${productName}"
+      }
+    },
+    { "type": "text", "text": "\n</section>" }
+  ]
+}

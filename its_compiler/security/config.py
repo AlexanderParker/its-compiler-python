@@ -180,6 +180,9 @@ class SecurityConfig:
             config.processing.max_nesting_depth = int(max_depth)
 
         # Feature toggles
+        if os.getenv("ITS_ALLOW_LOCAL_SCHEMAS") == "true":
+            config.allow_local_schemas()
+
         if os.getenv("ITS_DISABLE_ALLOWLIST") == "true":
             config.enable_allowlist = False
 
@@ -190,6 +193,16 @@ class SecurityConfig:
             config.enable_expression_sanitisation = False
 
         return config
+
+    def allow_local_schemas(self) -> None:
+        """Permit extends to resolve local file paths relative to the template.
+
+        Local schemas are disabled by default; enable via this method or the
+        ITS_ALLOW_LOCAL_SCHEMAS environment variable when developing
+        unpublished type libraries.
+        """
+        self.network.allowed_protocols = set(self.network.allowed_protocols) | {"file"}
+        self.network.block_file_urls = False
 
     @classmethod
     def for_development(cls) -> "SecurityConfig":

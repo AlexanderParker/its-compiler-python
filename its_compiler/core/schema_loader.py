@@ -53,8 +53,11 @@ class SchemaLoader:
         # Security validation
         self._validate_schema_security(schema_url)
 
-        # Check allowlist
-        if self.allowlist_manager and not self.allowlist_manager.is_allowed(schema_url):
+        # Check allowlist. Local file schemas are exempt: they only reach this
+        # point when file access is explicitly enabled, and the allowlist
+        # exists to gate remote schema origins.
+        is_local_file = schema_url.startswith("file:")
+        if not is_local_file and self.allowlist_manager and not self.allowlist_manager.is_allowed(schema_url):
             raise ITSSchemaError(
                 f"Schema not in allowlist and user denied access: {schema_url}",
                 schema_url=schema_url,
@@ -81,7 +84,7 @@ class SchemaLoader:
         self._validate_schema_structure(schema, schema_url)
 
         # Update allowlist fingerprint
-        if self.allowlist_manager:
+        if self.allowlist_manager and not is_local_file:
             self.allowlist_manager.update_fingerprint(schema_url, json.dumps(schema, sort_keys=True))
 
         # Cache if enabled
