@@ -222,11 +222,23 @@ class InstructionTypeDefinition:
         # pattern ([{<{description}>}]), so we just substitute the description directly
         formatted_template = formatted_template.replace("{description}", description)
 
-        # Replace other config template_variables
+        # Merge configSchema defaults beneath the supplied config so template
+        # strings render from defaults when a property is omitted
+        substitutions: Dict[str, Any] = {}
+        schema_properties = (self.config_schema or {}).get("properties", {})
+        if isinstance(schema_properties, dict):
+            for key, prop_schema in schema_properties.items():
+                if isinstance(prop_schema, dict) and "default" in prop_schema:
+                    substitutions[key] = prop_schema["default"]
         for key, value in config.items():
             if key != "description":
-                template_variable = "{" + key + "}"
-                formatted_template = formatted_template.replace(template_variable, str(value))
+                substitutions[key] = value
+
+        for key, value in substitutions.items():
+            template_variable = "{" + key + "}"
+            # Booleans render JSON-style for cross-compiler consistency
+            rendered = str(value).lower() if isinstance(value, bool) else str(value)
+            formatted_template = formatted_template.replace(template_variable, rendered)
 
         # Check for any remaining unreplaced template_variables, but exclude patterns that are
         # part of the user content wrapper (like {<content>} or {<description with spaces>})
