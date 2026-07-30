@@ -27,7 +27,7 @@ class VariableProcessor:
 
         # Processing limits
         self.max_recursion_depth = self.security_config.processing.max_nesting_depth
-        self.max_variable_references = self.security_config.processing.max_variable_references
+        self.max_variable_count = self.security_config.processing.max_variable_count
         self.max_variable_name_length = self.security_config.processing.max_variable_name_length
 
     def process_content(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -59,10 +59,10 @@ class VariableProcessor:
         if not isinstance(variables, dict):
             raise ITSVariableError("Variables must be a dictionary")
 
-        # Check total variable count
+        # Check total variable count (nested values included)
         total_vars = self._count_total_variables(variables)
-        if total_vars > self.max_variable_references:
-            raise ITSVariableError(f"Too many variables: {total_vars} (max: {self.max_variable_references})")
+        if total_vars > self.max_variable_count:
+            raise ITSVariableError(f"Too many variables: {total_vars} (max: {self.max_variable_count})")
 
         # Validate each variable recursively
         self._validate_variable_object(variables, "", 0)
@@ -97,7 +97,7 @@ class VariableProcessor:
                 self._validate_variable_object(value, f"{path}.{key}" if path else key, depth + 1)
 
         elif isinstance(obj, list):
-            if len(obj) > 1000:  # Reasonable limit for arrays
+            if len(obj) > self.security_config.processing.max_variable_array_items:
                 raise ITSVariableError(f"Array too large at {path}: {len(obj)} items")
 
             for i, item in enumerate(obj):
@@ -145,7 +145,7 @@ class VariableProcessor:
 
         if isinstance(value, str):
             # Check string length
-            if len(value) > 10000:  # Reasonable limit
+            if len(value) > self.security_config.processing.max_text_length:
                 raise ITSVariableError(f"String value too long at {path}: {len(value)} chars")
 
             # Check for dangerous content patterns
@@ -279,8 +279,9 @@ class VariableProcessor:
         else:
             # Convert other types to string with length limit
             str_value = str(value)
-            if len(str_value) > 1000:
-                str_value = str_value[:1000] + "... [TRUNCATED]"
+            max_text_length = self.security_config.processing.max_text_length
+            if len(str_value) > max_text_length:
+                str_value = str_value[:max_text_length] + "... [TRUNCATED]"
             return str_value
 
     def resolve_variable_reference(self, var_ref: str, variables: Dict[str, Any]) -> Any:
@@ -410,7 +411,7 @@ class VariableProcessor:
         """Get security status for variable processing."""
         return {
             "input_validation_enabled": self.input_validator is not None,
-            "max_variable_references": self.max_variable_references,
+            "max_variable_count": self.max_variable_count,
             "max_variable_name_length": self.max_variable_name_length,
             "max_recursion_depth": self.max_recursion_depth,
         }
