@@ -105,6 +105,64 @@ class TestReferenceDataSections:
         assert "REFERENCE DATA" not in prompt
 
 
+class TestDataLimits:
+    def test_caps_items_at_the_placeholder_data_limit(self) -> None:
+        template = forecast_template()
+        template["content"][1]["config"]["dataLimit"] = 2
+
+        prompt = str(make_compiler().compile(template).prompt)
+
+        assert "| Monday | 29 | false |" in prompt
+        assert "| Tuesday | 32 | false |" in prompt
+        assert "| Sunday |" not in prompt
+        assert "Showing the first 2 of 3 items." in prompt
+
+    def test_maximum_limit_wins_across_placeholders(self) -> None:
+        template = forecast_template()
+        template["content"][1]["config"]["dataLimit"] = 1
+        template["content"].append(
+            {
+                "type": "placeholder",
+                "instructionType": "summary",
+                "config": {
+                    "description": "More from the forecast reference data",
+                    "dataSource": "forecast",
+                    "dataLimit": 2,
+                },
+            }
+        )
+
+        prompt = str(make_compiler().compile(template).prompt)
+
+        assert "Showing the first 2 of 3 items." in prompt
+        assert prompt.count("### forecast") == 1
+
+    def test_unlimited_reference_beats_any_limit(self) -> None:
+        template = forecast_template()
+        template["content"][1]["config"]["dataLimit"] = 1
+        template["content"].append(
+            {
+                "type": "placeholder",
+                "instructionType": "summary",
+                "config": {"description": "Everything from the forecast reference data", "dataSource": "forecast"},
+            }
+        )
+
+        prompt = str(make_compiler().compile(template).prompt)
+
+        assert "| Sunday | 27 | true |" in prompt
+        assert "Showing the first" not in prompt
+
+    def test_non_truncating_limit_adds_no_note(self) -> None:
+        template = forecast_template()
+        template["content"][1]["config"]["dataLimit"] = 50
+
+        prompt = str(make_compiler().compile(template).prompt)
+
+        assert "| Sunday | 27 | true |" in prompt
+        assert "Showing the first" not in prompt
+
+
 class TestRenderDataSource:
     def test_primitive_array_renders_as_list(self) -> None:
         assert render_data_source(["a", "b"]) == "- a\n- b"
