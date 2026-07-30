@@ -58,6 +58,34 @@ class TestReferenceDataSections:
         template_section = prompt[prompt.index("TEMPLATE") :]
         assert "| Monday |" not in template_section
 
+    def test_one_section_per_source_when_a_placeholder_synthesises_several_inputs(self) -> None:
+        template = forecast_template()
+        template["variables"] = {
+            "examResults": [{"subject": "Maths", "averageScore": 58}],
+            "attendance": [{"term": "Term 1", "attendancePct": 91}],
+            "surveyResults": [{"question": "I feel supported", "agreePct": 64}],
+        }
+        template["content"] = [
+            {
+                "type": "placeholder",
+                "instructionType": "summary",
+                "config": {
+                    "description": "Recommend improvements using the examResults, attendance and surveyResults reference data",
+                    "dataSource": ["examResults", "attendance", "surveyResults"],
+                },
+            }
+        ]
+
+        prompt = str(make_compiler().compile(template).prompt)
+
+        exams_at = prompt.index("### examResults")
+        attendance_at = prompt.index("### attendance")
+        survey_at = prompt.index("### surveyResults")
+        assert exams_at < attendance_at < survey_at
+        assert "| Maths | 58 |" in prompt
+        assert "| Term 1 | 91 |" in prompt
+        assert "| I feel supported | 64 |" in prompt
+
     def test_deduplicates_sources_across_placeholders(self) -> None:
         template = forecast_template()
         template["content"].append(
