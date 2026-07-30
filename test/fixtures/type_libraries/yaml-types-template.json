@@ -6,22 +6,30 @@
     "projectName": "example-storefront"
   },
   "content": [
-    { "type": "text", "text": "# CI configuration\n" },
+    { "type": "text", "text": "# CI configuration\nimage: " },
     {
       "type": "placeholder",
-      "instructionType": "yaml_document",
+      "instructionType": "yaml_value",
       "config": {
-        "description": "A CI pipeline for ${projectName}",
-        "indentSize": 2,
-        "useAnchors": false
+        "description": "a container image for ${projectName}",
+        "valueType": "string"
       }
     },
-    { "type": "text", "text": "\nDefaults only:\n" },
+    { "type": "text", "text": "\n\nbuild:\n  script:\n" },
+    {
+      "type": "placeholder",
+      "instructionType": "yaml_list_items",
+      "config": {
+        "description": "commands that build ${projectName}",
+        "indentSpaces": 4
+      }
+    },
+    { "type": "text", "text": "\n\ndeploy:\n" },
     {
       "type": "placeholder",
       "instructionType": "yaml_block",
       "config": {
-        "description": "A deploy job for ${projectName}"
+        "description": "the fields of a deploy job for ${projectName}"
       }
     }
   ]

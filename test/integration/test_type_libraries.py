@@ -1,8 +1,10 @@
 """
 Integration tests for the published structured-output type libraries.
 
-Local fixture copies of the JSON, HTML and YAML libraries are loaded through
-relative extends with local schemas enabled, so no network is involved.
+The libraries fill value positions inside structure authored verbatim in the
+template text. Local fixture copies of the JSON, HTML and YAML libraries are
+loaded through relative extends with local schemas enabled, so no network is
+involved.
 """
 
 from pathlib import Path
@@ -68,55 +70,61 @@ class TestTypeLibrarySecurity:
 
 
 class TestJsonTypeLibrary:
-    def test_raw_output_clause_and_escaping(self) -> None:
+    def test_authored_structure_verbatim_with_fills(self) -> None:
         prompt = compile_fixture("json-types-template.json")
 
+        # The document scaffolding comes from the template text, not the model
+        assert '{\n  "data": [\n' in prompt
+        assert '"page": 1,' in prompt
+        assert '"code": "not_found",' in prompt
+        # Fills carry the raw-output clause and escaped descriptions
         assert RAW_OUTPUT_CLAUSES["json"] in prompt
-        assert "([{<A orders API response object>}])" in prompt
-        assert "two_spaces indentation" in prompt
+        assert "([{<three orders objects with id and status fields>}])" in prompt
+        assert "without the enclosing square brackets" in prompt
+        assert "of kind integer" in prompt
 
     def test_conditionals_follow_variables(self) -> None:
         with_error = compile_fixture("json-types-template.json")
-        assert "not_found error object" in with_error
+        assert "not_found" in with_error
 
         without_error = compile_fixture("json-types-template.json", {"includeErrorExample": False})
-        assert "not_found error object" not in without_error
+        assert "not_found" not in without_error
 
     def test_defaults_render_when_config_omitted(self) -> None:
-        # The json_schema placeholder sets only a description
+        # The json_value placeholder sets only a description
         prompt = compile_fixture("json-types-template.json")
 
-        assert "targets the 2020-12 draft" in prompt
-        assert "{draft}" not in prompt
-        assert "{indent}" not in prompt
+        assert "of type any" in prompt
+        assert "{valueType}" not in prompt
+        assert "{numberType}" not in prompt
 
 
 class TestHtmlTypeLibrary:
-    def test_raw_output_clause_and_fragment_wording(self) -> None:
+    def test_authored_markup_verbatim_with_fills(self) -> None:
         prompt = compile_fixture("html-types-template.json")
 
+        assert '<section class="product-card">' in prompt
+        assert "<thead><tr><th>Specification</th><th>Value</th></tr></thead>" in prompt
         assert RAW_OUTPUT_CLAUSES["html"] in prompt
-        assert "([{<A summary paragraph for the Solar Garden Lantern>}])" in prompt
-        assert "Do not include a doctype or html, head or body tags." in prompt
-
-    def test_defaults_and_boolean_rendering(self) -> None:
-        prompt = compile_fixture("html-types-template.json")
-
-        # html_list relies on the listType default
-        assert "unordered list element" in prompt
-        assert "{listType}" not in prompt
+        assert "([{<a summary of the Solar Garden Lantern>}])" in prompt
+        assert "without the enclosing list tags" in prompt
+        assert "without the enclosing table, thead or tbody tags" in prompt
         # Booleans render JSON-style, not Python-style
+        assert "Inline markup such as strong, em and a is allowed: true." in prompt
+        # html_fragment placeholder relies on the includeClasses default
         assert "Include class attributes on elements: true." in prompt
+        assert "{includeClasses}" not in prompt
         assert "True" not in prompt
 
 
 class TestYamlTypeLibrary:
-    def test_raw_output_clause_and_defaults(self) -> None:
+    def test_authored_structure_verbatim_with_fills(self) -> None:
         prompt = compile_fixture("yaml-types-template.json")
 
+        assert "build:\n  script:\n" in prompt
         assert RAW_OUTPUT_CLAUSES["yaml"] in prompt
-        assert "([{<A CI pipeline for example-storefront>}])" in prompt
-        # yaml_block relies on the indentSize default
-        assert "2-space indentation" in prompt
-        assert "{indentSize}" not in prompt
-        assert "Use anchors and aliases for repeated values: false." in prompt
+        assert "([{<commands that build example-storefront>}])" in prompt
+        assert "beginning with 4 spaces followed by a hyphen" in prompt
+        # yaml_block placeholder relies on the indentSpaces default
+        assert "indented by 2 spaces" in prompt
+        assert "{indentSpaces}" not in prompt
