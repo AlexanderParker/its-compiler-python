@@ -20,7 +20,7 @@ from .models import (
     TypeOverride,
     ValidationResult,
 )
-from .reference_data import REFERENCE_DATA_INSTRUCTION, collect_data_source_names, render_data_source
+from .reference_data import REFERENCE_DATA_INSTRUCTION, collect_data_sources, render_data_source
 from .schema_loader import SchemaLoader
 from .variable_processor import VariableProcessor
 
@@ -434,14 +434,14 @@ class ITSCompiler:
 
         # Reference data: variables named by placeholder dataSource configs are
         # rendered once above the template as context the model must not output
-        data_source_names = collect_data_source_names(content)
+        data_sources = collect_data_sources(content)
         reference_parts: List[str] = []
-        if data_source_names:
+        if data_sources:
             reference_parts.extend(["REFERENCE DATA", ""])
-            for name in data_source_names:
+            for name, limit in data_sources:
                 if name not in variables:
                     raise ITSCompilationError(f"Unknown data source '{name}': no variable with that name")
-                reference_parts.extend([f"### {name}", "", render_data_source(variables[name]), ""])
+                reference_parts.extend([f"### {name}", "", render_data_source(variables[name], limit), ""])
             processing_instructions.append(REFERENCE_DATA_INSTRUCTION)
 
         # Process content elements
