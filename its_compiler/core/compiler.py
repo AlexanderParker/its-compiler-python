@@ -20,6 +20,7 @@ from .models import (
     TypeOverride,
     ValidationResult,
 )
+from .reference_data import REFERENCE_DATA_INSTRUCTION, collect_data_source_names, render_data_source
 from .schema_loader import SchemaLoader
 from .variable_processor import VariableProcessor
 
@@ -133,7 +134,7 @@ class ITSCompiler:
         final_content = self._evaluate_conditionals(processed_content, merged_variables)
 
         # Generate final prompt
-        prompt = self._generate_prompt(final_content, instruction_types, template)
+        prompt = self._generate_prompt(final_content, instruction_types, template, merged_variables)
 
         # Validate final prompt
         self._validate_final_prompt(prompt)
@@ -417,17 +418,31 @@ class ITSCompiler:
         content: List[Dict[str, Any]],
         instruction_types: Dict[str, InstructionTypeDefinition],
         template: Dict[str, Any],
+        variables: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Generate the final AI prompt."""
+        variables = variables or {}
 
         # Get compiler configuration
         compiler_config = template.get("compilerConfig", {})
         system_prompt = compiler_config.get("systemPrompt", self.config.default_system_prompt)
         user_content_wrapper = compiler_config.get("userContentWrapper", self.config.default_user_content_wrapper)
         instruction_wrapper = compiler_config.get("instructionWrapper", self.config.default_instruction_wrapper)
-        processing_instructions = compiler_config.get(
-            "processingInstructions", self.config.default_processing_instructions
+        processing_instructions = list(
+            compiler_config.get("processingInstructions", self.config.default_processing_instructions) or []
         )
+
+        # Reference data: variables named by placeholder dataSource configs are
+        # rendered once above the template as context the model must not output
+        data_source_names = collect_data_source_names(content)
+        reference_parts: List[str] = []
+        if data_source_names:
+            reference_parts.extend(["REFERENCE DATA", ""])
+            for name in data_source_names:
+                if name not in variables:
+                    raise ITSCompilationError(f"Unknown data source '{name}': no variable with that name")
+                reference_parts.extend([f"### {name}", "", render_data_source(variables[name]), ""])
+            processing_instructions.append(REFERENCE_DATA_INSTRUCTION)
 
         # Process content elements
         processed_content = []
@@ -450,10 +465,12 @@ class ITSCompiler:
         # Assemble final prompt
         prompt_parts = ["INTRODUCTION", "", system_prompt, "", "INSTRUCTIONS", ""]
 
-        for i, instruction in enumerate(processing_instructions or [], 1):
+        for i, instruction in enumerate(processing_instructions, 1):
             prompt_parts.append(f"{i}. {instruction}")
 
-        prompt_parts.extend(["", "TEMPLATE", "", "".join(processed_content)])
+        prompt_parts.append("")
+        prompt_parts.extend(reference_parts)
+        prompt_parts.extend(["TEMPLATE", "", "".join(processed_content)])
 
         return "\n".join(prompt_parts)
 
