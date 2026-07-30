@@ -266,6 +266,12 @@ compiler = ITSCompiler(config=config, security_config=security_config)
 
 - `ITS_MAX_TEMPLATE_SIZE` - Max template size in bytes (default: 1MB)
 - `ITS_MAX_CONTENT_ELEMENTS` - Max content elements (default: 1000)
+- `ITS_MAX_NESTING_DEPTH` - Max content/variable nesting depth (default: 10)
+- `ITS_MAX_VARIABLE_COUNT` - Max total variables including nested values (default: 10000)
+- `ITS_MAX_VARIABLE_ARRAY_ITEMS` - Max items per variable array (default: 1000)
+- `ITS_MAX_TEXT_LENGTH` - Max length of a text element or string value (default: 10000)
+
+All processing limits are also settable in code through `SecurityConfig().processing`, sized so reference data workloads (large datasets injected as variables) can be accommodated by the operator.
 
 **Feature Toggles:**
 

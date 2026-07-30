@@ -337,7 +337,7 @@ class InputValidator:
                 self._validate_variable_name(k)
                 self._validate_variable_value(v, f"{path}.{k}")
         elif isinstance(value, list):
-            if len(value) > 1000:  # Reasonable limit
+            if len(value) > self.processing_config.max_variable_array_items:
                 self._security_violation(
                     f"Array too large in variable {path}",
                     "variable_value",
@@ -438,7 +438,7 @@ class InputValidator:
         """Validate text content for malicious patterns."""
 
         # Length check
-        if len(text) > 10000:
+        if len(text) > self.processing_config.max_text_length:
             self._security_violation(f"Text content too long in {context}", "text_content", "text_too_long")
 
         # Check for null bytes (security bypass attack)

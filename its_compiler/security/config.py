@@ -63,6 +63,12 @@ class ProcessingSecurityConfig:
     max_array_index: int = 1000
     allowed_variable_chars: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
+    # Variable payload limits, sized for reference data workloads and
+    # configurable for larger datasets
+    max_variable_count: int = 10000
+    max_variable_array_items: int = 1000
+    max_text_length: int = 10000
+
     # Conditional expressions
     max_expression_length: int = 500
     max_expression_depth: int = 10
@@ -178,6 +184,15 @@ class SecurityConfig:
 
         if max_depth := os.getenv("ITS_MAX_NESTING_DEPTH"):
             config.processing.max_nesting_depth = int(max_depth)
+
+        if max_variable_count := os.getenv("ITS_MAX_VARIABLE_COUNT"):
+            config.processing.max_variable_count = int(max_variable_count)
+
+        if max_array_items := os.getenv("ITS_MAX_VARIABLE_ARRAY_ITEMS"):
+            config.processing.max_variable_array_items = int(max_array_items)
+
+        if max_text_length := os.getenv("ITS_MAX_TEXT_LENGTH"):
+            config.processing.max_text_length = int(max_text_length)
 
         # Feature toggles
         if os.getenv("ITS_ALLOW_LOCAL_SCHEMAS") == "true":

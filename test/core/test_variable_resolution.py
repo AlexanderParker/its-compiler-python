@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for variable resolution and processing edge cases.
 Tests complex variable scenarios, error conditions, and security validation.
 """
@@ -240,11 +240,11 @@ class TestVariableResolution:
         status = processor.get_security_status()
 
         assert "input_validation_enabled" in status
-        assert "max_variable_references" in status
+        assert "max_variable_count" in status
         assert "max_variable_name_length" in status
         assert "max_recursion_depth" in status
 
-        assert isinstance(status["max_variable_references"], int)
+        assert isinstance(status["max_variable_count"], int)
         assert isinstance(status["max_variable_name_length"], int)
 
     def test_variable_name_security_validation(self, processor: VariableProcessor) -> None:
