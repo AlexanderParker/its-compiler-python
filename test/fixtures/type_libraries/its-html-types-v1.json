@@ -2,45 +2,16 @@
   "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-type-extension-schema-v1.json",
   "$id": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-html-types-v1.json",
   "title": "Instruction Template Specification - HTML Types v1.0",
-  "description": "Type library for generating raw HTML fragments that slot into surrounding static markup; never full documents",
+  "description": "Type library for filling positions inside HTML markup authored in the template; the template text carries the surrounding tags and attributes verbatim, never full documents",
   "version": "1.0.0",
   "instructionTypes": {
-    "html_fragment": {
-      "template": "<<Replace this placeholder with an HTML fragment using this user prompt: ([{<{description}>}]). Format requirements: Produce an HTML fragment consisting of one container element and its contents. Do not include a doctype or html, head or body tags. Include class attributes on elements: {includeClasses}. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
-      "description": "Generates an HTML fragment with a single container element, with an optional preferred root element",
+    "html_text": {
+      "template": "<<Replace this placeholder with HTML text content using this user prompt: ([{<{description}>}]). Format requirements: Produce text content for the enclosing element without repeating or closing its tags, escaping HTML special characters in the text. Inline markup such as strong, em and a is allowed: {allowInlineMarkup}. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates text content for an element whose tags are authored in the template",
       "configSchema": {
         "type": "object",
         "properties": {
-          "rootElement": {
-            "type": "string",
-            "description": "If specified, the tag name to use for the fragment's container element, for example div or article"
-          },
-          "includeClasses": {
-            "type": "boolean",
-            "default": true
-          }
-        }
-      }
-    },
-    "html_table": {
-      "template": "<<Replace this placeholder with an HTML table using this user prompt: ([{<{description}>}]). Format requirements: Produce a complete table element. Include a header row: {includeHeader}. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
-      "description": "Generates a complete HTML table with optional dimensions and a configurable header row",
-      "configSchema": {
-        "type": "object",
-        "properties": {
-          "columns": {
-            "type": "integer",
-            "minimum": 2,
-            "maximum": 10,
-            "description": "If specified, the number of columns"
-          },
-          "rows": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50,
-            "description": "If specified, the number of rows"
-          },
-          "includeHeader": {
+          "allowInlineMarkup": {
             "type": "boolean",
             "default": true
           }
@@ -49,28 +20,32 @@
       "examples": [
         {
           "config": {
-            "description": "A comparison of three broadband plans by speed, price and contract length",
-            "includeHeader": true
+            "description": "a short marketing summary of the product",
+            "allowInlineMarkup": true
           },
-          "output": "<<Replace this placeholder with an HTML table using this user prompt: ([{<A comparison of three broadband plans by speed, price and contract length>}]). Format requirements: Produce a complete table element. Include a header row: true. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>"
+          "output": "<<Replace this placeholder with HTML text content using this user prompt: ([{<a short marketing summary of the product>}]). Format requirements: Produce text content for the enclosing element without repeating or closing its tags, escaping HTML special characters in the text. Inline markup such as strong, em and a is allowed: true. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>"
         }
       ]
     },
-    "html_list": {
-      "template": "<<Replace this placeholder with an HTML list using this user prompt: ([{<{description}>}]). Format requirements: Produce one {listType} list element (unordered=ul, ordered=ol, description=dl). Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
-      "description": "Generates an HTML list element of a configurable list type with an optional item count",
+    "html_fragment": {
+      "template": "<<Replace this placeholder with an HTML fragment using this user prompt: ([{<{description}>}]). Format requirements: Produce HTML elements valid at this position inside the enclosing element, without repeating or closing the enclosing element's tags. Do not include a doctype or html, head or body tags. Include class attributes on elements: {includeClasses}. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates child elements for a position inside markup authored in the template",
       "configSchema": {
         "type": "object",
         "properties": {
-          "listType": {
-            "type": "string",
-            "enum": [
-              "unordered",
-              "ordered",
-              "description"
-            ],
-            "default": "unordered"
-          },
+          "includeClasses": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "html_list_items": {
+      "template": "<<Replace this placeholder with HTML list items using this user prompt: ([{<{description}>}]). Format requirements: Produce list item elements appropriate to the enclosing list (li elements for ul or ol, dt and dd pairs for dl), without the enclosing list tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates items for a list whose tags are authored in the template",
+      "configSchema": {
+        "type": "object",
+        "properties": {
           "itemCount": {
             "type": "integer",
             "minimum": 1,
@@ -80,9 +55,30 @@
         }
       }
     },
+    "html_table_rows": {
+      "template": "<<Replace this placeholder with HTML table rows using this user prompt: ([{<{description}>}]). Format requirements: Produce tr elements containing td cells, without the enclosing table, thead or tbody tags, matching the column structure of the surrounding table. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates rows for a table whose structure and header are authored in the template",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "If specified, the exact number of rows to generate"
+          },
+          "columns": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 10,
+            "description": "If specified, the number of cells per row"
+          }
+        }
+      }
+    },
     "html_form_fields": {
-      "template": "<<Replace this placeholder with HTML form fields using this user prompt: ([{<{description}>}]). Format requirements: Produce a set of form field controls without a form wrapper element. Include a label element for each control: {includeLabels}. Do not include a doctype or html, head or body tags. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
-      "description": "Generates form controls with labels, without the form wrapper element",
+      "template": "<<Replace this placeholder with HTML form fields using this user prompt: ([{<{description}>}]). Format requirements: Produce form field controls valid at this position inside the enclosing form or container, without producing a form element. Include a label element for each control: {includeLabels}. Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.>>",
+      "description": "Generates labelled form controls for a position inside a form or container authored in the template",
       "configSchema": {
         "type": "object",
         "properties": {

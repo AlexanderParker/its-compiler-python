@@ -7,37 +7,48 @@
     "includeErrorExample": true
   },
   "content": [
-    { "type": "text", "text": "Example response:\n" },
+    { "type": "text", "text": "{\n  \"data\": [\n" },
     {
       "type": "placeholder",
-      "instructionType": "json_object",
+      "instructionType": "json_array_items",
       "config": {
-        "description": "A ${resourceName} API response object",
-        "indent": "two_spaces"
+        "description": "three ${resourceName} objects with id and status fields",
+        "itemType": "object",
+        "itemCount": 3
       }
     },
+    { "type": "text", "text": "\n  ],\n  \"page\": 1,\n  \"total\": " },
+    {
+      "type": "placeholder",
+      "instructionType": "json_number",
+      "config": {
+        "description": "a plausible total count of ${resourceName}",
+        "numberType": "integer"
+      }
+    },
+    { "type": "text", "text": ",\n  \"summary\": " },
+    {
+      "type": "placeholder",
+      "instructionType": "json_value",
+      "config": {
+        "description": "a one-line summary of the ${resourceName} collection"
+      }
+    },
+    { "type": "text", "text": "\n}" },
     {
       "type": "conditional",
       "condition": "includeErrorExample == true",
       "content": [
-        { "type": "text", "text": "\nError response:\n" },
+        { "type": "text", "text": "\n\n{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"message\": " },
         {
           "type": "placeholder",
-          "instructionType": "json_object",
+          "instructionType": "json_string",
           "config": {
-            "description": "A not_found error object for ${resourceName}",
-            "indent": "compact"
+            "description": "a message about a missing ${resourceName} resource"
           }
-        }
+        },
+        { "type": "text", "text": "\n  }\n}" }
       ]
-    },
-    { "type": "text", "text": "\nDefaults only:\n" },
-    {
-      "type": "placeholder",
-      "instructionType": "json_schema",
-      "config": {
-        "description": "A schema for the response above"
-      }
     }
   ]
 }
