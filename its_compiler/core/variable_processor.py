@@ -5,7 +5,7 @@ Variables can only contain static values - no references to other variables.
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..security import InputValidator, SecurityConfig
 from .exceptions import ITSVariableError
@@ -284,8 +284,26 @@ class VariableProcessor:
                 str_value = str_value[:max_text_length] + "... [TRUNCATED]"
             return str_value
 
+    _FUNCTION_SUFFIX = re.compile(r"^(.*)\.(concat|sum|avg|min|max|top)\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)?\s*\)$")
+
     def resolve_variable_reference(self, var_ref: str, variables: Dict[str, Any]) -> Any:
         """Resolve a variable reference with enhanced security validation."""
+
+        # Collection functions are a suffix chain applied after path resolution
+        calls: List[Tuple[str, Optional[str]]] = []
+        base_ref = var_ref
+        while True:
+            suffix = self._FUNCTION_SUFFIX.match(base_ref)
+            if not suffix:
+                break
+            calls.insert(0, (suffix.group(2), suffix.group(3)))
+            base_ref = suffix.group(1)
+        if calls:
+            value = self.resolve_variable_reference(base_ref, variables)
+            for name, arg in calls:
+                value = self._apply_collection_function(value, name, arg, var_ref)
+            return value
+        var_ref = base_ref
 
         # Validate reference syntax - updated to allow negative array indices
         if not re.match(
@@ -406,6 +424,71 @@ class VariableProcessor:
                 errors.append(str(e))
 
         return errors
+
+    def _apply_collection_function(self, value: Any, name: str, arg: Optional[str], var_ref: str) -> Any:
+        """Apply a collection function; semantics match the JavaScript and .NET compilers."""
+
+        if not isinstance(value, list):
+            raise ITSVariableError(
+                f"Function {name}() requires an array in reference '{var_ref}'", variable_path=var_ref
+            )
+
+        if name == "top":
+            if arg is None or not arg.isdigit():
+                raise ITSVariableError(
+                    f"top() requires a non-negative integer in reference '{var_ref}'", variable_path=var_ref
+                )
+            return value[: int(arg)]
+
+        items: List[Any] = []
+        for item in value:
+            if arg is None:
+                if isinstance(item, (dict, list)):
+                    raise ITSVariableError(
+                        f"Function {name}() requires a property name for object items in reference '{var_ref}'",
+                        variable_path=var_ref,
+                    )
+                items.append(item)
+            else:
+                if not isinstance(item, dict) or arg not in item:
+                    raise ITSVariableError(
+                        f"Property '{arg}' not found on every item in reference '{var_ref}'", variable_path=var_ref
+                    )
+                items.append(item[arg])
+
+        if name == "concat":
+            return ", ".join(self._concat_text(item) for item in items)
+
+        numbers: List[float] = []
+        for item in items:
+            if isinstance(item, bool) or not isinstance(item, (int, float)):
+                raise ITSVariableError(
+                    f"Function {name}() requires numeric values in reference '{var_ref}'", variable_path=var_ref
+                )
+            numbers.append(item)
+
+        if name == "sum":
+            return self._normalise_number(sum(numbers))
+        if not numbers:
+            raise ITSVariableError(f"{name}() of an empty array in reference '{var_ref}'", variable_path=var_ref)
+        if name == "avg":
+            return self._normalise_number(sum(numbers) / len(numbers))
+        if name == "min":
+            return self._normalise_number(min(numbers))
+        return self._normalise_number(max(numbers))
+
+    @staticmethod
+    def _concat_text(item: Any) -> str:
+        if item is None:
+            return "null"
+        if isinstance(item, bool):
+            return "true" if item else "false"
+        return str(item)
+
+    @staticmethod
+    def _normalise_number(value: float) -> Any:
+        """Whole numbers render without a decimal part, matching the other compilers."""
+        return int(value) if isinstance(value, float) and value.is_integer() else value
 
     def get_security_status(self) -> Dict[str, Any]:
         """Get security status for variable processing."""
