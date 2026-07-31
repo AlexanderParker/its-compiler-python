@@ -14,7 +14,7 @@ from urllib.error import HTTPError, URLError
 import pytest
 
 from its_compiler import ITSCompiler, ITSConfig
-from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError, ITSVariableError
+from its_compiler.core.exceptions import ITSCompilationError, ITSValidationError
 from its_compiler.security import SecurityConfig
 
 
@@ -192,13 +192,8 @@ class TestCompilerEdgeCases:
         # Create variables for all levels
         variables = {f"level{i}": True for i in range(10)}
 
-        # Should either process successfully or hit nesting limits
-        try:
-            result = compiler.compile(template, variables)
-            assert "deeply nested" in result.prompt
-        except (ITSValidationError, ITSCompilationError):
-            # Acceptable if nesting limits are hit
-            pass
+        result = compiler.compile(template, variables)
+        assert "deeply nested" in result.prompt
 
     def test_large_variable_object_processing(self, compiler: ITSCompiler) -> None:
         """Test processing of large variable objects."""
@@ -212,14 +207,8 @@ class TestCompilerEdgeCases:
             "content": [{"type": "text", "text": "Processing ${var0.name} and ${var99.name}"}],
         }
 
-        # Should either process successfully or hit variable limits
-        try:
-            result = compiler.compile(template, large_vars)
-            assert "item0" in result.prompt
-            assert "item99" in result.prompt
-        except (ITSValidationError, ITSCompilationError, ITSVariableError):
-            # Acceptable if variable limits are hit
-            pass
+        result = compiler.compile(template, large_vars)
+        assert "Processing item0 and item99" in result.prompt
 
     def test_extreme_edge_case_file_operations(self, compiler: ITSCompiler, temp_directory: Path) -> None:
         """Test extreme edge cases in file operations."""
@@ -251,13 +240,9 @@ class TestCompilerEdgeCases:
 
         template = {"version": "1.0.0", "content": large_elements}
 
-        # Should either process or hit memory/size limits
-        try:
-            result = compiler.compile(template)
-            assert len(result.prompt) > 100000  # Should be substantial
-        except (ITSValidationError, ITSCompilationError):
-            # Acceptable if size limits are hit
-            pass
+        result = compiler.compile(template)
+        assert len(result.prompt) > 100000
+        assert result.prompt.count("x" * 1000) == 100
 
     def test_schema_loading_with_comprehensive_error_scenarios(
         self, compiler: ITSCompiler, temp_directory: Path

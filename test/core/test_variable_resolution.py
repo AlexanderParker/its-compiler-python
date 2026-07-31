@@ -256,16 +256,11 @@ class TestVariableResolution:
             "__proto__": "dangerous",
         }
 
-        content: List[Dict[str, Any]] = [{"type": "text", "text": "Test ${dangerous_var}"}]
+        content: List[Dict[str, Any]] = [{"type": "text", "text": "static text only"}]
 
         for var_name, value in dangerous_variables.items():
-            variables_with_dangerous = {var_name: value}
-            # Should either block or handle safely
-            try:
-                processor.process_content(content, variables_with_dangerous)
-            except ITSVariableError:
-                # Blocking dangerous variables is acceptable
-                pass
+            with pytest.raises(ITSVariableError, match="[Dd]angerous"):
+                processor.process_content(content, {var_name: value})
 
     def test_extremely_deep_nesting_security(self, strict_processor: VariableProcessor) -> None:
         """Test security limits on extremely deep object nesting."""
@@ -282,7 +277,7 @@ class TestVariableResolution:
         # Extremely deep reference should be blocked
         very_deep_ref = "deep." + ".".join(f"level{i}" for i in range(30)) + ".value"
 
-        with pytest.raises(ITSVariableError):
+        with pytest.raises(ITSVariableError, match="too deep|too long"):
             strict_processor.resolve_variable_reference(very_deep_ref, variables)
 
     def test_large_array_index_security(self, strict_processor: VariableProcessor) -> None:
@@ -290,7 +285,7 @@ class TestVariableResolution:
         variables = {"large_array": list(range(1000))}
 
         # Extremely large index should be blocked
-        with pytest.raises(ITSVariableError):
+        with pytest.raises(ITSVariableError, match="index too large|out of bounds"):
             strict_processor.resolve_variable_reference("large_array[999999]", variables)
 
     def test_variable_processing_performance_limits(self, strict_processor: VariableProcessor) -> None:
@@ -301,9 +296,9 @@ class TestVariableResolution:
         # Create matching variables
         many_variables = {f"var{i}": f"value{i}" for i in range(200)}
 
-        # Should handle reasonable amounts but enforce limits
-        try:
-            strict_processor.process_content(large_content, many_variables)
-        except ITSVariableError:
-            # Performance limits may trigger - this is acceptable
-            pass
+        # A reasonable volume must process fully, with every reference resolved
+        processed = strict_processor.process_content(large_content, many_variables)
+
+        assert len(processed) == 200
+        assert processed[0]["text"] == "Var 0: value0"
+        assert processed[199]["text"] == "Var 199: value199"
