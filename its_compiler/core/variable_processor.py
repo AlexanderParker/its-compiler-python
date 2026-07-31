@@ -1,4 +1,4 @@
-"""
+﻿"""
 Variable processing for ITS Compiler with security enhancements.
 Variables can only contain static values - no references to other variables.
 """
@@ -30,7 +30,12 @@ class VariableProcessor:
         self.max_variable_count = self.security_config.processing.max_variable_count
         self.max_variable_name_length = self.security_config.processing.max_variable_name_length
 
-    def process_content(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def process_content(
+        self,
+        content: List[Dict[str, Any]],
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         """Process variable references in content elements with security validation."""
 
         # Validate variables first
@@ -44,7 +49,7 @@ class VariableProcessor:
 
         for element in content:
             try:
-                processed_element = self._process_element(element, variables)
+                processed_element = self._process_element(element, variables, object_references)
                 processed_content.append(processed_element)
             except ITSVariableError:
                 raise
@@ -168,63 +173,83 @@ class VariableProcessor:
             if isinstance(value, (int, float)) and abs(value) > 1e15:
                 raise ITSVariableError(f"Numeric value too large at {path}: {value}")
 
-    def _process_element(self, element: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_element(
+        self,
+        element: Dict[str, Any],
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Process variables in a single content element."""
         element_copy = element.copy()
 
         if element["type"] == "text":
             # Process variables in text content
-            element_copy["text"] = self._process_string(element["text"], variables)
+            element_copy["text"] = self._process_string(element["text"], variables, object_references)
 
         elif element["type"] == "placeholder":
             # Process variables in placeholder config
-            element_copy["config"] = self._process_dict(element["config"], variables)
+            element_copy["config"] = self._process_dict(element["config"], variables, object_references)
 
         elif element["type"] == "conditional":
-            # Process variables in condition expression
+            # Process variables in condition expression (no object pointers there)
             element_copy["condition"] = self._process_string(element["condition"], variables)
 
             # Recursively process nested content
-            element_copy["content"] = self.process_content(element["content"], variables)
+            element_copy["content"] = self.process_content(element["content"], variables, object_references)
 
             if "else" in element:
-                element_copy["else"] = self.process_content(element["else"], variables)
+                element_copy["else"] = self.process_content(element["else"], variables, object_references)
 
         return element_copy
 
-    def _process_dict(self, data: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_dict(
+        self,
+        data: Dict[str, Any],
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Process variables in a dictionary."""
         processed: Dict[str, Any] = {}
 
         for key, value in data.items():
             if isinstance(value, str):
-                processed[key] = self._process_string(value, variables)
+                processed[key] = self._process_string(value, variables, object_references)
             elif isinstance(value, dict):
-                processed[key] = self._process_dict(value, variables)
+                processed[key] = self._process_dict(value, variables, object_references)
             elif isinstance(value, list):
-                processed[key] = self._process_list(value, variables)
+                processed[key] = self._process_list(value, variables, object_references)
             else:
                 processed[key] = value
 
         return processed
 
-    def _process_list(self, data: List[Any], variables: Dict[str, Any]) -> List[Any]:
+    def _process_list(
+        self,
+        data: List[Any],
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> List[Any]:
         """Process variables in a list."""
         processed: List[Any] = []
 
         for item in data:
             if isinstance(item, str):
-                processed.append(self._process_string(item, variables))
+                processed.append(self._process_string(item, variables, object_references))
             elif isinstance(item, dict):
-                processed.append(self._process_dict(item, variables))
+                processed.append(self._process_dict(item, variables, object_references))
             elif isinstance(item, list):
-                processed.append(self._process_list(item, variables))
+                processed.append(self._process_list(item, variables, object_references))
             else:
                 processed.append(item)
 
         return processed
 
-    def _process_string(self, text: str, variables: Dict[str, Any]) -> str:
+    def _process_string(
+        self,
+        text: str,
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Process variable references in a string with security validation."""
 
         # Check for too many variable references in a single string
@@ -245,6 +270,11 @@ class VariableProcessor:
 
             try:
                 value = self.resolve_variable_reference(var_ref, variables)
+
+                # Object values substitute a pointer and render as reference data
+                if object_references is not None and isinstance(value, dict):
+                    object_references[var_ref] = value
+                    return f"the {var_ref} reference data"
 
                 # Sanitise the resolved value
                 sanitised_value = self._sanitise_resolved_value(value, var_ref)

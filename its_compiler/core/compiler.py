@@ -127,14 +127,16 @@ class ITSCompiler:
         # Load and resolve instruction types
         instruction_types, overrides = self._load_instruction_types(template, base_url)
 
-        # Process variables in content with security
-        processed_content = self._process_variables(template["content"], merged_variables)
+        # Process variables in content with security; object-valued references
+        # are collected and rendered as reference data
+        object_references: Dict[str, Any] = {}
+        processed_content = self._process_variables(template["content"], merged_variables, object_references)
 
         # Evaluate conditionals with security
         final_content = self._evaluate_conditionals(processed_content, merged_variables)
 
         # Generate final prompt
-        prompt = self._generate_prompt(final_content, instruction_types, template, merged_variables)
+        prompt = self._generate_prompt(final_content, instruction_types, template, merged_variables, object_references)
 
         # Validate final prompt
         self._validate_final_prompt(prompt)
@@ -405,9 +407,14 @@ class ITSCompiler:
 
         return instruction_types, overrides
 
-    def _process_variables(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _process_variables(
+        self,
+        content: List[Dict[str, Any]],
+        variables: Dict[str, Any],
+        object_references: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
         """Process variable references in content with security."""
-        return self.variable_processor.process_content(content, variables)
+        return self.variable_processor.process_content(content, variables, object_references)
 
     def _evaluate_conditionals(self, content: List[Dict[str, Any]], variables: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Evaluate conditional elements with security."""
@@ -419,9 +426,11 @@ class ITSCompiler:
         instruction_types: Dict[str, InstructionTypeDefinition],
         template: Dict[str, Any],
         variables: Optional[Dict[str, Any]] = None,
+        object_references: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Generate the final AI prompt."""
         variables = variables or {}
+        object_references = object_references or {}
 
         # Get compiler configuration
         compiler_config = template.get("compilerConfig", {})
@@ -435,13 +444,20 @@ class ITSCompiler:
         # Reference data: variables named by placeholder dataSource configs are
         # rendered once above the template as context the model must not output
         data_sources = collect_data_sources(content)
+        for name in object_references:
+            if all(existing != name for existing, _ in data_sources):
+                data_sources.append((name, None))
         reference_parts: List[str] = []
         if data_sources:
             reference_parts.extend(["REFERENCE DATA", ""])
             for name, limit in data_sources:
-                if name not in variables:
+                if name in variables:
+                    value = variables[name]
+                elif name in object_references:
+                    value = object_references[name]
+                else:
                     raise ITSCompilationError(f"Unknown data source '{name}': no variable with that name")
-                reference_parts.extend([f"### {name}", "", render_data_source(variables[name], limit), ""])
+                reference_parts.extend([f"### {name}", "", render_data_source(value, limit), ""])
             processing_instructions.append(REFERENCE_DATA_INSTRUCTION)
 
         # Process content elements
