@@ -154,12 +154,12 @@ TEMPLATE
 
 Templates import instruction types through `extends`. The specification publishes these libraries under `https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/`, all trusted by the compiler's built-in allowlist patterns:
 
-| Library        | File                         | Purpose                                                                       |
-| -------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| Standard Types | `its-standard-types-v1.json` | Prose content: titles, lists, paragraphs, tables, dialogue and more           |
-| JSON Types     | `its-json-types-v1.json`     | Raw JSON output: values, objects, arrays, JSON Schema documents               |
-| HTML Types     | `its-html-types-v1.json`     | Raw HTML fragments: containers, tables, lists, form fields (never full pages) |
-| YAML Types     | `its-yaml-types-v1.json`     | Raw YAML output: blocks, complete documents, markdown frontmatter             |
+| Library        | File                         | Purpose                                                                                                                                |
+| -------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Standard Types | `its-standard-types-v1.json` | Prose content: titles, lists, paragraphs, tables, dialogue and more                                                                    |
+| JSON Types     | `its-json-types-v1.json`     | Value fills inside JSON structure authored in the template: json_string, json_number, json_value, json_array_items, json_object_fields |
+| HTML Types     | `its-html-types-v1.json`     | Fills inside literal markup: html_text, html_fragment, html_list_items, html_table_rows, html_form_fields                              |
+| YAML Types     | `its-yaml-types-v1.json`     | Fills inside literal YAML: yaml_value, yaml_list_items, yaml_block                                                                     |
 
 The structured-output libraries (JSON, HTML, YAML) instruct the model to emit raw output with no markdown code fences and no commentary. If a placeholder omits a config property, defaults declared in the library's `configSchema` are substituted into the compiled instruction.
 
@@ -236,14 +236,31 @@ compiler = ITSCompiler(config=config, security_config=security_config)
 
 - Simple values: `${productName}`
 - Object properties: `${product.name}`, `${product.price}`
-- Array elements: `${features[0]}`, array length: `${features.length}`
+- Array elements: `${features[0]}`, negative indices: `${features[-1]}` (the last item), array length: `${features.length}`
 - Arrays as lists: `${features}` becomes "heart rate, GPS, waterproof"
+
+**Collection functions:**
+
+Array references support chainable function suffixes for substitution: `concat(prop?)`, `sum(prop?)`, `avg(prop?)`, `min(prop?)`, `max(prop?)` and `top(n)`. The optional `prop` selects a property from each object in the array; `top(n)` keeps the first `n` items and can be chained with the others, for example `${forecast.top(3).concat(day)}`. Collection functions are valid in substitution only, not in conditional expressions. The aggregation functions (`sum`, `avg`, `min`, `max`) are numeric-only, and whole-number results render without a decimal part.
 
 **Conditional operators:**
 
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Chained comparisons: `1 < count <= 10`
 - Boolean: `&&`, `||`, `!` (the specification's operators), with `and`, `or`, `not` accepted as equivalents
-- Membership: `in`, `not in`
+- Membership: `in`, `not in` (against arrays and strings), with array literals: `status in ['active', 'trial']`
+- Array indices in conditions, including negative indices: `features[-1] == 'waterproof'`
+
+### Reference data sources
+
+Placeholders support two reserved config keys for supplying data to the model alongside the instruction:
+
+- `dataSource` - a variable name, or an array of variable names, whose values the placeholder relies on
+- `dataLimit` - a positive integer capping how many items of an array variable are rendered
+
+Referenced variables render once in a REFERENCE DATA section above the template output: arrays of objects render as markdown tables, and objects render as field tables. When multiple placeholders reference the same variable, their limits merge with the largest winning, and a placeholder with no limit beats any limit. Truncated arrays state the truncation ("Showing the first N of M items."). Referencing an unknown variable name is a compile error.
+
+Object-valued variable references in substitution (for example `${customer}` where `customer` is an object) substitute the pointer text "the customer reference data" and render the variable as reference data automatically.
 
 ## Configuration
 
@@ -289,24 +306,6 @@ URL: https://example.com/schema.json
 1. Allow permanently (saved to allowlist)
 2. Allow for this session only
 3. Deny (compilation will fail)
-```
-
-### Configuration File
-
-Create `.its-config.json`:
-
-```json
-{
-  "security": {
-    "allowHttp": false,
-    "domainAllowlist": ["alexanderparker.github.io"],
-    "maxSchemaSize": "10MB"
-  },
-  "compiler": {
-    "strictMode": true,
-    "reportOverrides": true
-  }
-}
 ```
 
 ## Error Handling
@@ -479,19 +478,13 @@ python -m twine upload dist/*
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ its-compiler
 ```
 
-## Related Projects
-
-- **[ITS Compiler CLI](https://github.com/AlexanderParker/its-compiler-cli-python)** - Command-line interface for the ITS Compiler
-- **[Instruction Template Specification](https://alexanderparker.github.io/instruction-template-specification/)** - The official ITS specification and schema
-- **[ITS Example Templates](https://github.com/AlexanderParker/its-example-templates)** - Test templates and examples for the ITS compiler
-
 ## ITS ecosystem
 
 - [Specification](https://alexanderparker.github.io/instruction-template-specification/) - the ITS spec, schemas and documentation ([source](https://github.com/AlexanderParker/instruction-template-specification))
 - [Template studio demo](https://alexanderparker.github.io/its-template-studio/) - build and compile templates in the browser ([source](https://github.com/AlexanderParker/its-template-studio))
 - [its-template-editor](https://github.com/AlexanderParker/its-wysiwyg-common) - the WYSIWYG React editor component behind the studio
 - [its-compiler-js](https://github.com/AlexanderParker/its-compiler-js) - JavaScript/TypeScript reference compiler ([npm](https://www.npmjs.com/package/its-compiler-js))
-- [its-compiler-dotnet](https://github.com/AlexanderParker/its-compiler-dotnet) - .NET compiler with an Azure Functions sample ([NuGet](https://www.nuget.org/packages/Its.Compiler))
+- [its-compiler-dotnet](https://github.com/AlexanderParker/its-compiler-dotnet) - .NET compiler with ASP.NET service and Azure Functions samples (NuGet publication pending)
 - [its-compiler-cli](https://github.com/AlexanderParker/its-compiler-cli-python) - command-line interface for the Python compiler ([PyPI](https://pypi.org/project/its-compiler-cli/))
 - [its-example-templates](https://github.com/AlexanderParker/its-example-templates) - example and test templates exercising the published schemas
 
