@@ -38,11 +38,11 @@ class TestCollectionFunctions:
         assert "solar, garden, lantern" in compile_text("${tags.concat()}")
 
     def test_aggregations(self) -> None:
-        assert "82" in compile_text("${forecast.sum(high)}")
-        assert "15" in compile_text("${scores.sum()}")
-        assert "5" in compile_text("${scores.avg()}")
-        assert "24" in compile_text("${forecast.min(high)}")
-        assert "31" in compile_text("${forecast.max(high)}")
+        assert "sum=82." in compile_text("sum=${forecast.sum(high)}.")
+        assert "sum=15." in compile_text("sum=${scores.sum()}.")
+        assert "avg=5." in compile_text("avg=${scores.avg()}.")
+        assert "min=24." in compile_text("min=${forecast.min(high)}.")
+        assert "max=31." in compile_text("max=${forecast.max(high)}.")
 
     def test_top_slices_and_chains(self) -> None:
         assert "Monday, Tuesday" in compile_text("${forecast.top(2).concat(day)}")
@@ -51,12 +51,16 @@ class TestCollectionFunctions:
     def test_booleans_concat_json_style(self) -> None:
         assert "false, true, false" in compile_text("${forecast.concat(wet)}")
 
-    def test_invalid_usages_fail(self) -> None:
-        for reference in [
-            "${forecast[0].sum(high)}",
-            "${forecast.sum(missing)}",
-            "${forecast.sum(day)}",
-            "${forecast.top(x)}",
-        ]:
-            with pytest.raises((ITSVariableError, Exception)):
-                compile_text(reference)
+    @pytest.mark.parametrize(
+        "reference,expected",
+        [
+            ("${forecast[0].sum(high)}", r"sum\(\) requires an array"),
+            ("${forecast.sum(missing)}", r"Property 'missing' not found on every item"),
+            ("${forecast.sum(day)}", r"sum\(\) requires numeric values"),
+            ("${forecast.top(x)}", r"top\(\) requires a non-negative integer"),
+            ("${forecast.concat(day).sum()}", r"sum\(\) requires an array"),
+        ],
+    )
+    def test_invalid_usages_fail(self, reference: str, expected: str) -> None:
+        with pytest.raises(ITSVariableError, match=expected):
+            compile_text(reference)
