@@ -2,6 +2,7 @@
 Tests for AllowlistManager security functionality.
 """
 
+import hashlib
 import json
 import tempfile
 from datetime import datetime, timezone
@@ -209,17 +210,31 @@ class TestAllowlistManager:
         assert entry.fingerprint is not None
         assert len(entry.fingerprint) == 16  # SHA256 first 16 chars
 
-    def test_fingerprint_change_detection(self, allowlist_manager: AllowlistManager) -> None:
-        """Test detection of fingerprint changes."""
+    def test_fingerprint_change_detection(
+        self, allowlist_manager: AllowlistManager, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test changed schema content is reported and the stored fingerprint is replaced."""
         url = "https://company.com/schema.json"
         old_content = '{"version": "1.0"}'
         new_content = '{"version": "2.0"}'
 
         allowlist_manager.add_trusted_url(url, TrustLevel.PERMANENT)
         allowlist_manager.update_fingerprint(url, old_content)
+        original_fingerprint = allowlist_manager.entries[url].fingerprint
+        capsys.readouterr()  # Discard output from the first fingerprint
 
-        # Update with different content
         allowlist_manager.update_fingerprint(url, new_content)
+
+        updated_fingerprint = allowlist_manager.entries[url].fingerprint
+        assert updated_fingerprint != original_fingerprint
+        assert updated_fingerprint == hashlib.sha256(new_content.encode("utf-8")).hexdigest()[:16]
+        assert f"Warning: Schema content changed for {url}" in capsys.readouterr().out
+
+        # Re-applying identical content is not reported as a change
+        allowlist_manager.update_fingerprint(url, new_content)
+
+        assert "Schema content changed" not in capsys.readouterr().out
+        assert allowlist_manager.entries[url].fingerprint == updated_fingerprint
 
     def test_get_stats(self, allowlist_manager: AllowlistManager) -> None:
         """Test getting allowlist statistics."""
@@ -411,8 +426,17 @@ class TestAllowlistManager:
         manager = AllowlistManager(security_config)
         assert manager.entries == {}
 
-    def test_file_permission_error_handling(self, allowlist_manager: AllowlistManager) -> None:
-        """Test handling of file permission errors."""
+    def test_file_permission_error_handling(
+        self, allowlist_manager: AllowlistManager, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test a failed save is reported as a warning and leaves the entry usable in memory."""
+        url = "https://test.com/s.json"
+
         # Try to save to read-only location (simulated by mocking)
         with patch("builtins.open", side_effect=PermissionError("Access denied")):
-            allowlist_manager.add_trusted_url("https://test.com/s.json", TrustLevel.PERMANENT)
+            allowlist_manager.add_trusted_url(url, TrustLevel.PERMANENT)
+
+        assert "Warning: Failed to save allowlist: Access denied" in capsys.readouterr().out
+        assert allowlist_manager.entries[url].trust_level == TrustLevel.PERMANENT
+        assert allowlist_manager.is_allowed(url)
+        assert not allowlist_manager.allowlist_path.exists()

@@ -3,6 +3,7 @@ Tests for URLValidator SSRF protection and URL security validation.
 """
 
 import socket
+from typing import Any, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -361,13 +362,19 @@ class TestURLValidator:
         result = url_validator.remove_allowed_domain("example.invalid")
         assert result is False
 
-    def test_ssrf_attempt_logging(self, url_validator: URLValidator) -> None:
-        """Test SSRF attempt logging."""
+    def test_ssrf_attempt_logging(self, url_validator: URLValidator, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test SSRF attempts are blocked by SSRF protection and logged."""
         url_validator.config.network.block_localhost = True
+        # Disable the domain allowlist so the SSRF layer is the one that rejects the URL
+        url_validator.config.network.enforce_domain_allowlist = False
         url = "https://127.0.0.1/schema.json"
 
-        with pytest.raises(URLSecurityError):
+        with pytest.raises(URLSecurityError, match="Localhost access blocked: 127.0.0.1") as exc_info:
             url_validator.validate_url(url)
+
+        assert exc_info.value.reason == "ssrf_blocked"
+        assert exc_info.value.url == url
+        assert "SSRF protection: Localhost access blocked: 127.0.0.1" in capsys.readouterr().out
 
     @patch("socket.getaddrinfo")
     def test_invalid_ip_address_format(self, mock_getaddrinfo: MagicMock, url_validator: URLValidator) -> None:
@@ -395,45 +402,56 @@ class TestURLValidator:
         # Should have skipped the invalid range
         assert len(validator._blocked_networks) == len(security_config.network.blocked_ip_ranges) - 1
 
-    def test_edge_case_urls(self, url_validator: URLValidator) -> None:
-        """Test various edge case URLs."""
+    @pytest.mark.parametrize(
+        "url, resolved_address, expected_reason",
+        [
+            pytest.param(
+                "https://127.0.0.1:8080/path",
+                ("127.0.0.1", 8080),
+                "ssrf_blocked",
+                id="ipv4_loopback_with_port",
+            ),
+            pytest.param(
+                "https://[::1]:8080/path",
+                ("::1", 8080, 0, 0),
+                "ssrf_blocked",
+                id="ipv6_loopback_with_port",
+            ),
+            pytest.param(
+                "https://example.com/path?query=value",
+                ("93.184.216.34", 80),
+                None,
+                id="query_string",
+            ),
+            pytest.param(
+                "https://example.com/path#fragment",
+                ("93.184.216.34", 80),
+                None,
+                id="fragment",
+            ),
+        ],
+    )
+    def test_edge_case_urls(
+        self,
+        url_validator: URLValidator,
+        url: str,
+        resolved_address: Tuple[Any, ...],
+        expected_reason: Optional[str],
+    ) -> None:
+        """Test ports, IPv6 literals, query strings and fragments do not change the security verdict."""
         url_validator.config.network.enforce_domain_allowlist = False
+        # Loopback stays blocked through the blocked IP ranges even with the localhost check disabled
         url_validator.config.network.block_localhost = False
 
-        edge_cases = [
-            ("https://127.0.0.1:8080/path", "Should handle ports"),
-            ("https://[::1]:8080/path", "Should handle IPv6 with ports"),
-            ("https://example.com/path?query=value", "Should handle query parameters"),
-            ("https://example.com/path#fragment", "Should handle fragments"),
-        ]
+        family = socket.AF_INET6 if len(resolved_address) == 4 else socket.AF_INET
 
-        for url, _ in edge_cases:
-            with patch("socket.getaddrinfo") as mock_dns:
-                if "127.0.0.1" in url:
-                    mock_dns.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 8080))]
-                elif "::1" in url:
-                    mock_dns.return_value = [
-                        (
-                            socket.AF_INET6,
-                            socket.SOCK_STREAM,
-                            6,
-                            "",
-                            ("::1", 8080, 0, 0),
-                        )
-                    ]
-                else:
-                    mock_dns.return_value = [
-                        (
-                            socket.AF_INET,
-                            socket.SOCK_STREAM,
-                            6,
-                            "",
-                            ("93.184.216.34", 80),
-                        )
-                    ]
+        with patch("socket.getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(family, socket.SOCK_STREAM, 6, "", resolved_address)]
 
-                try:
+            if expected_reason is None:
+                url_validator.validate_url(url)
+            else:
+                with pytest.raises(URLSecurityError) as exc_info:
                     url_validator.validate_url(url)
-                except URLSecurityError:
-                    # Some edge cases might still fail due to security rules, that's OK
-                    pass
+
+                assert exc_info.value.reason == expected_reason

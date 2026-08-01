@@ -2,6 +2,7 @@
 Tests for ExpressionSanitiser AST injection prevention and expression validation.
 """
 
+import re
 from typing import Any, Dict
 
 import pytest
@@ -46,6 +47,50 @@ def test_sanitiser_with_small_limits() -> ExpressionSanitiser:
     return ExpressionSanitiser(config)
 
 
+@pytest.fixture
+def dos_sanitiser() -> ExpressionSanitiser:
+    """Create a sanitiser with a generous length limit so per-vector limits are the ones that trip."""
+    config = SecurityConfig.for_development()
+    config.processing.max_expression_length = 10000
+    config.processing.max_expression_depth = 8
+    config.processing.max_variable_references = 100
+    return ExpressionSanitiser(config)
+
+
+def build_nested_expression(levels: int) -> str:
+    """Build an expression nested to the requested number of levels."""
+    expression = "test"
+    for _ in range(levels):
+        expression = f"({expression} and test)"
+    return expression
+
+
+# Denial of service vectors, each paired with the limit that is expected to reject it
+DOS_VECTORS = [
+    pytest.param(
+        build_nested_expression(50),
+        {"test": True},
+        "nesting_too_deep",
+        "Expression nesting too deep",
+        id="cpu_exhaustion_via_deep_nesting",
+    ),
+    pytest.param(
+        "test in [" + ", ".join(str(i) for i in range(1000)) + "]",
+        {"test": True},
+        "literal_too_large",
+        "Literal too large: 1000 elements",
+        id="memory_exhaustion_via_large_literal",
+    ),
+    pytest.param(
+        " and ".join(f"var{i} == True" for i in range(200)),
+        {f"var{i}": True for i in range(200)},
+        "too_many_variables",
+        "Too many variable references: 200",
+        id="variable_reference_explosion",
+    ),
+]
+
+
 class TestExpressionSanitiser:
     """Test ExpressionSanitiser security functionality."""
 
@@ -69,28 +114,24 @@ class TestExpressionSanitiser:
             result = expression_sanitiser.sanitise_expression(expr, variables)
             assert result == expr  # Should return unchanged
 
-    def test_valid_complex_expressions(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test valid complex expressions pass validation."""
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            "settings.debug == True and settings.level > 1",
+            'status == "active" or status == "pending"',
+            "items[0] == 1 and items[2] == 3",
+            'settings.level >= 2 and status != "inactive"',
+        ],
+    )
+    def test_valid_complex_expressions(self, expression_sanitiser: ExpressionSanitiser, expression: str) -> None:
+        """Test valid complex expressions pass validation and are returned unchanged."""
         variables = {
             "settings": {"debug": True, "level": 2},
             "items": [1, 2, 3],
             "status": "active",
         }
 
-        complex_expressions = [
-            "settings.debug == True and settings.level > 1",
-            'status == "active" or status == "pending"',
-            "items[0] == 1 and items[2] == 3",
-            'settings.level >= 2 and status != "inactive"',
-        ]
-
-        # Note: some of these might fail due to security restrictions
-        for expr in complex_expressions:
-            try:
-                expression_sanitiser.sanitise_expression(expr, variables)
-            except ExpressionSecurityError:
-                # Expected for some expressions with forbidden constructs
-                pass
+        assert expression_sanitiser.sanitise_expression(expression, variables) == expression
 
     def test_expression_too_long(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expressions that exceed length limits are rejected."""
@@ -274,14 +315,37 @@ class TestExpressionSanitiser:
         assert "Variable name too long" in str(exc_info.value)
         assert exc_info.value.reason == "variable_name_too_long"
 
-    def test_invalid_variable_characters(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test variable names with invalid characters are rejected."""
-        # This would be caught at the parsing stage, but test the validation
-        variables = {"test": True}
+    @pytest.mark.parametrize(
+        "expression, message, reason",
+        [
+            pytest.param(
+                "café == True",
+                "Invalid characters in variable name: café",
+                "invalid_variable_chars",
+                id="non_ascii_identifier",
+            ),
+            pytest.param(
+                "test-invalid == True",
+                "Forbidden AST node type: BinOp",
+                "forbidden_node_type",
+                id="hyphen_parsed_as_subtraction",
+            ),
+        ],
+    )
+    def test_invalid_variable_characters(
+        self,
+        expression_sanitiser: ExpressionSanitiser,
+        expression: str,
+        message: str,
+        reason: str,
+    ) -> None:
+        """Test variable names outside the allowed character set are rejected."""
+        variables = {"test": True, "café": True}
 
-        # Invalid variable syntax should cause syntax error
-        with pytest.raises(ExpressionSecurityError):
-            expression_sanitiser.sanitise_expression("test-invalid == True", variables)
+        with pytest.raises(ExpressionSecurityError, match=re.escape(message)) as exc_info:
+            expression_sanitiser.sanitise_expression(expression, variables)
+
+        assert exc_info.value.reason == reason
 
     def test_attribute_access_validation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test object attribute access validation."""
@@ -369,17 +433,20 @@ class TestExpressionSanitiser:
         # Could be caught by variable count or expression length limit
         assert "Too many variable references" in error_msg or "Expression too long" in error_msg
 
-    def test_undefined_variable_logging(self, expression_sanitiser: ExpressionSanitiser) -> None:
-        """Test undefined variable reference logging."""
+    def test_undefined_variable_logging(
+        self, expression_sanitiser: ExpressionSanitiser, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test undefined variable references are logged as warnings rather than rejected."""
         variables = {"defined": True}
-        # The implementation logs undefined variables but doesn't necessarily raise an error
-        # This behavior is acceptable - undefined variables are logged as warnings
-        try:
-            expression_sanitiser.sanitise_expression("undefined == True", variables)
-            # If it succeeds, that's fine - undefined variables are just logged
-        except ExpressionSecurityError:
-            # If it fails for other security reasons, that's also acceptable
-            pass
+
+        result = expression_sanitiser.sanitise_expression("undefined == True", variables)
+
+        assert result == "undefined == True"
+        assert "Warning: undefined variable 'undefined' in expression" in capsys.readouterr().out
+
+        # A defined variable produces no warning
+        assert expression_sanitiser.sanitise_expression("defined == True", variables) == "defined == True"
+        assert "undefined variable" not in capsys.readouterr().out
 
     def test_get_expression_complexity(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test expression complexity analysis."""
@@ -447,26 +514,44 @@ class TestExpressionSanitiser:
         for pattern in expected_patterns:
             assert pattern in patterns
 
-    def test_production_security_limits(self, production_sanitiser: ExpressionSanitiser) -> None:
-        """Test stricter limits in production mode."""
+    def test_production_security_limits(
+        self,
+        expression_sanitiser: ExpressionSanitiser,
+        production_sanitiser: ExpressionSanitiser,
+    ) -> None:
+        """Test the expression length limit is stricter in production than in development."""
         variables = {"test": True}
 
-        # Expression that passes in dev but fails in production
-        long_expr = " and ".join(["test == True"] * 30)  # Exceeds production limits
+        # 420 characters: inside the development limit of 500, over the production limit of 200
+        long_expr = " and ".join(["test == True"] * 25)
+        assert len(long_expr) == 420
 
-        with pytest.raises(ExpressionSecurityError):
+        assert expression_sanitiser.sanitise_expression(long_expr, variables) == long_expr
+
+        with pytest.raises(ExpressionSecurityError, match="Expression too long: 420 characters") as exc_info:
             production_sanitiser.sanitise_expression(long_expr, variables)
+
+        assert exc_info.value.reason == "expression_too_long"
 
     def test_security_context_in_errors(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test security context is preserved in errors."""
         variables = {"test": True}
+        expression = "exec('malicious')"
 
-        try:
-            expression_sanitiser.sanitise_expression("exec('malicious')", variables)
-        except ExpressionSecurityError as e:
-            assert e.expression is not None
-            assert e.reason is not None
-            assert "malicious" in e.expression or len(e.expression) == 100  # Truncated
+        with pytest.raises(ExpressionSecurityError, match="Dangerous pattern detected in expression") as exc_info:
+            expression_sanitiser.sanitise_expression(expression, variables)
+
+        assert exc_info.value.expression == expression
+        assert exc_info.value.reason == "dangerous_pattern"
+
+        # The expression carried on the error is truncated to 100 characters
+        long_expression = "exec('" + "a" * 200 + "')"
+
+        with pytest.raises(ExpressionSecurityError) as long_exc_info:
+            expression_sanitiser.sanitise_expression(long_expression, variables)
+
+        assert long_exc_info.value.expression == long_expression[:100]
+        assert long_exc_info.value.reason == "dangerous_pattern"
 
     def test_comprehensive_attack_simulation(self, expression_sanitiser: ExpressionSanitiser) -> None:
         """Test comprehensive attack simulation covering all security vectors."""
@@ -525,25 +610,17 @@ class TestExpressionSanitiser:
                 # If it fails due to security rules, that's also acceptable
                 pass
 
-    def test_performance_dos_prevention(self, production_sanitiser: ExpressionSanitiser) -> None:
-        """Test prevention of performance-based denial of service attacks."""
-        variables = {"test": True}
+    @pytest.mark.parametrize("expression, variables, reason, message", DOS_VECTORS)
+    def test_performance_dos_prevention(
+        self,
+        dos_sanitiser: ExpressionSanitiser,
+        expression: str,
+        variables: Dict[str, Any],
+        reason: str,
+        message: str,
+    ) -> None:
+        """Test each denial of service vector is rejected by its own limit, not just by overall length."""
+        with pytest.raises(ExpressionSecurityError, match=re.escape(message)) as exc_info:
+            dos_sanitiser.sanitise_expression(expression, variables)
 
-        # CPU exhaustion through deep nesting
-        deep_expr = "test"
-        for _ in range(50):  # Very deep nesting
-            deep_expr = f"({deep_expr} and test)"
-
-        with pytest.raises(ExpressionSecurityError):
-            production_sanitiser.sanitise_expression(deep_expr, variables)
-
-        # Memory exhaustion through large literals
-        large_literal = "[" + ", ".join([str(i) for i in range(1000)]) + "]"
-        with pytest.raises(ExpressionSecurityError):
-            production_sanitiser.sanitise_expression(f"test in {large_literal}", variables)
-
-        # Variable reference explosion
-        many_vars = {f"var{i}": True for i in range(200)}
-        var_expr = " and ".join([f"var{i} == True" for i in range(200)])
-        with pytest.raises(ExpressionSecurityError):
-            production_sanitiser.sanitise_expression(var_expr, many_vars)
+        assert exc_info.value.reason == reason
