@@ -2,9 +2,9 @@
 Integration tests for the published structured-output type libraries.
 
 The libraries fill value positions inside structure authored verbatim in the
-template text. Local fixture copies of the JSON, HTML and YAML libraries are
-loaded through relative extends with local schemas enabled, so no network is
-involved.
+template text. Local fixture copies of the JSON, HTML, YAML and Markdown
+libraries are loaded through relative extends with local schemas enabled, so
+no network is involved.
 """
 
 from pathlib import Path
@@ -21,6 +21,11 @@ RAW_OUTPUT_CLAUSES = {
     "json": "Output raw, valid JSON only - no markdown code fences, no surrounding commentary, and no explanation.",
     "html": "Output raw, valid HTML only - no markdown code fences, no surrounding commentary, and no explanation.",
     "yaml": "Output raw, valid YAML only - no markdown code fences, no surrounding commentary, and no explanation.",
+    "markdown": (
+        "Output raw, valid Markdown only - no surrounding commentary and no explanation, "
+        "and do not wrap the output in code fences."
+    ),
+    "markdown_code": "Output raw code only - no code fences, no surrounding commentary and no explanation.",
 }
 
 PUBLISHED_BASE = "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0"
@@ -48,7 +53,12 @@ class TestTypeLibrarySecurity:
         validator = URLValidator(config)
         allowlist = AllowlistManager(config)
 
-        for file_name in ["its-json-types-v1.json", "its-html-types-v1.json", "its-yaml-types-v1.json"]:
+        for file_name in [
+            "its-json-types-v1.json",
+            "its-html-types-v1.json",
+            "its-yaml-types-v1.json",
+            "its-markdown-types-v1.json",
+        ]:
             url = f"{PUBLISHED_BASE}/{file_name}"
             validator.validate_url(url)
             assert allowlist._is_builtin_trusted(url)
@@ -116,6 +126,33 @@ class TestHtmlTypeLibrary:
         assert "{includeClasses}" not in prompt
         assert "True" not in prompt
 
+    def test_complete_element_generator_html_list(self) -> None:
+        template = {
+            "$schema": "https://alexanderparker.github.io/instruction-template-specification/schema/v1.0/its-base-schema-v1.json",
+            "version": "1.0.0",
+            "extends": ["./its-html-types-v1.json"],
+            "content": [
+                {"type": "text", "text": "<nav>\n"},
+                {
+                    "type": "placeholder",
+                    "instructionType": "html_list",
+                    "config": {
+                        "description": "links to the main documentation sections",
+                        "listType": "unordered",
+                        "itemCount": 4,
+                    },
+                },
+                {"type": "text", "text": "\n</nav>"},
+            ],
+        }
+
+        result = local_compiler().compile(template, base_url=FIXTURES.resolve().as_uri() + "/")
+        prompt = str(result.prompt)
+
+        assert "Produce a complete unordered list element including its items" in prompt
+        assert RAW_OUTPUT_CLAUSES["html"] in prompt
+        assert "([{<links to the main documentation sections>}])" in prompt
+
 
 class TestYamlTypeLibrary:
     def test_authored_structure_verbatim_with_fills(self) -> None:
@@ -128,3 +165,35 @@ class TestYamlTypeLibrary:
         # yaml_block placeholder relies on the indentSpaces default
         assert "indented by 2 spaces" in prompt
         assert "{indentSpaces}" not in prompt
+
+
+class TestMarkdownTypeLibrary:
+    def test_authored_scaffolding_verbatim_with_fills(self) -> None:
+        prompt = compile_fixture("markdown-types-template.json")
+
+        # The document scaffolding comes from the template text, not the model
+        assert "# example-storefront release notes" in prompt
+        assert "## Features\n" in prompt
+        assert "| Package | Version |\n| --- | --- |\n" in prompt
+        assert "## Installation\n\n```bash\n" in prompt
+        assert "\n```" in prompt
+        # Fills carry the raw-output clauses and escaped descriptions
+        assert RAW_OUTPUT_CLAUSES["markdown"] in prompt
+        assert RAW_OUTPUT_CLAUSES["markdown_code"] in prompt
+        assert "([{<three headline features of example-storefront>}])" in prompt
+        assert "without producing a header or separator row" in prompt
+
+    def test_conditionals_follow_variables(self) -> None:
+        with_install = compile_fixture("markdown-types-template.json")
+        assert "## Installation" in with_install
+
+        without_install = compile_fixture("markdown-types-template.json", {"includeInstall": False})
+        assert "## Installation" not in without_install
+        assert "```bash" not in without_install
+
+    def test_defaults_render_when_config_omitted(self) -> None:
+        # The markdown_list_items placeholder omits listType; the default is bullet
+        prompt = compile_fixture("markdown-types-template.json")
+
+        assert "using bullet markers" in prompt
+        assert "{listType}" not in prompt
