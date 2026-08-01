@@ -13,7 +13,7 @@ import pytest
 from its_compiler import ITSCompiler
 from its_compiler.core.exceptions import ITSCompilationError, ITSConditionalError, ITSSecurityError, ITSValidationError
 from its_compiler.core.models import ITSConfig
-from its_compiler.security import SecurityConfig
+from its_compiler.security import SecurityConfig, URLSecurityError
 
 
 @pytest.fixture
@@ -176,20 +176,28 @@ class TestSecurityIntegration:
             assert len(result.prompt) > 0
 
     def test_production_security_with_real_templates(self, production_compiler: ITSCompiler, fetcher: Any) -> None:
-        """Test production security settings with real templates."""
-        # Simple template should work in production
+        """Test production security settings still compile legitimate templates in full."""
+        # Simple template compiles unchanged
         simple_template = fetcher.fetch_template("01-text-only.json")
-        result = production_compiler.compile(simple_template)
-        assert result.prompt is not None
+        simple_result = production_compiler.compile(simple_template)
+        assert "This is a simple template with no placeholders" in simple_result.prompt
 
-        # Complex template might be more restricted in production
+        # Every conditional branch of the complex template is still evaluated in production
         complex_template = fetcher.fetch_template("10-comprehensive-conditionals.json")
-        try:
-            result = production_compiler.compile(complex_template)
-            assert result.prompt is not None
-        except (ITSValidationError, ITSSecurityError):
-            # Production might be more restrictive, which is acceptable
-            pass
+        complex_result = production_compiler.compile(complex_template)
+
+        assert "# Conditional Operator Tests" in complex_result.prompt
+        for operator_case in [
+            "[OK] Unary NOT operator works",
+            "[OK] AND operator with comparisons works",
+            "[OK] IN operator with list works",
+            "[OK] NOT IN operator works",
+            "[OK] Parentheses and complex logic work",
+        ]:
+            assert operator_case in complex_result.prompt
+
+        # No unresolved variable references remain
+        assert "${" not in complex_result.prompt
 
     def test_security_with_variable_substitution(self, compiler: ITSCompiler, fetcher: Any) -> None:
         """Test security validation works with variable substitution."""
@@ -272,28 +280,19 @@ class TestSecurityIntegration:
         assert status["features"]["expression_sanitisation"] is True
 
     def test_file_path_traversal_prevention(self, compiler: ITSCompiler, temp_dir: Path) -> None:
-        """Test file path traversal attacks are prevented."""
-        # Create malicious template file path
+        """Test path traversal is rejected by URL validation before any request is made."""
+        traversal_schema_url = "https://alexanderparker.github.io/../../etc/passwd"
+
+        with pytest.raises(URLSecurityError, match="Path traversal detected") as url_exc_info:
+            compiler.schema_loader.load_schema(traversal_schema_url)
+
+        assert url_exc_info.value.reason == "path_traversal"
+
+        # A traversal template path is refused with a compilation error rather than an unhandled OSError
         malicious_path = temp_dir / "subdir" / ".." / ".." / "etc" / "passwd"
 
-        # Should block or sanitize path traversal
-        with pytest.raises((ITSValidationError, ITSCompilationError, FileNotFoundError)):
+        with pytest.raises(ITSCompilationError, match="Template file not found"):
             compiler.compile_file(str(malicious_path))
-
-    def test_error_information_disclosure(self, production_compiler: ITSCompiler, fetcher: Any) -> None:
-        """Test error messages don't disclose sensitive information."""
-        template = fetcher.fetch_template("malicious_injection.json", category="templates/security")
-
-        try:
-            production_compiler.compile(template)
-        except Exception as e:
-            error_msg = str(e)
-            # Should not expose internal paths or sensitive details
-            assert "/etc/passwd" not in error_msg
-            assert "internal" not in error_msg.lower()
-            assert "debug" not in error_msg.lower()
-            # Should not expose full template content
-            assert len(error_msg) < 1000  # Reasonable error message length
 
     def test_environment_variable_configuration_coverage(self) -> None:
         """Test environment variable configuration paths to cover config.py missing lines."""

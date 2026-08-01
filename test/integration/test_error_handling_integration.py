@@ -188,13 +188,23 @@ class TestErrorHandlingIntegration:
         self, production_compiler: ITSCompiler, template_fetcher: TemplateFetcher
     ) -> None:
         """Test that production errors don't leak sensitive information using real malicious templates."""
-        try:
-            template = template_fetcher.fetch_template("malicious_injection.json", category="templates/security")
+        template = template_fetcher.fetch_template("malicious_injection.json", category="templates/security")
+
+        with pytest.raises(ITSValidationError, match="Template security validation failed") as exc_info:
             production_compiler.compile(template)
-        except Exception as e:
-            error_msg = str(e)
-            # Should provide generic security message without exposing attack details
-            assert "security" in error_msg.lower() or "validation" in error_msg.lower()
+
+        error_msg = str(exc_info.value)
+
+        # The message identifies the failing element without echoing the payload it rejected
+        assert "<script" not in error_msg.lower()
+        assert "alert(" not in error_msg.lower()
+        assert "javascript:" not in error_msg.lower()
+
+        # No internal paths or diagnostic detail, and no dump of the template
+        assert "/etc/passwd" not in error_msg
+        assert "internal" not in error_msg.lower()
+        assert "debug" not in error_msg.lower()
+        assert len(error_msg) < 200
 
     def test_complex_template_variable_error_recovery(
         self, compiler: ITSCompiler, template_fetcher: TemplateFetcher
