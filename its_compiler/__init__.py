@@ -7,9 +7,18 @@ Converts content templates with placeholders into structured AI prompts.
 Includes comprehensive security features for safe template processing.
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
 from typing import Any, Dict
 
-__version__ = "1.0.4"
+try:
+    # Single source of truth: the installed distribution metadata, which
+    # pyproject.toml populates. Keeps this from drifting out of step with
+    # the version declared for packaging.
+    __version__ = _package_version("its-compiler")
+except PackageNotFoundError:  # pragma: no cover - uninstalled source tree
+    __version__ = "0.0.0"
+
 __author__ = "Alexander Parker"
 __email__ = "pypi@parker.im"
 
