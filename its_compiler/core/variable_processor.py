@@ -302,7 +302,7 @@ class VariableProcessor:
 
         elif isinstance(value, list):
             # Convert arrays to comma-separated string
-            return ", ".join(str(item) for item in value)
+            return ", ".join(self.render_scalar(item) for item in value)
 
         elif isinstance(value, dict):
             # Convert objects to safe string representation
@@ -310,7 +310,7 @@ class VariableProcessor:
 
         else:
             # Convert other types to string with length limit
-            str_value = str(value)
+            str_value = self.render_scalar(value)
             max_text_length = self.security_config.processing.max_text_length
             if len(str_value) > max_text_length:
                 str_value = str_value[:max_text_length] + "... [TRUNCATED]"
@@ -489,7 +489,7 @@ class VariableProcessor:
                 items.append(item[arg])
 
         if name == "concat":
-            return ", ".join(self._concat_text(item) for item in items)
+            return ", ".join(self.render_scalar(item) for item in items)
 
         numbers: List[float] = []
         for item in items:
@@ -510,12 +510,47 @@ class VariableProcessor:
         return self._normalise_number(max(numbers))
 
     @staticmethod
-    def _concat_text(item: Any) -> str:
-        if item is None:
+    def render_scalar(value: Any) -> str:
+        """
+        Render a scalar exactly as the JavaScript and .NET compilers do.
+
+        Every implementation used its own language's stringification, which
+        agreed on common values and diverged at the edges: Python produced
+        True, None and 1.0 where the others produced true, null and 1. This is
+        the single definition all three now share.
+        """
+        if value is None:
             return "null"
-        if isinstance(item, bool):
-            return "true" if item else "false"
-        return str(item)
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (int, float)):
+            return VariableProcessor.render_number(value)
+        return str(value)
+
+    @staticmethod
+    def render_number(value: Any) -> str:
+        """
+        Render a number in the canonical form.
+
+        Whole values carry no decimal part, and exponent notation uses a
+        lowercase e with no plus sign and no leading zeros in the exponent, so
+        1e-07 and 1E-07 both become 1e-7.
+        """
+        if isinstance(value, bool):
+            return "true" if value else "false"
+
+        if isinstance(value, float) and value.is_integer() and abs(value) < 1e16:
+            value = int(value)
+
+        text = repr(value) if isinstance(value, float) else str(value)
+
+        if "e" in text or "E" in text:
+            mantissa, _, exponent = text.replace("E", "e").partition("e")
+            sign = "-" if exponent.startswith("-") else ""
+            digits = exponent.lstrip("+-").lstrip("0") or "0"
+            text = f"{mantissa}e{sign}{digits}"
+
+        return text
 
     @staticmethod
     def _normalise_number(value: float) -> Any:
