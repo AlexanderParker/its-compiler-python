@@ -6,13 +6,21 @@ on:
       - "v*"
   workflow_dispatch:
 
+# Stated explicitly because the repository default is write. Jobs that need
+# more say so themselves; nothing inherits write access.
+permissions:
+  contents: read
+  # Declared at workflow level rather than on the job. A job-level grant does
+  # not elevate when the repository default is read; a workflow-level one does.
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -29,8 +37,6 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
